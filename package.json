@@ -18,9 +18,7 @@
     "@google/genai": "^2.29.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "three": "^0.170.0"
-  },
-  "devDependencies": {
+    "three": "^0.170.0",
     "vite": "^6.2.0"
   }
 }
