@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b0d19" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title data-i18n="pageTitle">SATI — สำรับแห่งสติ</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0b0d19;
+      --obsidian-glass: rgba(14, 16, 28, 0.86);
+      --wood-panel: linear-gradient(165deg, rgba(38, 26, 19, 0.92) 0%, rgba(20, 16, 26, 0.94) 100%);
+      --gold: #d4af37;
+      --gold-bright: #f3d266;
+      --gold-dim: rgba(212, 175, 55, 0.42);
+      --text-main: #f4efe6;
+      --text-muted: #b0a999;
+      --font-sati: 'Noto Serif Thai', 'Noto Serif SC', serif;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      font-family: var(--font-sati) !important;
+    }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-sati) !important;
+      user-select: none;
+    }
+    .font-display, .font-mystic-sub {
+      font-family: var(--font-sati) !important;
+    }
+    .sati-hero-title {
+      letter-spacing: 0.14em;
+      text-shadow: 0 2px 18px rgba(212, 175, 55, 0.36), 0 5px 22px rgba(0, 0, 0, 0.92);
+    }
+    .chamfer {
+      clip-path: polygon(
+        12px 0, calc(100% - 12px) 0,
+        100% 12px, 100% calc(100% - 12px),
+        calc(100% - 12px) 100%, 12px 100%,
+        0 calc(100% - 12px), 0 12px
+      );
+    }
+    .chamfer-sm {
+      clip-path: polygon(
+        7px 0, calc(100% - 7px) 0,
+        100% 7px, 100% calc(100% - 7px),
+        calc(100% - 7px) 100%, 7px 100%,
+        0 calc(100% - 7px), 0 7px
+      );
+    }
+    .panel-glass {
+      background: var(--wood-panel);
+      border: 1px solid var(--gold-dim);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(243, 210, 102, 0.18);
+      backdrop-filter: blur(8px);
+    }
+    .arcane-plaque {
+      background: linear-gradient(180deg, rgba(28, 21, 18, 0.92) 0%, rgba(15, 16, 29, 0.94) 100%);
+      border: 1px solid rgba(212, 175, 55, 0.55);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), inset 0 0 16px rgba(212, 175, 55, 0.08);
+      backdrop-filter: blur(10px);
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #dfba48 0%, #a87e1b 100%);
+      color: #120e0a;
+      font-weight: 600;
+      border: 1px solid #f5d97e;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+      transition: transform 0.12s ease, filter 0.15s ease;
+    }
+    .btn-gold:hover:not(:disabled) { filter: brightness(1.1); }
+    .btn-gold:active:not(:disabled) { transform: scale(0.96); }
+    .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-slate {
+      background: linear-gradient(180deg, rgba(42, 31, 24, 0.9) 0%, rgba(22, 23, 38, 0.92) 100%);
+      border: 1px solid rgba(212, 175, 55, 0.42);
+      color: var(--text-main);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+    .btn-slate:hover:not(:disabled) {
+      border-color: var(--gold-bright);
+      background: linear-gradient(180deg, rgba(56, 41, 30, 0.95) 0%, rgba(30, 32, 52, 0.95) 100%);
+    }
+    .btn-slate:active:not(:disabled) { transform: scale(0.96); }
+    .btn-slate:disabled { opacity: 0.35; cursor: not-allowed; }
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.4); border-radius: 2px; }
+    #scene-canvas {
+      position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1;
+      touch-action: none;
+    }
+    .ui-layer {
+      position: fixed; inset: 0; z-index: 10; pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+    .pointer-auto { pointer-events: auto; }
+
+    /* Native <dialog> Top-Layer & Scroll Containment Rules (modern-web-guidance) */
+    dialog {
+      padding: 0;
+      background: transparent;
+      color: var(--text-main);
+      border: none;
+      max-width: min(94vw, 56rem);
+      max-height: 90vh;
+    }
+    dialog[open] {
+      display: flex;
+      flex-direction: column;
+    }
+    dialog:modal {
+      overscroll-behavior: contain;
+    }
+    dialog::backdrop {
+      overflow: hidden;
+      overscroll-behavior: contain;
+      background: rgba(11, 13, 25, 0.82);
+      backdrop-filter: blur(6px);
+    }
+
+    /* Responsive Mobile Landscape Layout */
+    @media (orientation: landscape) and (max-height: 600px) {
+      #top-hud {
+        padding-top: 6px !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+      }
+      #sati-speech-wrap {
+        margin-top: 4px !important;
+        margin-left: 10px !important;
+        margin-right: auto !important;
+        max-width: 340px !important;
+      }
+      #dialogue-content {
+        max-height: 92px !important;
+        font-size: 12px !important;
+      }
+      #game-footer {
+        margin-left: auto !important;
+        margin-right: 10px !important;
+        padding-bottom: 6px !important;
+        max-width: 390px !important;
+      }
+      #action-dock {
+        padding: 6px 8px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene-canvas" style="touch-action: none;"></canvas>
+
+  <!-- UI OVERLAY LAYER -->
+  <div class="ui-layer flex flex-col justify-between">
+
+    <!-- FLOATING LANGUAGE BAR FOR LOGIN & LEDGER SCREENS -->
+    <div id="pregame-lang-bar" class="fixed top-3 right-3 z-30 pointer-auto arcane-plaque chamfer-sm p-1 flex items-center gap-1" role="group" aria-label="Language switcher">
+      <button type="button" data-lang="th" class="lang-btn btn-gold chamfer-sm px-2 py-0.5 text-[11px]">ไทย</button>
+      <button type="button" data-lang="en" class="lang-btn btn-slate chamfer-sm px-2 py-0.5 text-[11px]">EN</button>
+      <button type="button" data-lang="zh" class="lang-btn btn-slate chamfer-sm px-2 py-0.5 text-[11px]">中文</button>
+    </div>
+
+    <!-- FLOATING RESTORE BUTTON WHEN FULL-TABLE CLEAN MODE IS ACTIVE -->
+    <div id="clean-mode-bar" class="hidden fixed top-2.5 right-3 z-30 flex items-center gap-2 pointer-auto">
+      <div id="clean-pick-badge" data-i18n="cleanPickBadge" class="hidden arcane-plaque chamfer-sm px-3 py-1 text-xs text-[#f3d266]">
+        แตะหยิบไพ่บนกระดานได้เลย
+      </div>
+      <button id="btn-restore-ui" type="button" class="btn-gold chamfer-sm px-3 py-1.5 text-xs flex items-center gap-1.5 shadow-lg">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span data-i18n="btnRestoreUi">แสดงเมนู</span>
+      </button>
+    </div>
+
+    <!-- TOP GROUP (Ordered Single-Row Arcane HUD + Sati Speech Scroll) -->
+    <div id="top-ui-group" class="w-full flex flex-col">
+      <header id="top-hud" class="hidden w-full px-2.5 pt-2 sm:px-4 sm:pt-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5">
+        <!-- Left Cluster: Deck Counter + Card Gallery + Natal 10 Cards -->
+        <div class="flex items-center gap-1.5 pointer-auto overflow-x-auto scrollbar-thin py-0.5">
+          <div class="arcane-plaque chamfer-sm px-2.5 py-1 flex items-center gap-1.5 text-xs shrink-0">
+            <span class="w-2 h-2 bg-[#d4af37] rotate-45 inline-block"></span>
+            <span data-i18n="hudDeckLabel" class="text-[#b0a999] hidden sm:inline">สำรับ</span>
+            <span id="hud-deck-count" class="font-semibold text-[#f3d266]">78 / 78</span>
+          </div>
+
+          <button id="btn-deck-gallery" type="button" data-i18n-title="titleGallery" class="btn-slate chamfer-sm px-2.5 py-1 text-xs flex items-center gap-1 shrink-0" title="สมุดภาพไพ่ 78 ใบ">
+            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="3" width="7" height="9" rx="1"/>
+              <rect x="14" y="3" width="7" height="9" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            <span data-i18n="btnDeckGallery">สมุดภาพไพ่ 78 ใบ</span>
+          </button>
+
+          <button id="btn-natal-drawer" type="button" data-i18n-title="titleNatal" class="hidden btn-slate chamfer-sm px-2.5 py-1 text-xs flex items-center gap-1 shrink-0" title="ดูไพ่พื้นดวง 10 ใบแรก">
+            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </svg>
+            <span data-i18n="btnNatalDrawer">พื้นดวง 10 ใบ</span>
+          </button>
+        </div>
+
+        <!-- Right Cluster: Coins + Camera 1P/2P + Sound + Lang + Hide All UI -->
+        <div class="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-1.5 pointer-auto w-full sm:w-auto sm:ml-auto">
+          <button id="btn-shop-open" type="button" class="arcane-plaque chamfer-sm px-2 sm:px-2.5 py-1 flex items-center gap-1 text-[11px] sm:text-xs whitespace-nowrap hover:border-[#f3d266] transition">
+            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <polygon points="12 2 19 7 19 17 12 22 5 17 5 7"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span id="hud-coins" class="font-semibold text-[#f4efe6]">3 เหรียญ</span>
+            <span id="hud-pass-badge" data-i18n="hudPassBadge" class="hidden px-1 py-0.5 text-[10px] bg-[#d4af37] text-[#0b0d19] font-semibold">เหมาสำรับ</span>
+          </button>
+
+          <button id="btn-camera-toggle" type="button" disabled data-i18n-title="titleCamToggle" title="สลับมุมมอง 1P / 2P"
+            class="btn-slate chamfer-sm px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs whitespace-nowrap flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>
+              <circle cx="12" cy="12" r="2.5"/>
+            </svg>
+            <span id="hud-cam-label">มุมมอง: สายตา 1P</span>
+          </button>
+
+          <button id="btn-mute" type="button" data-i18n-title="titleMute" class="btn-slate chamfer-sm p-1.5 shrink-0" title="เปิด/ปิดเสียง" aria-label="เปิดหรือปิดเสียง">
+            <svg id="icon-sound-on" class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+            </svg>
+            <svg id="icon-sound-off" class="hidden w-3.5 h-3.5 text-[#b0a999]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <line x1="22" y1="9" x2="16" y2="15"/>
+              <line x1="16" y1="9" x2="22" y2="15"/>
+            </svg>
+          </button>
+
+          <div class="arcane-plaque chamfer-sm p-0.5 flex items-center gap-0.5 shrink-0" role="group" aria-label="In-game language switcher">
+            <button type="button" data-lang="th" class="lang-btn btn-gold chamfer-sm px-1.5 py-0.5 text-[10px] sm:text-[11px]">ไทย</button>
+            <button type="button" data-lang="en" class="lang-btn btn-slate chamfer-sm px-1.5 py-0.5 text-[10px] sm:text-[11px]">EN</button>
+            <button type="button" data-lang="zh" class="lang-btn btn-slate chamfer-sm px-1.5 py-0.5 text-[10px] sm:text-[11px]">中文</button>
+          </div>
+
+          <button id="btn-feedback-open" type="button" data-i18n="btnFeedbackOpen" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs text-[#f3d266] whitespace-nowrap shrink-0 cursor-pointer">
+            ★ รีวิว / ติชม
+          </button>
+
+          <button id="btn-hide-ui" type="button" data-i18n-title="titleHideUi" class="btn-gold chamfer-sm px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs whitespace-nowrap flex items-center gap-1 shrink-0" title="ซ่อนปุ่มทั้งหมดเพื่อดูโต๊ะและไพ่เต็มจอ">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+            <span data-i18n="btnHideUi" class="hidden sm:inline">ดูโต๊ะเต็มจอ</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- TOP FLOATING SPEECH PLAQUE NEAR SATI -->
+      <div id="sati-speech-wrap" class="hidden w-full max-w-md sm:max-w-[430px] sm:w-[37vw] sm:min-w-[260px] mx-auto sm:mx-0 sm:ml-4 sm:mr-auto px-2.5 sm:px-0 mt-1.5 pointer-auto">
+        <div id="dialogue-box" class="arcane-plaque chamfer-sm px-3 py-2 relative">
+          <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+            <div class="flex items-center gap-2 min-w-0">
+              <span id="sati-speaker-tag" data-i18n="satiSpeaker" class="font-display px-2 py-0.5 bg-[#d4af37] text-[#120e0a] text-[11px] font-bold tracking-wider shrink-0">สติ</span>
+              <span id="sati-mood-tag" class="text-[11px] text-[#f3d266] shrink-0">ประจำโต๊ะ</span>
+              <span id="dialogue-preview" data-i18n="dialoguePreview" class="hidden text-xs text-[#b0a999] truncate">แตะเลือกไพ่บนโต๊ะได้เลย...</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button id="btn-speech-feedback" type="button" data-i18n="btnFeedbackOpen" class="text-[11px] text-[#d6cfc2] hover:text-[#f3d266] hover:underline cursor-pointer">
+                ★ รีวิว / ติชม
+              </button>
+              <button id="btn-chat-history" type="button" class="text-[11px] text-[#f3d266] hover:underline flex items-center gap-1">
+                <span data-i18n="btnChatHistory">ดูประวัติการคุย</span>
+              </button>
+              <button id="btn-toggle-dialogue" type="button" class="text-[11px] px-2 py-0.5 btn-slate chamfer-sm">
+                ย่อกล่อง
+              </button>
+            </div>
+          </div>
+          <div id="dialogue-content" class="mt-1.5 text-xs sm:text-sm leading-relaxed text-[#f4efe6] whitespace-pre-line max-h-44 sm:max-h-64 overflow-y-auto scrollbar-thin pr-1">
+            กำลังเตรียมสำรับ...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 1: TITLE & GMAIL LOGIN SCREEN -->
+    <section id="screen-login" class="pointer-auto fixed inset-0 flex flex-col items-center justify-between py-12 px-5 bg-gradient-to-b from-[#0b0d19]/70 via-transparent to-[#0b0d19]/90">
+      <div class="text-center mt-8 sm:mt-10 px-2">
+        <h1 class="font-display sati-hero-title text-5xl sm:text-6xl font-black text-[#f4ecda]">
+          SATI
+        </h1>
+        <div class="w-28 h-px bg-gradient-to-r from-transparent via-[#d4af37]/80 to-transparent mx-auto my-3"></div>
+        <p id="login-subtitle" data-i18n="loginSubtitle" class="font-mystic-sub text-base sm:text-lg text-[#e7decb] mt-1 max-w-lg mx-auto leading-relaxed drop-shadow">
+          ดูดวงกับหมอดูสติ พื้นที่คุยกันแบบตรงไปตรงมา กันเองและจริงใจ เพื่อให้ทุกท่านได้มุมมองในการใช้ชีวิตอย่างมีคุณค่า ทุกวินาที
+        </p>
+      </div>
+
+      <div class="w-full max-w-sm flex flex-col items-center gap-3 mb-4">
+        <button id="btn-gmail-login" type="button" class="w-full btn-gold chamfer px-5 py-3.5 flex items-center justify-center gap-2.5 text-base font-semibold cursor-pointer">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.2 8.8 22 12 15.2 15.2 12 22 8.8 15.2 2 12 8.8 8.8 12 2"/>
+          </svg>
+          <span data-i18n="gmailLoginBtn">เริ่มดูดวงกับสติ</span>
+        </button>
+        <p data-i18n="loginPrivacyNote" class="text-[11px] text-[#9b9db0] text-center">
+          ข้อมูลชื่อและวันเกิดใช้สำหรับผูกพื้นฐานดวงชะตาเข้ากับหน้าไพ่ในสำรับเท่านั้น
+        </p>
+      </div>
+    </section>
+
+    <!-- STAGE 2: NATAL LEDGER ONBOARDING (3D Table Ledger) -->
+    <section id="screen-ledger" class="hidden pointer-auto fixed inset-0 flex items-center justify-center p-4 bg-[#0b0d19]/55">
+      <div class="panel-glass chamfer w-full max-w-md p-6 sm:p-7 border border-[#d4af37]/60">
+        <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-4">
+          <div>
+            <p data-i18n="ledgerEyebrow" class="text-xs text-[#d4af37] tracking-wider uppercase">สมุดบันทึกพื้นดวง</p>
+            <h2 data-i18n="ledgerTitle" class="font-display text-xl font-bold text-[#f1ede4]">ลงชื่อก่อนจับไพ่กับสติ</h2>
+          </div>
+          <div id="ledger-email-tag" data-i18n="ledgerDeviceBadge" class="text-[11px] px-2.5 py-1 bg-[#191f38] border border-[#d4af37]/30 text-[#d4af37] truncate max-w-[165px]">
+            บันทึกดวงประจำเครื่องนี้
+          </div>
+        </div>
+
+        <!-- Resume Existing Deck Banner (Shown when saved session exists for this Gmail) -->
+        <div id="resume-session-box" class="hidden mb-4 p-3 bg-[#141933]/90 border border-[#d4af37]/50 chamfer-sm">
+          <p id="resume-deck-info" class="text-xs text-[#f3d266] mb-2"></p>
+          <button id="btn-resume-deck" data-i18n="btnResumeDeck" type="button" class="w-full btn-gold chamfer-sm py-2 text-xs">
+            เข้าสู่สำรับเดิมที่เปิดค้างไว้ทันที
+          </button>
+        </div>
+
+        <form id="ledger-form" class="space-y-4">
+          <div>
+            <label for="input-nickname" data-i18n="labelNickname" class="block text-xs text-[#c5c7d4] mb-1">ชื่อเล่น (สติจะใช้เรียกชื่อนี้ตลอดการคุย)</label>
+            <input id="input-nickname" type="text" required data-i18n-placeholder="placeholderNickname" placeholder="เช่น บอม"
+              class="w-full px-3.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 focus:border-[#d4af37] outline-none text-sm text-[#f1ede4]" />
+          </div>
+
+          <div>
+            <label for="input-fullname" data-i18n="labelFullname" class="block text-xs text-[#c5c7d4] mb-1">ชื่อจริง - นามสกุล (สำหรับวิเคราะห์พลังทักษา)</label>
+            <input id="input-fullname" type="text" required data-i18n-placeholder="placeholderFullname" placeholder="เช่น ธนภัทร พิมพ์มากร"
+              class="w-full px-3.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 focus:border-[#d4af37] outline-none text-sm text-[#f1ede4]" />
+          </div>
+
+          <div>
+            <label data-i18n="labelBirthdate" class="block text-xs text-[#c5c7d4] mb-1">วัน เดือน ปีเกิด (พ.ศ.)</label>
+            <div class="grid grid-cols-3 gap-2">
+              <select id="input-day" aria-label="Birth day" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
+              <select id="input-month" aria-label="Birth month" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
+              <select id="input-year" aria-label="Birth year" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
+            </div>
+          </div>
+
+          <button type="submit" data-i18n="btnSubmitLedger" class="w-full btn-gold chamfer py-3 text-sm sm:text-base mt-2">
+            ประทับตราเริ่มดูดวง
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- BOTTOM GAME INTERFACE (Collapsible Arcane Command Dock) -->
+    <footer id="game-footer" class="hidden w-full max-w-lg mx-auto px-2.5 pb-2 sm:px-4 sm:pb-3 flex flex-col gap-1 pointer-auto">
+
+      <!-- Top Rim of Dock: Active Cards Strip + Collapse Dock Toggle -->
+      <div class="flex items-center justify-between gap-2">
+        <div id="active-cards-strip" class="hidden flex items-center gap-1 overflow-x-auto scrollbar-thin py-0.5 flex-1"></div>
+        <button id="btn-toggle-dock" type="button" class="ml-auto arcane-plaque chamfer-sm px-2.5 py-0.5 text-[11px] text-[#f3d266] hover:border-[#f3d266] shrink-0">
+          ซ่อนแผงปุ่ม
+        </button>
+      </div>
+
+      <!-- Contextual Action Dock -->
+      <div id="action-dock" class="arcane-plaque chamfer-sm p-2 flex flex-col gap-1.5">
+        <!-- Mode A: Picking Cards -->
+        <div id="dock-picking" class="hidden flex items-center justify-between gap-2 px-1">
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="w-2 h-2 bg-[#d4af37] rotate-45 shrink-0"></div>
+            <div class="truncate">
+              <p id="pick-instruction" class="text-xs sm:text-sm font-medium text-[#f4efe6] truncate">แตะเลือกไพ่จากวงพัดบนโต๊ะ (0 / 10)</p>
+              <p id="pick-subtext" data-i18n="pickSubtext" class="text-[10px] text-[#b0a999] hidden sm:block">แตะที่ไพ่ในวงพัดโดยตรง หรือกดปุ่มดูโต๊ะเต็มจอด้านบนเพื่อซ่อนเมนู</p>
+            </div>
+          </div>
+          <button id="btn-auto-pick" data-i18n="btnAutoPick" type="button" class="btn-gold chamfer-sm px-3 py-1 text-xs shrink-0">
+            สุ่มหยิบให้ครบ
+          </button>
+        </div>
+
+        <!-- Mode B: Chat & Draw Loop -->
+        <div id="dock-chat" class="hidden flex flex-col gap-1.5">
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1">
+            <button id="btn-draw-1" type="button" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center leading-tight gap-0.5 sm:gap-1">
+              <span data-i18n="btnDraw1">จั่วเพิ่ม 1 ใบ</span>
+              <span data-i18n="btnDraw1Cost" class="text-[#f3d266] text-[10px]">(1 เหรียญ)</span>
+            </button>
+            <button id="btn-draw-3" type="button" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center leading-tight gap-0.5 sm:gap-1">
+              <span data-i18n="btnDraw3">จั่วเพิ่ม 3 ใบ</span>
+              <span data-i18n="btnDraw3Cost" class="text-[#f3d266] text-[10px]">(3 เหรียญ)</span>
+            </button>
+            <button id="btn-draw-10-opt" type="button" class="hidden btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center leading-tight gap-0.5 sm:gap-1 col-span-2">
+              <span data-i18n="btnDraw10Opt">เปิดผังใหญ่ 10 ใบ</span>
+              <span data-i18n="btnDraw10Cost" class="text-[#f3d266] text-[10px]">(8 เหรียญ)</span>
+            </button>
+            <button id="btn-reshuffle" data-i18n="btnReshuffle" type="button" class="hidden btn-gold chamfer-sm px-2.5 py-1 text-[11px] sm:text-xs col-span-2 sm:ml-auto">
+              สับสำรับใหม่ 78 ใบ
+            </button>
+          </div>
+
+          <div id="smart-prompt-chips" class="hidden flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-0.5"></div>
+
+          <form id="chat-form" class="flex items-center gap-1.5">
+            <input id="chat-input" type="text" data-i18n-placeholder="chatPlaceholder" placeholder="พิมพ์ถามสติต่อได้เลย..."
+              class="flex-1 min-w-0 px-3 py-1.5 bg-[#0b0d19]/90 border border-[#d4af37]/40 focus:border-[#f3d266] outline-none text-xs sm:text-sm text-[#f4efe6]" />
+            <button id="btn-chat-submit" type="submit" class="btn-gold chamfer-sm px-3 py-1.5 text-xs sm:text-sm shrink-0 whitespace-nowrap">
+              ถามสติ (ฟรี 1 ครั้ง)
+            </button>
+          </form>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- NATIVE MODAL 1: GMAIL ACCOUNT PICKER -->
+  <dialog id="modal-gmail" closedby="any" aria-labelledby="title-modal-gmail" class="w-full max-w-sm">
+    <div class="panel-glass chamfer w-full p-5 border border-[#d4af37]/60">
+      <h3 id="title-modal-gmail" data-i18n="modalGmailTitle" class="font-display text-base font-bold text-[#f1ede4] mb-1">เลือกบัญชี Gmail เพื่อเข้าสู่ระบบ</h3>
+      <p data-i18n="modalGmailSub" class="text-xs text-[#a6a8b8] mb-4">ระบบจะจำพื้นดวงและประวัติไพ่ผูกกับบัญชีนี้</p>
+      <div class="space-y-2 mb-4">
+        <button type="button" autofocus data-email="thanapat.bom@gmail.com" data-name="ธนภัทร พิมพ์มากร" data-nick="บอม"
+          class="gmail-choice w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between">
+          <div>
+            <div class="text-sm font-medium">thanapat.bom@gmail.com</div>
+            <div class="text-xs text-[#a6a8b8]">ธนภัทร พิมพ์มากร</div>
+          </div>
+          <span data-i18n="gmailPickLabel" class="text-xs text-[#d4af37]">เลือก</span>
+        </button>
+        <button type="button" data-email="guest.seeker@gmail.com" data-name="อริสา วัฒนกุล" data-nick="อริส"
+          class="gmail-choice w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between">
+          <div>
+            <div class="text-sm font-medium">guest.seeker@gmail.com</div>
+            <div data-i18n="gmailGuestSub" class="text-xs text-[#a6a8b8]">บัญชีทดลองใหม่</div>
+          </div>
+          <span data-i18n="gmailPickLabel" class="text-xs text-[#d4af37]">เลือก</span>
+        </button>
+      </div>
+      <form method="dialog">
+        <button value="cancel" data-i18n="btnCancel" class="w-full py-2 text-xs text-[#a6a8b8] hover:text-[#f1ede4]">ยกเลิก</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 2: CARD INSPECTION OVERLAY -->
+  <dialog id="modal-card" closedby="any" aria-labelledby="modal-card-name" class="w-full max-w-sm">
+    <div class="panel-glass chamfer w-full p-5 border border-[#d4af37]/70 flex flex-col items-center text-center">
+      <div id="modal-card-art" class="w-48 aspect-[2/3] mb-4 border border-[#d4af37]/70 rounded-sm shadow-2xl overflow-hidden bg-[#efe5d2]"></div>
+      <p id="modal-card-pos" class="text-[11px] text-[#d4af37] uppercase tracking-wider mb-1"></p>
+      <h3 id="modal-card-name" class="font-display text-lg font-bold text-[#f1ede4]"></h3>
+      <p id="modal-card-th" class="text-xs text-[#a6a8b8] mb-3"></p>
+      <p id="modal-card-note" class="text-xs sm:text-sm text-[#f1ede4] leading-relaxed mb-5 whitespace-pre-line text-left w-full"></p>
+      <form method="dialog" class="w-full">
+        <button value="close" data-i18n="btnCardReturn" autofocus class="w-full btn-slate chamfer-sm py-2.5 text-sm">วางกลับลงโต๊ะ</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 3: NATAL 10-CARD DRAWER -->
+  <dialog id="modal-natal" closedby="any" aria-labelledby="title-modal-natal" class="w-full max-w-lg">
+    <div class="panel-glass chamfer w-full max-h-[82vh] flex flex-col p-5 border border-[#d4af37]/60">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-3">
+        <div>
+          <h3 id="title-modal-natal" data-i18n="modalNatalTitle" class="font-display text-base font-bold text-[#f1ede4]">บันทึกพื้นดวง 10 ใบแรก</h3>
+          <p id="natal-summary-sub" class="text-xs text-[#a6a8b8]"></p>
+        </div>
+        <form method="dialog">
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs">ปิด</button>
+        </form>
+      </div>
+      <div id="natal-list" class="overflow-y-auto scrollbar-thin space-y-2 pr-1"></div>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 4: 78-CARD ART GALLERY -->
+  <dialog id="modal-gallery" closedby="any" aria-labelledby="title-modal-gallery" class="w-full max-w-4xl">
+    <div class="panel-glass chamfer w-full max-h-[88vh] flex flex-col p-4 sm:p-6 border border-[#d4af37]/60">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#d4af37]/25 pb-3 mb-3">
+        <div>
+          <h3 id="title-modal-gallery" data-i18n="modalGalleryTitle" class="font-display text-base sm:text-lg font-bold text-[#f1ede4]">สมุดภาพหน้าไพ่ทาโรต์ 3D โพลิกอนทั้ง 78 ใบ</h3>
+          <p data-i18n="modalGallerySub" class="text-xs text-[#a6a8b8]">แตะที่ไพ่ใบใดก็ได้เพื่อดูภาพขยายและความหมายเตือนสติ</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button type="button" data-filter="ALL" data-i18n="filterAll" class="gallery-filter btn-gold chamfer-sm px-2.5 py-1 text-xs">ทั้งหมด (78)</button>
+          <button type="button" data-filter="Major" data-i18n="filterMajor" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">ไพ่ใหญ่ (22)</button>
+          <button type="button" data-filter="Wands" data-i18n="filterWands" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">ไม้เท้า</button>
+          <button type="button" data-filter="Cups" data-i18n="filterCups" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">ถ้วย</button>
+          <button type="button" data-filter="Swords" data-i18n="filterSwords" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">ดาบ</button>
+          <button type="button" data-filter="Pentacles" data-i18n="filterPentacles" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">เหรียญ</button>
+          <form method="dialog" class="inline">
+            <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs ml-2">ปิด</button>
+          </form>
+        </div>
+      </div>
+      <div id="gallery-grid" class="overflow-y-auto scrollbar-thin grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 pr-1"></div>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 5: CHAT HISTORY -->
+  <dialog id="modal-history" closedby="any" aria-labelledby="title-modal-history" class="w-full max-w-2xl">
+    <div class="panel-glass chamfer w-full max-h-[82vh] flex flex-col p-5 border border-[#d4af37]/60">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-3">
+        <h3 id="title-modal-history" data-i18n="modalHistoryTitle" class="font-display text-base font-bold text-[#f1ede4]">ประวัติการสนทนากับสติ</h3>
+        <form method="dialog">
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs">ปิด</button>
+        </form>
+      </div>
+      <div id="history-list" class="overflow-y-auto scrollbar-thin space-y-3 pr-1 text-sm"></div>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 6: COIN, DECK PASS & VIP SHOP WITH PROMPTPAY QR CHECKOUT -->
+  <dialog id="modal-shop" closedby="any" aria-labelledby="title-modal-shop" class="w-full max-w-md">
+    <div class="panel-glass chamfer w-full p-5 border border-[#d4af37]/60">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-3">
+        <h3 id="title-modal-shop" data-i18n="modalShopTitle" class="font-display text-base font-bold text-[#f1ede4]">คลังพลังงาน &amp; สิทธิ์ดูดวงพิเศษ</h3>
+        <form method="dialog">
+          <button value="close" data-i18n="btnClose" autofocus class="text-xs text-[#a6a8b8] hover:text-[#f1ede4] cursor-pointer">ปิด</button>
+        </form>
+      </div>
+
+      <!-- STEP 1: 3-TIER AUSPICIOUS PRICING LADDER (99 / 299 / 999) -->
+      <div id="shop-tier-list" class="space-y-2.5 mb-4">
+        <button id="btn-buy-coins" type="button" class="w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between gap-2 hover:border-[#d4af37] transition cursor-pointer">
+          <div class="min-w-0">
+            <div data-i18n="shopBuyCoinsTitle" class="text-sm font-medium text-[#f1ede4]">เติม 19 เหรียญเปิดดวง</div>
+            <div data-i18n="shopBuyCoinsSub" class="text-xs text-[#a6a8b8]">ถามขยี้ต่อหรือจั่วไพ่เพิ่ม 1-3 ใบได้ตามต้องการ</div>
+          </div>
+          <span data-i18n="shopBuyCoinsPrice" class="text-xs font-bold text-[#f3d266] shrink-0">99 บาท</span>
+        </button>
+
+        <button id="btn-buy-pass" type="button" class="w-full btn-gold chamfer-sm p-3 text-left flex items-center justify-between gap-2 cursor-pointer">
+          <div class="min-w-0">
+            <div data-i18n="shopBuyPassTitle" class="text-sm font-semibold">ตั๋วเหมาสำรับ 78 ใบ (คุ้มสุดต่อรอบ)</div>
+            <div data-i18n="shopBuyPassSub" class="text-xs opacity-85">จั่วไพ่ + ถามขยี้ต่อไม่อั้นจนกว่าไพ่สำรับนี้จะหมดกอง</div>
+          </div>
+          <span data-i18n="shopBuyPassPrice" class="text-xs font-bold shrink-0">299 บาท</span>
+        </button>
+
+        <button id="btn-buy-vip" type="button" class="w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between gap-2 border border-[#f3d266]/70 bg-gradient-to-r from-[#1b2244] to-[#281e3f] hover:border-[#f3d266] transition cursor-pointer">
+          <div class="min-w-0">
+            <div data-i18n="shopBuyVipTitle" class="text-sm font-semibold text-[#f3d266]">Sati VIP รายเดือน (30 วัน)</div>
+            <div data-i18n="shopBuyVipSub" class="text-xs text-[#d6cfc2]">ดูดวงไม่อั้นทุกสำรับ สับไพ่ใหม่และถามเจาะลึกได้ไม่จำกัดตลอด 30 วัน</div>
+          </div>
+          <span data-i18n="shopBuyVipPrice" class="text-xs font-bold text-[#f3d266] shrink-0">999 บาท</span>
+        </button>
+      </div>
+
+      <!-- STEP 2: PROMPTPAY QR CHECKOUT VIEW -->
+      <div id="shop-qr-checkout" class="hidden space-y-3 mb-4 text-center">
+        <div class="text-xs font-semibold text-[#d4af37] uppercase tracking-wider" data-i18n="shopQrHeader">สแกน QR PromptPay เพื่อชำระเงิน</div>
+        <div class="p-3 bg-[#0e1328]/90 border border-[#d4af37]/35 space-y-1">
+          <div id="shop-qr-pkg-title" class="text-sm font-semibold text-[#f1ede4]"></div>
+          <div id="shop-qr-pkg-amount" class="text-base font-bold text-[#f3d266]"></div>
+        </div>
+
+        <div class="mx-auto w-44 h-44 bg-[#f8f5ee] p-2.5 border-2 border-[#d4af37] flex flex-col items-center justify-between">
+          <div class="w-full bg-[#113f67] text-white text-[9px] font-bold tracking-widest py-0.5 uppercase">Thai QR PromptPay</div>
+          <svg viewBox="0 0 100 100" class="w-32 h-32 text-[#0b0d19]" role="img" aria-label="PromptPay QR Code">
+            <rect width="100" height="100" fill="#f8f5ee"/>
+            <rect x="6" y="6" width="26" height="26" fill="none" stroke="currentColor" stroke-width="5"/>
+            <rect x="13" y="13" width="12" height="12" fill="currentColor"/>
+            <rect x="68" y="6" width="26" height="26" fill="none" stroke="currentColor" stroke-width="5"/>
+            <rect x="75" y="13" width="12" height="12" fill="currentColor"/>
+            <rect x="6" y="68" width="26" height="26" fill="none" stroke="currentColor" stroke-width="5"/>
+            <rect x="13" y="75" width="12" height="12" fill="currentColor"/>
+            <path d="M40 8h8v8h-8zM52 10h6v12h-6zM40 24h10v6H40zM8 40h10v8H8zM24 42h12v6H24zM42 40h16v16H42zM64 40h8v10h-8zM78 40h14v8H78zM40 64h10v8H40zM56 62h12v10H56zM74 62h18v8H74zM42 78h14v14H42zM64 78h10v14H64zM80 78h12v14H80z" fill="currentColor"/>
+          </svg>
+          <div class="text-[9px] font-semibold text-[#113f67]">SATI SANCTUARY PAY</div>
+        </div>
+
+        <button id="btn-confirm-payment" type="button" data-i18n="btnConfirmPayment" class="w-full btn-gold chamfer-sm py-2.5 text-sm font-semibold cursor-pointer">
+          ยืนยันการชำระเงินสำเร็จ
+        </button>
+        <button id="btn-back-to-tiers" type="button" data-i18n="btnBackToTiers" class="w-full btn-slate chamfer-sm py-1.5 text-xs text-[#c5c7d4] cursor-pointer">
+          ← เลือกแพ็กเกจอื่น
+        </button>
+      </div>
+
+      <p data-i18n="shopNotice" class="text-[11px] text-[#8d90a3] text-center">ระบบจำลองการสแกนจ่าย PromptPay (กดยืนยันเพื่อรับสิทธิ์ได้ทันที)</p>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 7: IN-APP FEEDBACK & SUMMARY EXPORT -->
+  <dialog id="modal-feedback" closedby="any" aria-labelledby="title-modal-feedback" class="w-full max-w-lg">
+    <div class="panel-glass chamfer w-full max-h-[85vh] flex flex-col p-5 border border-[#d4af37]/60">
+      <div class="flex items-start justify-between gap-2 border-b border-[#d4af37]/25 pb-3 mb-3">
+        <div>
+          <h3 id="title-modal-feedback" data-i18n="modalFeedbackTitle" class="font-display text-base font-bold text-[#f1ede4]">ส่งฟีดแบ็กช่วยพัฒนาหมอดูสติ</h3>
+          <p data-i18n="feedbackSub" class="text-xs text-[#a6a8b8] mt-0.5">ความคิดเห็นของคุณช่วยให้เราปรับปรุงคำทำนายและระบบให้ดียิ่งขึ้น</p>
+        </div>
+        <form method="dialog">
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs cursor-pointer">ปิด</button>
+        </form>
+      </div>
+
+      <div class="flex items-center gap-2 mb-3">
+        <button id="btn-feedback-tab-form" type="button" data-i18n="feedbackTabForm" class="btn-gold chamfer-sm px-3 py-1.5 text-xs font-semibold cursor-pointer">
+          เขียนรีวิว / ติชม
+        </button>
+        <button id="btn-feedback-tab-list" type="button" data-i18n="feedbackTabList" class="btn-slate chamfer-sm px-3 py-1.5 text-xs cursor-pointer">
+          ดูฟีดแบ็กทั้งหมด
+        </button>
+      </div>
+
+      <!-- TAB 1: SUBMIT FEEDBACK FORM -->
+      <form id="feedback-form-view" class="space-y-3">
+        <div>
+          <div data-i18n="feedbackRatingLabel" class="text-xs text-[#d6cfc2] mb-1.5">ความพึงพอใจและความแม่นยำโดยรวม</div>
+          <div id="feedback-stars" class="flex items-center gap-1.5" role="group" aria-label="Star rating">
+            <button type="button" data-star="1" class="feedback-star text-2xl leading-none px-1.5 py-0.5 text-[#f3d266] cursor-pointer" aria-label="1 star">★</button>
+            <button type="button" data-star="2" class="feedback-star text-2xl leading-none px-1.5 py-0.5 text-[#f3d266] cursor-pointer" aria-label="2 stars">★</button>
+            <button type="button" data-star="3" class="feedback-star text-2xl leading-none px-1.5 py-0.5 text-[#f3d266] cursor-pointer" aria-label="3 stars">★</button>
+            <button type="button" data-star="4" class="feedback-star text-2xl leading-none px-1.5 py-0.5 text-[#f3d266] cursor-pointer" aria-label="4 stars">★</button>
+            <button type="button" data-star="5" class="feedback-star text-2xl leading-none px-1.5 py-0.5 text-[#f3d266] cursor-pointer" aria-label="5 stars">★</button>
+          </div>
+        </div>
+
+        <div id="feedback-tags" class="flex flex-wrap gap-1.5"></div>
+
+        <textarea id="feedback-comment" rows="3" data-i18n-placeholder="feedbackCommentPlaceholder" placeholder="เล่าให้ฟังได้เลยว่าชอบอะไร หรืออยากให้ปรับปรุงจุดไหนเพิ่มเติม..."
+          class="w-full px-3 py-2 bg-[#0b0d19]/85 border border-[#d4af37]/35 focus:border-[#d4af37] outline-none text-xs sm:text-sm text-[#f4efe6] resize-none"></textarea>
+
+        <button id="btn-submit-feedback" type="submit" data-i18n="btnSubmitFeedback" class="w-full btn-gold chamfer-sm py-2.5 text-sm font-semibold cursor-pointer">
+          ส่งฟีดแบ็กให้ผู้พัฒนา
+        </button>
+      </form>
+
+      <!-- TAB 2: ALL FEEDBACK SUMMARY & CSV EXPORT -->
+      <div id="feedback-list-view" class="hidden flex-1 flex flex-col min-h-0 space-y-2.5">
+        <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-[#0e1328]/85 border border-[#d4af37]/30">
+          <div id="feedback-summary-stats" class="text-xs font-semibold text-[#f3d266]"></div>
+          <button id="btn-export-feedback-csv" type="button" data-i18n="btnExportFeedbackCsv" class="btn-gold chamfer-sm px-2.5 py-1 text-xs font-semibold cursor-pointer">
+            ดาวน์โหลด CSV
+          </button>
+        </div>
+        <div id="feedback-entries-list" class="overflow-y-auto scrollbar-thin space-y-2 pr-1 max-h-72 text-xs"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast-box" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-40 panel-glass chamfer-sm px-4 py-2 text-xs sm:text-sm text-[#f1ede4] border-[#d4af37]"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "sati-tarot-3d",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SATI (สำรับแห่งสติ) — 3D Low-Poly Tarot & Thai Thaksa Fortune-Telling Game App",
+  "scripts": {
+    "build:models": "node .agents/skills/sati-3d-engine/scripts/build_glb_assets.mjs",
+    "dev": "vite --port 5173",
+    "build": "npm run build:models && vite build",
+    "preview": "vite preview --port 5173",
+    "start": "node backend/geminiProxyServer.js",
+    "server": "node backend/geminiProxyServer.js",
+    "verify": "node .agents/skills/sati-3d-engine/scripts/verify_project.mjs",
+    "test": "node tests/e2e/runner.mjs"
+  },
+  "dependencies": {
+    "@google/genai": "^2.29.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}

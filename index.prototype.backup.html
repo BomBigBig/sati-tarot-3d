@@ -1,0 +1,2632 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SATI — สำรับแห่งสติ</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0b0d19;
+      --obsidian-glass: rgba(14, 16, 28, 0.86);
+      --wood-panel: linear-gradient(165deg, rgba(38, 26, 19, 0.92) 0%, rgba(20, 16, 26, 0.94) 100%);
+      --gold: #d4af37;
+      --gold-bright: #f3d266;
+      --gold-dim: rgba(212, 175, 55, 0.42);
+      --text-main: #f4efe6;
+      --text-muted: #b0a999;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background: var(--bg-deep);
+      color: var(--text-main); font-family: 'Kanit', sans-serif;
+      user-select: none;
+    }
+    .font-display { font-family: 'Cinzel', 'Kanit', serif; }
+    .chamfer {
+      clip-path: polygon(
+        12px 0, calc(100% - 12px) 0,
+        100% 12px, 100% calc(100% - 12px),
+        calc(100% - 12px) 100%, 12px 100%,
+        0 calc(100% - 12px), 0 12px
+      );
+    }
+    .chamfer-sm {
+      clip-path: polygon(
+        7px 0, calc(100% - 7px) 0,
+        100% 7px, 100% calc(100% - 7px),
+        calc(100% - 7px) 100%, 7px 100%,
+        0 calc(100% - 7px), 0 7px
+      );
+    }
+    .panel-glass {
+      background: var(--wood-panel);
+      border: 1px solid var(--gold-dim);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(243, 210, 102, 0.18);
+      backdrop-filter: blur(8px);
+    }
+    .arcane-plaque {
+      background: linear-gradient(180deg, rgba(28, 21, 18, 0.92) 0%, rgba(15, 16, 29, 0.94) 100%);
+      border: 1px solid rgba(212, 175, 55, 0.55);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), inset 0 0 16px rgba(212, 175, 55, 0.08);
+      backdrop-filter: blur(10px);
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #dfba48 0%, #a87e1b 100%);
+      color: #120e0a;
+      font-weight: 600;
+      border: 1px solid #f5d97e;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+      transition: transform 0.12s ease, filter 0.15s ease;
+    }
+    .btn-gold:hover:not(:disabled) { filter: brightness(1.1); }
+    .btn-gold:active:not(:disabled) { transform: scale(0.96); }
+    .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-slate {
+      background: linear-gradient(180deg, rgba(42, 31, 24, 0.9) 0%, rgba(22, 23, 38, 0.92) 100%);
+      border: 1px solid rgba(212, 175, 55, 0.42);
+      color: var(--text-main);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+    .btn-slate:hover:not(:disabled) {
+      border-color: var(--gold-bright);
+      background: linear-gradient(180deg, rgba(56, 41, 30, 0.95) 0%, rgba(30, 32, 52, 0.95) 100%);
+    }
+    .btn-slate:active:not(:disabled) { transform: scale(0.96); }
+    .btn-slate:disabled { opacity: 0.35; cursor: not-allowed; }
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.4); border-radius: 2px; }
+    #scene-canvas {
+      position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1;
+    }
+    .ui-layer {
+      position: fixed; inset: 0; z-index: 10; pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+    .pointer-auto { pointer-events: auto; }
+
+    /* Responsive Mobile Landscape Layout (split non-blocking corners so center table is 100% clear) */
+    @media (orientation: landscape) and (max-height: 600px) {
+      #top-hud {
+        padding-top: 6px !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+      }
+      #sati-speech-wrap {
+        margin-top: 4px !important;
+        margin-left: 10px !important;
+        margin-right: auto !important;
+        max-width: 340px !important;
+      }
+      #dialogue-content {
+        max-height: 64px !important;
+        font-size: 12px !important;
+      }
+      #game-footer {
+        margin-left: auto !important;
+        margin-right: 10px !important;
+        padding-bottom: 6px !important;
+        max-width: 390px !important;
+      }
+      #action-dock {
+        padding: 6px 8px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene-canvas"></canvas>
+
+  <!-- UI OVERLAY LAYER -->
+  <div class="ui-layer flex flex-col justify-between">
+
+    <!-- FLOATING RESTORE BUTTON WHEN FULL-TABLE CLEAN MODE IS ACTIVE -->
+    <div id="clean-mode-bar" class="hidden fixed top-2.5 right-3 z-30 flex items-center gap-2 pointer-auto">
+      <div id="clean-pick-badge" class="hidden arcane-plaque chamfer-sm px-3 py-1 text-xs text-[#f3d266]">
+        แตะหยิบไพ่บนกระดานได้เลย
+      </div>
+      <button id="btn-restore-ui" class="btn-gold chamfer-sm px-3 py-1.5 text-xs flex items-center gap-1.5 shadow-lg">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>แสดงเมนู</span>
+      </button>
+    </div>
+
+    <!-- TOP GROUP (Ordered Single-Row Arcane HUD + Sati Speech Scroll) -->
+    <div id="top-ui-group" class="w-full flex flex-col">
+      <header id="top-hud" class="hidden w-full px-2.5 pt-2 sm:px-4 sm:pt-3 flex items-center justify-between gap-1.5">
+        <!-- Left Cluster: Deck Counter + Card Gallery + Natal 10 Cards -->
+        <div class="flex items-center gap-1.5 pointer-auto overflow-x-auto scrollbar-thin py-0.5">
+          <div class="arcane-plaque chamfer-sm px-2.5 py-1 flex items-center gap-1.5 text-xs shrink-0">
+            <span class="w-2 h-2 bg-[#d4af37] rotate-45 inline-block"></span>
+            <span class="text-[#b0a999] hidden sm:inline">สำรับ</span>
+            <span id="hud-deck-count" class="font-semibold text-[#f3d266]">78 / 78</span>
+          </div>
+
+          <button id="btn-deck-gallery" class="btn-slate chamfer-sm px-2.5 py-1 text-xs flex items-center gap-1 shrink-0" title="สมุดภาพไพ่ 78 ใบ">
+            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="3" width="7" height="9" rx="1"/>
+              <rect x="14" y="3" width="7" height="9" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            <span>สมุดภาพไพ่ 78 ใบ</span>
+          </button>
+
+          <button id="btn-natal-drawer" class="hidden btn-slate chamfer-sm px-2.5 py-1 text-xs flex items-center gap-1 shrink-0" title="ดูไพ่พื้นดวง 10 ใบแรก">
+            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </svg>
+            <span>พื้นดวง 10 ใบ</span>
+          </button>
+        </div>
+
+        <!-- Right Cluster: Coins + Camera 1P/2P + Sound + Hide All UI -->
+        <div class="flex items-center gap-1.5 pointer-auto shrink-0">
+          <button id="btn-shop-open" class="arcane-plaque chamfer-sm px-2.5 py-1 flex items-center gap-1 text-xs hover:border-[#f3d266] transition">
+            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <polygon points="12 2 19 7 19 17 12 22 5 17 5 7"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span id="hud-coins" class="font-semibold text-[#f4efe6]">10 เหรียญ</span>
+            <span id="hud-pass-badge" class="hidden px-1 py-0.5 text-[10px] bg-[#d4af37] text-[#0b0d19] font-semibold">เหมาสำรับ</span>
+          </button>
+
+          <button id="btn-camera-toggle" disabled title="สลับมุมมอง 1P / 2P"
+            class="btn-slate chamfer-sm px-2.5 py-1 text-xs flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>
+              <circle cx="12" cy="12" r="2.5"/>
+            </svg>
+            <span id="hud-cam-label">มุมมอง: สายตา 1P</span>
+          </button>
+
+          <button id="btn-mute" class="btn-slate chamfer-sm p-1.5" title="เปิด/ปิดเสียง">
+            <svg id="icon-sound-on" class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+            </svg>
+            <svg id="icon-sound-off" class="hidden w-3.5 h-3.5 text-[#b0a999]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <line x1="22" y1="9" x2="16" y2="15"/>
+              <line x1="16" y1="9" x2="22" y2="15"/>
+            </svg>
+          </button>
+
+          <button id="btn-hide-ui" class="btn-gold chamfer-sm px-2.5 py-1 text-xs flex items-center gap-1" title="ซ่อนปุ่มทั้งหมดเพื่อดูโต๊ะและไพ่เต็มจอ">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+            <span class="hidden sm:inline">ดูโต๊ะเต็มจอ</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- TOP FLOATING SPEECH PLAQUE NEAR SATI -->
+      <div id="sati-speech-wrap" class="hidden w-full max-w-lg mx-auto px-2.5 mt-1.5 pointer-auto">
+        <div id="dialogue-box" class="arcane-plaque chamfer-sm px-3 py-2 relative">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="px-2 py-0.5 bg-[#d4af37] text-[#120e0a] text-[11px] font-semibold tracking-wide shrink-0">สติ</span>
+              <span id="sati-mood-tag" class="text-[11px] text-[#f3d266] shrink-0">ประจำโต๊ะ</span>
+              <span id="dialogue-preview" class="hidden text-xs text-[#b0a999] truncate">แตะเลือกไพ่บนโต๊ะได้เลย...</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button id="btn-chat-history" class="text-[11px] text-[#f3d266] hover:underline flex items-center gap-1">
+                <span>ดูประวัติการคุย</span>
+              </button>
+              <button id="btn-toggle-dialogue" class="text-[11px] px-2 py-0.5 btn-slate chamfer-sm">
+                ย่อกล่อง
+              </button>
+            </div>
+          </div>
+          <div id="dialogue-content" class="mt-1.5 text-xs sm:text-sm leading-relaxed text-[#f4efe6] max-h-24 overflow-y-auto scrollbar-thin pr-1">
+            กำลังเตรียมสำรับ...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 1: TITLE & GMAIL LOGIN SCREEN -->
+    <section id="screen-login" class="pointer-auto fixed inset-0 flex flex-col items-center justify-between py-12 px-5 bg-gradient-to-b from-[#0b0d19]/70 via-transparent to-[#0b0d19]/90">
+      <div class="text-center mt-6">
+        <div class="inline-flex items-center gap-2 px-4 py-1 border border-[#d4af37]/40 bg-[#0f1324]/80 chamfer-sm text-xs tracking-widest text-[#d4af37] uppercase mb-4">
+          สำรับทาโรต์และพื้นดวงชะตา
+        </div>
+        <h1 class="font-display text-4xl sm:text-5xl font-bold tracking-wider text-[#f1ede4] drop-shadow-lg">
+          SATI
+        </h1>
+        <p class="text-sm sm:text-base text-[#c5c7d4] mt-2 max-w-md mx-auto font-light">
+          ห้องดูดวงของจอมเวทสติ พื้นที่คุยกันตรงไปตรงมาเพื่อเตือนสติและมองชีวิตให้ชัดขึ้น
+        </p>
+      </div>
+
+      <div class="w-full max-w-sm flex flex-col items-center gap-3 mb-4">
+        <button id="btn-gmail-login" class="w-full btn-slate chamfer px-5 py-3.5 flex items-center justify-center gap-3 text-base font-medium border-[#d4af37]/70">
+          <svg class="w-5 h-5" viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/>
+            <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/>
+            <path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 12.3s.6 3.3 1.6 5.3l3.7-2.8z"/>
+            <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5L1.6 16.6C3.5 20.4 7.4 23.5 12 23.5z"/>
+          </svg>
+          <span>เข้าห้องดูดวงด้วย Gmail</span>
+        </button>
+        <p class="text-[11px] text-[#8d90a3] text-center">
+          ข้อมูลชื่อและวันเกิดใช้สำหรับผูกพื้นฐานดวงชะตาเข้ากับหน้าไพ่ในสำรับเท่านั้น
+        </p>
+      </div>
+    </section>
+
+    <!-- STAGE 2: NATAL LEDGER ONBOARDING (3D Table Ledger) -->
+    <section id="screen-ledger" class="hidden pointer-auto fixed inset-0 flex items-center justify-center p-4 bg-[#0b0d19]/55">
+      <div class="panel-glass chamfer w-full max-w-md p-6 sm:p-7 border border-[#d4af37]/60">
+        <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-4">
+          <div>
+            <p class="text-xs text-[#d4af37] tracking-wider uppercase">สมุดบันทึกพื้นดวง</p>
+            <h2 class="text-xl font-medium text-[#f1ede4]">ลงชื่อก่อนจับไพ่กับสติ</h2>
+          </div>
+          <div id="ledger-email-tag" class="text-[11px] px-2.5 py-1 bg-[#191f38] border border-[#d4af37]/30 text-[#a6a8b8] truncate max-w-[140px]">
+            user@gmail.com
+          </div>
+        </div>
+
+        <form id="ledger-form" class="space-y-4">
+          <div>
+            <label class="block text-xs text-[#c5c7d4] mb-1">ชื่อเล่น (สติจะใช้เรียกชื่อนี้ตลอดการคุย)</label>
+            <input id="input-nickname" type="text" required placeholder="เช่น บอม"
+              class="w-full px-3.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 focus:border-[#d4af37] outline-none text-sm text-[#f1ede4]" />
+          </div>
+
+          <div>
+            <label class="block text-xs text-[#c5c7d4] mb-1">ชื่อจริง - นามสกุล (สำหรับวิเคราะห์พลังทักษา)</label>
+            <input id="input-fullname" type="text" required placeholder="เช่น ธนภัทร พิมพ์มากร"
+              class="w-full px-3.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 focus:border-[#d4af37] outline-none text-sm text-[#f1ede4]" />
+          </div>
+
+          <div>
+            <label class="block text-xs text-[#c5c7d4] mb-1">วัน เดือน ปีเกิด (พ.ศ.)</label>
+            <div class="grid grid-cols-3 gap-2">
+              <select id="input-day" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
+              <select id="input-month" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
+              <select id="input-year" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full btn-gold chamfer py-3 text-sm sm:text-base mt-2">
+            ประทับตราเริ่มดูดวง
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- BOTTOM GAME INTERFACE (Collapsible Arcane Command Dock) -->
+    <footer id="game-footer" class="hidden w-full max-w-lg mx-auto px-2.5 pb-2 sm:px-4 sm:pb-3 flex flex-col gap-1 pointer-auto">
+
+      <!-- Top Rim of Dock: Active Cards Strip + Collapse Dock Toggle -->
+      <div class="flex items-center justify-between gap-2">
+        <div id="active-cards-strip" class="hidden flex items-center gap-1 overflow-x-auto scrollbar-thin py-0.5 flex-1"></div>
+        <button id="btn-toggle-dock" class="ml-auto arcane-plaque chamfer-sm px-2.5 py-0.5 text-[11px] text-[#f3d266] hover:border-[#f3d266] shrink-0">
+          ซ่อนแผงปุ่ม
+        </button>
+      </div>
+
+      <!-- Contextual Action Dock -->
+      <div id="action-dock" class="arcane-plaque chamfer-sm p-2 flex flex-col gap-1.5">
+        <!-- Mode A: Picking Cards (Ultra-slim bar so table is unobstructed) -->
+        <div id="dock-picking" class="hidden flex items-center justify-between gap-2 px-1">
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="w-2 h-2 bg-[#d4af37] rotate-45 shrink-0"></div>
+            <div class="truncate">
+              <p id="pick-instruction" class="text-xs sm:text-sm font-medium text-[#f4efe6] truncate">แตะเลือกไพ่จากวงพัดบนโต๊ะ (0 / 10)</p>
+              <p id="pick-subtext" class="text-[10px] text-[#b0a999] hidden sm:block">แตะที่ไพ่ในวงพัดโดยตรง หรือกดปุ่มดูโต๊ะเต็มจอด้านบนเพื่อซ่อนเมนู</p>
+            </div>
+          </div>
+          <button id="btn-auto-pick" class="btn-gold chamfer-sm px-3 py-1 text-xs shrink-0">
+            สุ่มหยิบให้ครบ
+          </button>
+        </div>
+
+        <!-- Mode B: Chat & Draw Loop (Organized Grid + Input Bar) -->
+        <div id="dock-chat" class="hidden flex flex-col gap-1.5">
+          <!-- Organized Quick-Draw Toolbar -->
+          <div class="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1">
+            <button id="btn-draw-1" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex items-center justify-center gap-1">
+              <span>จั่วเพิ่ม 1 ใบ</span>
+              <span class="text-[#f3d266] text-[10px]">(1 เหรียญ)</span>
+            </button>
+            <button id="btn-draw-3" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex items-center justify-center gap-1">
+              <span>จั่วเพิ่ม 3 ใบ</span>
+              <span class="text-[#f3d266] text-[10px]">(3 เหรียญ)</span>
+            </button>
+            <button id="btn-draw-1-ad" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs text-[#d6cfc2] truncate text-center">
+              ดูคลิปสั้นจั่ว 1 ใบฟรี
+            </button>
+            <button id="btn-draw-10-opt" class="hidden btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex items-center justify-center gap-1 col-span-2">
+              <span>เปิดผังใหญ่ 10 ใบ</span>
+              <span class="text-[#f3d266] text-[10px]">(8 เหรียญ)</span>
+            </button>
+            <button id="btn-reshuffle" class="hidden btn-gold chamfer-sm px-2.5 py-1 text-[11px] sm:text-xs col-span-3 sm:ml-auto">
+              สับสำรับใหม่ 78 ใบ
+            </button>
+          </div>
+
+          <!-- Chat Input Form -->
+          <form id="chat-form" class="flex items-center gap-1.5">
+            <input id="chat-input" type="text" placeholder="พิมพ์ถามสติต่อได้เลย..."
+              class="flex-1 px-3 py-1.5 bg-[#0b0d19]/90 border border-[#d4af37]/40 focus:border-[#f3d266] outline-none text-xs sm:text-sm text-[#f4efe6]" />
+            <button type="submit" class="btn-gold chamfer-sm px-3.5 py-1.5 text-xs sm:text-sm shrink-0">
+              ถามสติ
+            </button>
+          </form>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- MODAL: GMAIL ACCOUNT PICKER -->
+  <div id="modal-gmail" class="hidden fixed inset-0 z-30 bg-[#0b0d19]/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="panel-glass chamfer w-full max-w-sm p-5 border border-[#d4af37]/60">
+      <h3 class="text-base font-medium text-[#f1ede4] mb-1">เลือกบัญชี Gmail เพื่อเข้าสู่ระบบ</h3>
+      <p class="text-xs text-[#a6a8b8] mb-4">ระบบจะจำพื้นดวงและประวัติไพ่ผูกกับบัญชีนี้</p>
+      <div class="space-y-2 mb-4">
+        <button data-email="thanapat.bom@gmail.com" data-name="ธนภัทร พิมพ์มากร" data-nick="บอม"
+          class="gmail-choice w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between">
+          <div>
+            <div class="text-sm font-medium">thanapat.bom@gmail.com</div>
+            <div class="text-xs text-[#a6a8b8]">ธนภัทร พิมพ์มากร</div>
+          </div>
+          <span class="text-xs text-[#d4af37]">เลือก</span>
+        </button>
+        <button data-email="guest.seeker@gmail.com" data-name="อริสา วัฒนกุล" data-nick="อริส"
+          class="gmail-choice w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between">
+          <div>
+            <div class="text-sm font-medium">guest.seeker@gmail.com</div>
+            <div class="text-xs text-[#a6a8b8]">บัญชีทดลองใหม่</div>
+          </div>
+          <span class="text-xs text-[#d4af37]">เลือก</span>
+        </button>
+      </div>
+      <button id="btn-close-gmail" class="w-full py-2 text-xs text-[#a6a8b8] hover:text-[#f1ede4]">ยกเลิก</button>
+    </div>
+  </div>
+
+  <!-- MODAL: CARD INSPECTION OVERLAY -->
+  <div id="modal-card" class="hidden fixed inset-0 z-30 bg-[#0b0d19]/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="panel-glass chamfer w-full max-w-sm p-5 border border-[#d4af37]/70 flex flex-col items-center text-center">
+      <div id="modal-card-art" class="w-40 h-64 mb-4 border border-[#d4af37]/60 shadow-2xl overflow-hidden bg-[#13172d]"></div>
+      <p id="modal-card-pos" class="text-[11px] text-[#d4af37] uppercase tracking-wider mb-1"></p>
+      <h3 id="modal-card-name" class="font-display text-lg font-bold text-[#f1ede4]"></h3>
+      <p id="modal-card-th" class="text-xs text-[#a6a8b8] mb-3"></p>
+      <p id="modal-card-note" class="text-sm text-[#f1ede4] leading-relaxed mb-5"></p>
+      <button id="btn-close-card" class="w-full btn-slate chamfer-sm py-2.5 text-sm">วางกลับลงโต๊ะ</button>
+    </div>
+  </div>
+
+  <!-- MODAL: NATAL 10-CARD DRAWER -->
+  <div id="modal-natal" class="hidden fixed inset-0 z-30 bg-[#0b0d19]/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="panel-glass chamfer w-full max-w-lg max-h-[82vh] flex flex-col p-5 border border-[#d4af37]/60">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-3">
+        <div>
+          <h3 class="text-base font-medium text-[#f1ede4]">บันทึกพื้นดวง 10 ใบแรก</h3>
+          <p id="natal-summary-sub" class="text-xs text-[#a6a8b8]"></p>
+        </div>
+        <button id="btn-close-natal" class="btn-slate chamfer-sm px-3 py-1 text-xs">ปิด</button>
+      </div>
+      <div id="natal-list" class="overflow-y-auto scrollbar-thin space-y-2 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: 78-CARD ART GALLERY -->
+  <div id="modal-gallery" class="hidden fixed inset-0 z-30 bg-[#0b0d19]/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+    <div class="panel-glass chamfer w-full max-w-4xl max-h-[88vh] flex flex-col p-4 sm:p-6 border border-[#d4af37]/60">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#d4af37]/25 pb-3 mb-3">
+        <div>
+          <h3 class="text-base sm:text-lg font-medium text-[#f1ede4]">สมุดภาพหน้าไพ่ทาโรต์ 3D โพลิกอนทั้ง 78 ใบ</h3>
+          <p class="text-xs text-[#a6a8b8]">แตะที่ไพ่ใบใดก็ได้เพื่อดูภาพขยายและความหมายเตือนสติ</p>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button data-filter="ALL" class="gallery-filter btn-gold chamfer-sm px-2.5 py-1 text-xs">ทั้งหมด (78)</button>
+          <button data-filter="Major" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">ไพ่ใหญ่ (22)</button>
+          <button data-filter="Wands" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">ไม้เท้า</button>
+          <button data-filter="Cups" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">ถ้วย</button>
+          <button data-filter="Swords" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">ดาบ</button>
+          <button data-filter="Pentacles" class="gallery-filter btn-slate chamfer-sm px-2.5 py-1 text-xs">เหรียญ</button>
+          <button id="btn-close-gallery" class="btn-slate chamfer-sm px-3 py-1 text-xs ml-2">ปิด</button>
+        </div>
+      </div>
+      <div id="gallery-grid" class="overflow-y-auto scrollbar-thin grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: CHAT HISTORY -->
+  <div id="modal-history" class="hidden fixed inset-0 z-30 bg-[#0b0d19]/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="panel-glass chamfer w-full max-w-lg max-h-[82vh] flex flex-col p-5 border border-[#d4af37]/60">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-3">
+        <h3 class="text-base font-medium text-[#f1ede4]">ประวัติการสนทนากับสติ</h3>
+        <button id="btn-close-history" class="btn-slate chamfer-sm px-3 py-1 text-xs">ปิด</button>
+      </div>
+      <div id="history-list" class="overflow-y-auto scrollbar-thin space-y-3 pr-1 text-sm"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: COIN & FULL DECK PASS SHOP -->
+  <div id="modal-shop" class="hidden fixed inset-0 z-30 bg-[#0b0d19]/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="panel-glass chamfer w-full max-w-sm p-5 border border-[#d4af37]/60">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-3">
+        <h3 class="text-base font-medium text-[#f1ede4]">คลังพลังงานและตั๋วเหมาสำรับ</h3>
+        <button id="btn-close-shop" class="text-xs text-[#a6a8b8] hover:text-[#f1ede4]">ปิด</button>
+      </div>
+      <div class="space-y-2.5 mb-4">
+        <button id="btn-buy-coins" class="w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between">
+          <div>
+            <div class="text-sm font-medium text-[#f1ede4]">เติม 15 เหรียญ</div>
+            <div class="text-xs text-[#a6a8b8]">ใช้จั่วเพิ่ม 1 หรือ 3 ใบได้ตามต้องการ</div>
+          </div>
+          <span class="text-xs font-semibold text-[#d4af37]">29 บาท (ทดลอง)</span>
+        </button>
+        <button id="btn-buy-pass" class="w-full btn-gold chamfer-sm p-3 text-left flex items-center justify-between">
+          <div>
+            <div class="text-sm font-semibold">ตั๋วเหมาสำรับ 78 ใบ</div>
+            <div class="text-xs opacity-80">จั่วเพิ่ม 1-3 ใบไม่อั้นจนกว่าไพ่จะหมดกอง</div>
+          </div>
+          <span class="text-xs font-bold">49 บาท (ทดลอง)</span>
+        </button>
+      </div>
+      <p class="text-[11px] text-[#8d90a3] text-center">โหมดจำลองสำหรับการทดสอบระบบการหักเหรียญในต้นแบบ</p>
+    </div>
+  </div>
+
+    <!-- TOAST NOTIFICATION -->
+  <div id="toast-box" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-40 panel-glass chamfer-sm px-4 py-2 text-xs sm:text-sm text-[#f1ede4] border-[#d4af37]"></div>
+
+  <script>
+    // =========================================================================
+    // 1. AUDIO SYNTHESIZER (Web Audio API - Zero external files)
+    // =========================================================================
+    const SoundFX = {
+      ctx: null,
+      muted: false,
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      },
+      playTone(freq, dur, type = 'sine', vol = 0.08) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + dur);
+      },
+      playShuffle() {
+        if (this.muted || !this.ctx) return;
+        for (let i = 0; i < 6; i++) {
+          setTimeout(() => this.playTone(160 + i * 25, 0.05, 'triangle', 0.05), i * 65);
+        }
+      },
+      playPick() {
+        this.playTone(320, 0.08, 'triangle', 0.07);
+        setTimeout(() => this.playTone(480, 0.12, 'sine', 0.05), 40);
+      },
+      playFlip() {
+        this.playTone(523.25, 0.18, 'sine', 0.06);
+        setTimeout(() => this.playTone(659.25, 0.25, 'sine', 0.04), 60);
+      },
+      playSeal() {
+        this.playTone(220, 0.22, 'triangle', 0.09);
+        setTimeout(() => this.playTone(330, 0.3, 'sine', 0.07), 80);
+      }
+    };
+
+    // =========================================================================
+    // 2. COMPLETE 78-CARD RIDER-WAITE TAROT DATA
+    // =========================================================================
+    const MAJOR_ARCANA = [
+      { id: 0, en: 'The Fool', th: 'คนโง่ผู้เริ่มต้น', core: 'การเริ่มต้นใหม่แบบไร้กรอบ แต่ระวังความประมาทที่ยังไม่ดูหน้าดูหลัง' },
+      { id: 1, en: 'The Magician', th: 'จอมเวท', core: 'คุณมีเครื่องมือและความสามารถครบแล้ว เหลือแค่ลงมือทำให้จริงจัง' },
+      { id: 2, en: 'The High Priestess', th: 'สังฆราชินี', core: 'คำตอบอยู่ข้างในใจคุณเอง ลองเงียบฟังสัญชาตญาณและอย่าเพิ่งรีบพูด' },
+      { id: 3, en: 'The Empress', th: 'จักรพรรดินี', core: 'ความอุดมสมบูรณ์และการดูแลตัวเอง อย่ามัวแต่ดูแลคนอื่นจนลืมใจตัวเอง' },
+      { id: 4, en: 'The Emperor', th: 'จักรพรรดิ', core: 'ต้องการโครงสร้าง ระเบียบ และความเด็ดขาด อย่ายอมให้ใครมาล้ำเส้น' },
+      { id: 5, en: 'The Hierophant', th: 'พระสังฆราช', core: 'ยึดหลักการที่ถูกต้อง ปรึกษาผู้ใหญ่หรือผู้เชี่ยวชาญจะช่วยลดทางอ้อม' },
+      { id: 6, en: 'The Lovers', th: 'คู่รักและการเลือก', core: 'จุดตัดสินใจสำคัญที่ต้องเลือกด้วยค่านิยมของตัวเอง ไม่ใช่เลือกเพราะเกรงใจ' },
+      { id: 7, en: 'The Chariot', th: 'ราชรถ', core: 'พลังใจในการพุ่งชนเป้าหมาย แต่อย่าเร่งจนคุมทิศทางตัวเองไม่อยู่' },
+      { id: 8, en: 'Strength', th: 'พละกำลัง', core: 'ความนิ่งสยบความเคลื่อนไหว ใช้ความอ่อนโยนคุมอารมณ์ตัวเองให้ได้ก่อน' },
+      { id: 9, en: 'The Hermit', th: 'ฤๅษี', core: 'ถึงเวลาถอยออกมาอยู่กับตัวเองเพื่อทบทวน อย่าเพิ่งฟังเสียงรบกวนรอบข้าง' },
+      { id: 10, en: 'Wheel of Fortune', th: 'กงล้อโชคชะตา', core: 'จังหวะกำลังหมุนเปลี่ยน ปรับตัวให้ทันแล้วคว้าโอกาสที่เข้ามา' },
+      { id: 11, en: 'Justice', th: 'ความยุติธรรม', core: 'ทำเหตุแบบไหนไว้จะได้ผลแบบนั้น ชั่งน้ำหนักด้วยเหตุผลล้วนๆ อย่าใช้อคติ' },
+      { id: 12, en: 'The Hanged Man', th: 'คนแขวนหัว', core: 'เรื่องนี้ยังไม่ขยับในทันที ลองเปลี่ยนมุมมองใหม่แล้วจะเห็นทางออก' },
+      { id: 13, en: 'Death', th: 'ความตายและบทใหม่', core: 'ต้องยอมจบสิ่งที่หมดอายุขัยลงเสียที เพื่อเปิดทางให้เรื่องใหม่เดินต่อได้' },
+      { id: 14, en: 'Temperance', th: 'ความสมดุล', core: 'ลดความสุดโต่งลงมาอยู่ตรงกลาง ค่อยๆ ผสมผสานและรอจังหวะอย่างใจเย็น' },
+      { id: 15, en: 'The Devil', th: 'พันธนาการ', core: 'รู้ตัวหรือเปล่าว่ากำลังผูกมัดตัวเองไว้กับความเคยชินหรือความสัมพันธ์ที่เหนื่อย' },
+      { id: 16, en: 'The Tower', th: 'หอคอยทลาย', core: 'ความจริงบางอย่างกำลังพังโครงสร้างเดิม เพื่อให้คุณเลิกหลอกตัวเอง' },
+      { id: 17, en: 'The Star', th: 'ดวงดาว', core: 'ความหวังและการเยียวยาหลังพายุผ่านไป ค่อยๆ ฟื้นฟูใจตัวเองได้แล้ว' },
+      { id: 18, en: 'The Moon', th: 'ดวงจันทร์', core: 'ความคลุมเครือและความกลัวที่คิดไปเอง อย่าเพิ่งเชื่อสิ่งที่เห็นในความมืด' },
+      { id: 19, en: 'The Sun', th: 'ดวงอาทิตย์', core: 'ความชัดเจนและพลังบวกที่เปิดเผย ตรงไปตรงมาแล้วผลลัพธ์จะดีเอง' },
+      { id: 20, en: 'Judgement', th: 'การตื่นรู้', core: 'เสียงเรียกให้ลุกขึ้นมาตัดสินใจแก้ไขเรื่องค้างคา เพื่อปลดล็อกชีวิต' },
+      { id: 21, en: 'The World', th: 'โลกสมบูรณ์', core: 'บทเรียนหนึ่งกำลังปิดฉากลงอย่างสมบูรณ์ พร้อมก้าวสู่ระดับที่โตขึ้น' }
+    ];
+
+    const SUITS = [
+      { key: 'Wands', th: 'ไม้เท้า', domain: 'ไฟ / แรงผลักดันและการลงมือทำ', color: '#c96f32' },
+      { key: 'Cups', th: 'ถ้วย', domain: 'น้ำ / อารมณ์และความสัมพันธ์', color: '#2b8a88' },
+      { key: 'Swords', th: 'ดาบ', domain: 'ลม / ความคิด การสื่อสาร และปัญหา', color: '#536895' },
+      { key: 'Pentacles', th: 'เหรียญ', domain: 'ดิน / การเงิน งานจริง และความมั่นคง', color: '#6b8e4e' }
+    ];
+
+    const RANKS = [
+      { r: 'Ace', th: '1', mean: 'จุดเริ่มต้นพลังงานใหม่ที่ชัดและแรง' },
+      { r: 'Two', th: '2', mean: 'การชั่งใจหรือวางแผนจับคู่สองทางเลือก' },
+      { r: 'Three', th: '3', mean: 'การขยายตัว การร่วมมือ หรือผลลัพธ์แรกเริ่ม' },
+      { r: 'Four', th: '4', mean: 'การตั้งหลักปักฐาน แต่ระวังการยึดติดจนนิ่งเกินไป' },
+      { r: 'Five', th: '5', mean: 'ความขัดแย้งหรือบททดสอบที่ทำให้เห็นจุดอ่อน' },
+      { r: 'Six', th: '6', mean: 'ความก้าวหน้า การให้และรับที่เริ่มลงตัว' },
+      { r: 'Seven', th: '7', mean: 'จุดวัดใจที่ต้องสู้ต่อหรือเลือกตัดสิ่งฟุ้งซ่าน' },
+      { r: 'Eight', th: '8', mean: 'ความเคลื่อนไหวรวดเร็ว หรือการติดกับดักความคิดตัวเอง' },
+      { r: 'Nine', th: '9', mean: 'ใกล้ถึงเส้นชัยแล้ว แม้จะเหนื่อยล้าแต่ต้องตั้งสติให้มั่น' },
+      { r: 'Ten', th: '10', mean: 'จุดอิ่มตัวหรือภาระที่แบกไว้หนักเกินจำเป็น' },
+      { r: 'Page', th: 'มหาดเล็ก', mean: 'ข่าวสารใหม่ ความอยากเรียนรู้แบบยังต้องเก็บประสบการณ์' },
+      { r: 'Knight', th: 'อัศวิน', mean: 'การพุ่งเข้าหาหรือการเปลี่ยนแปลงที่เกิดขึ้นไว' },
+      { r: 'Queen', th: 'ราชินี', mean: 'ความนิ่ง สุขุม และวุฒิภาวะในการจัดการจากภายใน' },
+      { r: 'King', th: 'ราชา', mean: 'ความเป็นผู้นำ การคุมเกมและรับผิดชอบผลลัพธ์เต็มตัว' }
+    ];
+
+    function buildFullDeck78() {
+      const deck = [];
+      MAJOR_ARCANA.forEach((m) => {
+        deck.push({
+          uid: `M_${m.id}`,
+          name: m.en,
+          th: m.th,
+          suit: 'Major',
+          color: '#d4af37',
+          core: m.core
+        });
+      });
+      SUITS.forEach((s) => {
+        RANKS.forEach((rk) => {
+          deck.push({
+            uid: `${s.key}_${rk.r}`,
+            name: `${rk.r} of ${s.key}`,
+            th: `${rk.th}${s.th}`,
+            suit: s.key,
+            color: s.color,
+            core: `${rk.mean} ในเรื่อง${s.domain}`
+          });
+        });
+      });
+      return deck;
+    }
+
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // =========================================================================
+    // 3. STATE MANAGEMENT
+    // =========================================================================
+    const state = {
+      screen: 'login', // login | ledger | game
+      user: {
+        email: '',
+        fullname: '',
+        nickname: '',
+        day: 25,
+        month: 6,
+        year: 2539,
+        element: '',
+        birthCard: ''
+      },
+      cameraMode: '1P', // '1P' | '2P'
+      cameraUnlocked: false,
+      coins: 10,
+      hasDeckPass: false,
+      deckNumber: 1,
+      remainingDeck: [],
+      natalCards: [],
+      natalCompleted: false,
+      activeSpread: [],
+      pickTargetCount: 10,
+      isPicking: false,
+      isAnimatingShuffle: false,
+      chatHistory: [],
+      lastTopic: 'general',
+      apiKey: '',
+      isThinking: false,
+      dialogueCollapsed: false
+    };
+
+    // =========================================================================
+    // 4. PROCEDURAL LOW-POLY CARD TEXTURE GENERATOR
+    // =========================================================================
+    function createCardBackTexture() {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 384;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#141933';
+      ctx.fillRect(0, 0, 256, 384);
+
+      // Low-poly facets
+      const pts = [
+        [0, 0, 128, 96, 0, 192, '#1a2042'],
+        [256, 0, 128, 96, 256, 192, '#11152b'],
+        [0, 384, 128, 288, 0, 192, '#11152b'],
+        [256, 384, 128, 288, 256, 192, '#1a2042']
+      ];
+      pts.forEach(([x1, y1, x2, y2, x3, y3, col]) => {
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill();
+      });
+
+      // Gold geometric border
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(14, 14, 228, 356);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(24, 24, 208, 336);
+
+      // Center sun diamond
+      ctx.save();
+      ctx.translate(128, 192);
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, -64); ctx.lineTo(44, 0); ctx.lineTo(0, 64); ctx.lineTo(-44, 0); ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = '#d4af37';
+      ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      const tex = new THREE.CanvasTexture(c);
+      return tex;
+    }
+
+    const cardTextureCache = {};
+
+    function poly(ctx, pts, fill, stroke = null, lw = 1.5) {
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i += 2) {
+        if (i === 0) ctx.moveTo(pts[i], pts[i + 1]);
+        else ctx.lineTo(pts[i], pts[i + 1]);
+      }
+      ctx.closePath();
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+    }
+
+    function drawSuitItem(ctx, suit, x, y, sc = 1, rot = 0, spilled = false) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot + (spilled ? Math.PI / 2.2 : 0));
+      ctx.scale(sc, sc);
+
+      if (suit === 'Wands') {
+        // Faceted wooden staff + sprouting green leaves
+        poly(ctx, [-4, -34, 4, -34, 5, 34, -5, 34], '#a85c27', '#f1ede4', 1.2);
+        poly(ctx, [-4, -34, 0, -40, 4, -34], '#d4af37', null);
+        poly(ctx, [4, -16, 15, -24, 9, -10], '#58a65c', null);
+        poly(ctx, [-4, 4, -15, -4, -9, 10], '#58a65c', null);
+      } else if (suit === 'Cups') {
+        // Faceted golden chalice + water gleam
+        poly(ctx, [-18, -22, 18, -22, 12, 4, -12, 4], '#d4af37', '#f1ede4', 1.2);
+        poly(ctx, [-15, -20, 15, -20, 10, -8, -10, -8], '#2b8a88', null);
+        poly(ctx, [-4, 4, 4, 4, 4, 18, -4, 18], '#b89225', '#f1ede4', 1);
+        poly(ctx, [-14, 18, 14, 18, 18, 24, -18, 24], '#d4af37', '#f1ede4', 1.2);
+        if (spilled) {
+          poly(ctx, [0, -22, -10, -44, 12, -38], '#38b2ac', null);
+        }
+      } else if (suit === 'Swords') {
+        // Faceted steel sword with gold hilt
+        poly(ctx, [0, -38, 6, 10, 0, 14, -6, 10], '#cfd6e6', '#536895', 1.2);
+        poly(ctx, [0, -38, 6, 10, 0, 10], '#9aa6bf', null);
+        poly(ctx, [-16, 10, 16, 10, 13, 15, -13, 15], '#d4af37', '#f1ede4', 1);
+        poly(ctx, [-3, 15, 3, 15, 3, 28, -3, 28], '#6e472b', null);
+        poly(ctx, [0, 26, 6, 32, 0, 38, -6, 32], '#d4af37', null);
+      } else {
+        // Faceted Golden Pentacle Coin with 5-pointed star
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a = (i * Math.PI) / 4;
+          const rx = Math.cos(a) * 20, ry = Math.sin(a) * 20;
+          if (i === 0) ctx.moveTo(rx, ry); else ctx.lineTo(rx, ry);
+        }
+        ctx.closePath();
+        ctx.fillStyle = '#d4af37'; ctx.fill();
+        ctx.strokeStyle = '#f1ede4'; ctx.lineWidth = 1.3; ctx.stroke();
+
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5;
+          const rx = Math.cos(a) * 14, ry = Math.sin(a) * 14;
+          if (i === 0) ctx.moveTo(rx, ry); else ctx.lineTo(rx, ry);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = '#3b4f26'; ctx.lineWidth = 2; ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawMajorArcanaScene(ctx, id) {
+      // Coordinate space: card art box is x: 20..236, y: 24..278 (center 128, 150)
+      switch (id) {
+        case 0: // The Fool: Cliff, sun, traveler with bindle & white dog
+          poly(ctx, [195, 42, 222, 55, 210, 82, 180, 68], '#ffcf5c', '#f1ede4', 1.2); // Sun
+          poly(ctx, [20, 210, 148, 200, 165, 278, 20, 278], '#6e553e', '#d4af37', 1.2); // Cliff
+          poly(ctx, [95, 118, 118, 118, 130, 198, 82, 198], '#3b7a9e', '#f1ede4', 1.2); // Tunic
+          poly(ctx, [106, 90, 120, 104, 106, 118, 92, 104], '#e0b899', null); // Head
+          ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(72, 155); ctx.lineTo(148, 82); ctx.stroke(); // Staff
+          poly(ctx, [138, 82, 158, 92, 145, 110], '#c94a4a', '#f1ede4', 1); // Bindle
+          poly(ctx, [145, 185, 165, 175, 172, 198, 142, 200], '#f1ede4', null); // White dog
+          break;
+        case 1: // The Magician: Infinity symbol, wand raised, altar with 4 elements
+          ctx.strokeStyle = '#ffcf5c'; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.ellipse(114, 56, 14, 8, 0, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.ellipse(142, 56, 14, 8, 0, 0, Math.PI * 2); ctx.stroke();
+          poly(ctx, [98, 112, 158, 112, 168, 215, 88, 215], '#b83b3b', '#f1ede4', 1.2); // Red mantle
+          poly(ctx, [128, 76, 144, 92, 128, 108, 112, 92], '#e0b899', null);
+          poly(ctx, [82, 62, 90, 62, 96, 120, 86, 120], '#f1ede4', '#d4af37', 1.2); // Raised wand
+          poly(ctx, [42, 215, 214, 215, 222, 268, 34, 268], '#4a382b', '#d4af37', 1.5); // Altar table
+          drawSuitItem(ctx, 'Wands', 68, 200, 0.42);
+          drawSuitItem(ctx, 'Cups', 108, 202, 0.45);
+          drawSuitItem(ctx, 'Swords', 148, 200, 0.42);
+          drawSuitItem(ctx, 'Pentacles', 188, 202, 0.45);
+          break;
+        case 2: // The High Priestess: Pillars B & J, crescent moon, blue robe
+          poly(ctx, [36, 48, 68, 48, 68, 265, 36, 265], '#232738', '#d4af37', 1.2); // Black pillar B
+          poly(ctx, [188, 48, 220, 48, 220, 265, 188, 265], '#d8d6ce', '#d4af37', 1.2); // White pillar J
+          poly(ctx, [92, 115, 164, 115, 178, 255, 78, 255], '#3568a6', '#f1ede4', 1.2); // Priestess robe
+          poly(ctx, [128, 78, 144, 95, 128, 112, 112, 95], '#e0b899', null);
+          poly(ctx, [100, 66, 156, 66, 142, 82, 114, 82], '#d4af37', '#f1ede4', 1.2); // Horned crown
+          poly(ctx, [104, 162, 152, 162, 152, 205, 104, 205], '#efe6d5', '#d4af37', 1); // TORA Scroll
+          break;
+        case 3: // The Empress: 12-star crown, Venus heart shield, golden wheat
+          poly(ctx, [20, 215, 236, 215, 236, 278, 20, 278], '#c99b38', null); // Wheat field
+          poly(ctx, [86, 118, 170, 118, 192, 245, 64, 245], '#d96b6b', '#f1ede4', 1.2); // Gown
+          poly(ctx, [128, 76, 145, 94, 128, 112, 111, 94], '#e0b899', null);
+          poly(ctx, [102, 58, 128, 44, 154, 58, 144, 76, 112, 76], '#ffcf5c', '#f1ede4', 1.2); // Star crown
+          poly(ctx, [155, 175, 182, 162, 202, 182, 178, 225, 152, 195], '#d4af37', '#f1ede4', 1.5); // Heart shield
+          break;
+        case 4: // The Emperor: Stone throne, ram heads, crimson armor, ankh
+          poly(ctx, [56, 56, 200, 56, 206, 255, 50, 255], '#4a4e5c', '#d4af37', 1.5); // Stone Throne
+          poly(ctx, [88, 120, 168, 120, 182, 255, 74, 255], '#9e2b2b', '#f1ede4', 1.2); // Crimson armor/robe
+          poly(ctx, [128, 74, 146, 94, 128, 112, 110, 94], '#e0b899', null);
+          poly(ctx, [110, 105, 146, 105, 128, 148], '#e2e5ec', null); // White beard
+          poly(ctx, [106, 50, 128, 36, 150, 50, 142, 74, 114, 74], '#d4af37', '#f1ede4', 1.2); // Crown
+          break;
+        case 5: // The Hierophant: Triple crown, papal cross, crossed keys
+          poly(ctx, [84, 118, 172, 118, 188, 240, 68, 240], '#b8382c', '#f1ede4', 1.2);
+          poly(ctx, [114, 118, 142, 118, 146, 240, 110, 240], '#f1ede4', '#d4af37', 1);
+          poly(ctx, [128, 76, 144, 94, 128, 112, 112, 94], '#e0b899', null);
+          poly(ctx, [106, 42, 150, 42, 142, 78, 114, 78], '#d4af37', '#f1ede4', 1.2); // Tiered crown
+          ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(105, 262); ctx.lineTo(151, 232); ctx.moveTo(151, 262); ctx.lineTo(105, 232); ctx.stroke(); // Crossed keys
+          break;
+        case 6: // The Lovers: Angel/Sun above, two figures, mountain peak between
+          poly(ctx, [128, 36, 168, 72, 128, 108, 88, 72], '#ff9e44', '#ffcf5c', 1.5); // Radiant Sun/Angel
+          poly(ctx, [52, 65, 96, 85, 84, 122, 38, 105], '#9c6bff', null); // Left wing
+          poly(ctx, [204, 65, 160, 85, 172, 122, 218, 105], '#9c6bff', null); // Right wing
+          poly(ctx, [95, 265, 128, 168, 162, 265], '#6b4e3d', '#d4af37', 1); // Central mountain
+          poly(ctx, [46, 165, 84, 165, 92, 265, 38, 265], '#3b7a9e', '#f1ede4', 1.2); // Left figure
+          poly(ctx, [172, 165, 210, 165, 218, 265, 164, 265], '#c95b6b', '#f1ede4', 1.2); // Right figure
+          break;
+        case 7: // The Chariot: Canopy, chariot box, black & white sphinxes
+          poly(ctx, [56, 82, 200, 82, 186, 175, 70, 175], '#4d5785', '#d4af37', 1.5); // Chariot body
+          poly(ctx, [128, 52, 146, 70, 128, 88, 110, 70], '#d4af37', '#f1ede4', 1.2); // Charioteer crown/head
+          poly(ctx, [36, 195, 114, 195, 122, 262, 28, 262], '#1d2030', '#f1ede4', 1.5); // Black sphinx
+          poly(ctx, [142, 195, 220, 195, 228, 262, 134, 262], '#ebe7de', '#d4af37', 1.5); // White sphinx
+          break;
+        case 8: // Strength: Infinity symbol, maiden & golden lion
+          ctx.strokeStyle = '#ffcf5c'; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.ellipse(98, 52, 12, 7, 0, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.ellipse(122, 52, 12, 7, 0, 0, Math.PI * 2); ctx.stroke();
+          poly(ctx, [72, 108, 132, 108, 142, 255, 62, 255], '#ebe7de', '#d4af37', 1.2); // White robe
+          poly(ctx, [110, 72, 126, 88, 110, 104, 94, 88], '#e0b899', null);
+          poly(ctx, [122, 145, 212, 135, 224, 255, 118, 255], '#d98a36', '#ffcf5c', 1.5); // Golden Lion
+          poly(ctx, [125, 125, 175, 120, 185, 175, 120, 175], '#b8621b', '#d4af37', 1.2); // Lion mane
+          break;
+        case 9: // The Hermit: Cloaked elder on icy peak holding glowing star lantern
+          poly(ctx, [24, 275, 128, 195, 232, 275], '#4a5a78', '#f1ede4', 1); // Icy peak
+          poly(ctx, [102, 85, 168, 95, 182, 248, 88, 248], '#495066', '#a6a8b8', 1.2); // Grey cloak
+          poly(ctx, [124, 102, 144, 102, 134, 145], '#e2e5ec', null); // Beard
+          poly(ctx, [64, 105, 88, 128, 64, 152, 40, 128], '#ffcf5c', '#ffffff', 2); // Glowing Lantern
+          break;
+        case 10: // Wheel of Fortune: Giant 8-spoked golden wheel
+          ctx.save();
+          ctx.translate(128, 152);
+          ctx.fillStyle = '#d4af37'; ctx.strokeStyle = '#f1ede4'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(0, 0, 74, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#1b2242';
+          ctx.beginPath(); ctx.arc(0, 0, 52, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          for (let i = 0; i < 8; i++) {
+            const a = (i * Math.PI) / 4;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 74, Math.sin(a) * 74); ctx.stroke();
+          }
+          ctx.restore();
+          break;
+        case 11: // Justice: Upright sword + balanced golden scales
+          drawSuitItem(ctx, 'Swords', 184, 148, 1.55);
+          ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3.5;
+          ctx.beginPath(); ctx.moveTo(48, 125); ctx.lineTo(136, 125); ctx.moveTo(92, 85); ctx.lineTo(92, 225); ctx.stroke();
+          poly(ctx, [32, 175, 64, 175, 56, 192, 40, 192], '#d4af37', '#f1ede4', 1.2); // Left scale pan
+          poly(ctx, [120, 175, 152, 175, 144, 192, 128, 192], '#d4af37', '#f1ede4', 1.2); // Right scale pan
+          break;
+        case 12: // The Hanged Man: Tau wooden cross, inverted figure, golden halo at bottom
+          poly(ctx, [42, 42, 214, 42, 214, 58, 42, 58], '#7a5230', '#d4af37', 1.2); // Top beam
+          poly(ctx, [186, 42, 204, 42, 204, 268, 186, 268], '#7a5230', '#d4af37', 1.2); // Side post
+          poly(ctx, [95, 205, 128, 182, 161, 205, 128, 232], '#ffcf5c', '#ffffff', 1.5); // Bottom halo
+          poly(ctx, [98, 108, 158, 108, 142, 185, 114, 185], '#3568a6', '#f1ede4', 1.2); // Inverted torso
+          ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.moveTo(128, 58); ctx.lineTo(128, 108); ctx.stroke(); // Rope
+          break;
+        case 13: // Death: Twin towers, rising sun, dark banner with white mystic rose
+          poly(ctx, [92, 225, 128, 185, 164, 225], '#ffcf5c', null); // Rising sun on horizon
+          poly(ctx, [38, 145, 72, 145, 72, 265, 38, 265], '#4a4e5c', '#d4af37', 1.2); // Left tower
+          poly(ctx, [184, 145, 218, 145, 218, 265, 184, 265], '#4a4e5c', '#d4af37', 1.2); // Right tower
+          poly(ctx, [78, 56, 178, 56, 178, 156, 78, 156], '#141726', '#f1ede4', 1.8); // Black banner
+          for (let i = 0; i < 5; i++) {
+            const a = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+            poly(ctx, [128, 106, 128 + Math.cos(a - 0.3) * 32, 106 + Math.sin(a - 0.3) * 32, 128 + Math.cos(a + 0.3) * 32, 106 + Math.sin(a + 0.3) * 32], '#f1ede4', '#d4af37', 1);
+          }
+          break;
+        case 14: // Temperance: Wings, two chalices pouring diagonal stream of water
+          poly(ctx, [34, 68, 98, 95, 82, 155, 26, 125], '#c95b6b', '#d4af37', 1); // Left wing
+          poly(ctx, [222, 68, 158, 95, 174, 155, 230, 125], '#c95b6b', '#d4af37', 1); // Right wing
+          poly(ctx, [92, 105, 164, 105, 176, 255, 80, 255], '#ebe7de', '#d4af37', 1.2); // White robe
+          poly(ctx, [112, 152, 128, 124, 144, 152], '#ffcf5c', '#d4af37', 1.2); // Golden triangle on chest
+          poly(ctx, [68, 102, 192, 192, 182, 202, 58, 112], '#4fd1c5', '#f1ede4', 1); // Flowing water stream
+          drawSuitItem(ctx, 'Cups', 64, 98, 0.65, 0.5);
+          drawSuitItem(ctx, 'Cups', 188, 198, 0.65, -0.3);
+          break;
+        case 15: // The Devil: Inverted pentagram, horned silhouette, dark pedestal & chains
+          poly(ctx, [34, 62, 92, 108, 76, 155, 24, 115], '#3d2838', '#c94a4a', 1.2); // Bat wing L
+          poly(ctx, [222, 62, 164, 108, 180, 155, 232, 115], '#3d2838', '#c94a4a', 1.2); // Bat wing R
+          poly(ctx, [98, 86, 158, 86, 146, 188, 110, 188], '#2b1e28', '#d4af37', 1.2);
+          poly(ctx, [86, 48, 112, 86, 98, 88], '#d4af37', null); // Horn L
+          poly(ctx, [170, 48, 144, 86, 158, 88], '#d4af37', null); // Horn R
+          poly(ctx, [68, 188, 188, 188, 196, 265, 60, 265], '#1a1c29', '#d4af37', 1.5); // Pedestal
+          break;
+        case 16: // The Tower: Dark tower, golden lightning bolt, falling crown, flames
+          poly(ctx, [84, 96, 172, 96, 186, 272, 70, 272], '#3b3e4f', '#d4af37', 1.5); // Tower
+          poly(ctx, [215, 34, 142, 82, 165, 88, 92, 138, 148, 102, 128, 95], '#ffcf5c', '#ffffff', 1.5); // Lightning bolt
+          poly(ctx, [42, 56, 86, 42, 94, 78, 52, 86], '#d4af37', '#f1ede4', 1.2); // Tumbling crown
+          poly(ctx, [56, 152, 84, 135, 78, 172], '#ff6b3b', '#ffcf5c', 1); // Flame L
+          poly(ctx, [202, 162, 172, 145, 178, 182], '#ff6b3b', '#ffcf5c', 1); // Flame R
+          break;
+        case 17: // The Star: Giant 8-pointed golden star + 7 smaller stars + water pool
+          poly(ctx, [20, 222, 236, 222, 236, 278, 20, 278], '#22577a', '#4fd1c5', 1.2); // Water pool
+          ctx.save(); ctx.translate(128, 112);
+          for (let i = 0; i < 8; i++) {
+            ctx.rotate(Math.PI / 4);
+            poly(ctx, [0, -56, 10, -12, 0, 0, -10, -12], '#ffcf5c', '#f1ede4', 1);
+          }
+          ctx.restore();
+          [[52, 58], [204, 58], [44, 118], [212, 118], [68, 172], [188, 172], [128, 188]].forEach(([sx, sy]) => {
+            poly(ctx, [sx, sy - 12, sx + 8, sy, sx, sy + 12, sx - 8, sy], '#f1ede4', '#d4af37', 1);
+          });
+          break;
+        case 18: // The Moon: Full moon + crescent between twin watchtowers + winding path
+          poly(ctx, [32, 118, 72, 118, 76, 235, 28, 235], '#4d5266', '#d4af37', 1.2); // Left tower
+          poly(ctx, [184, 118, 224, 118, 228, 235, 180, 235], '#4d5266', '#d4af37', 1.2); // Right tower
+          ctx.fillStyle = '#ffcf5c'; ctx.strokeStyle = '#f1ede4'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(128, 86, 42, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          poly(ctx, [98, 276, 122, 178, 136, 178, 158, 276], '#c99b38', null); // Winding path
+          break;
+        case 19: // The Sun: Radiant sun with rays + sunflowers over stone wall
+          poly(ctx, [20, 218, 236, 218, 236, 276, 20, 276], '#6e7285', '#d4af37', 1.2); // Stone wall
+          ctx.save(); ctx.translate(128, 114);
+          for (let i = 0; i < 12; i++) {
+            ctx.rotate(Math.PI / 6);
+            poly(ctx, [0, -76, 9, -32, -9, -32], i % 2 === 0 ? '#ffcf5c' : '#ff8c3b', null);
+          }
+          ctx.fillStyle = '#ffcf5c'; ctx.strokeStyle = '#f1ede4'; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.arc(0, 0, 38, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.restore();
+          break;
+        case 20: // Judgement: Golden horn from clouds + red cross banner + rising figures
+          poly(ctx, [48, 36, 208, 36, 192, 82, 64, 82], '#6b78d6', '#f1ede4', 1); // Sky clouds
+          poly(ctx, [120, 72, 136, 72, 158, 148, 98, 148], '#d4af37', '#f1ede4', 1.5); // Golden trumpet
+          poly(ctx, [104, 108, 152, 108, 152, 146, 104, 146], '#f1ede4', '#c94a4a', 2); // Banner
+          poly(ctx, [54, 195, 92, 195, 98, 268, 48, 268], '#8d99ae', '#f1ede4', 1); // Rising figure L
+          poly(ctx, [164, 195, 202, 195, 208, 268, 158, 268], '#8d99ae', '#f1ede4', 1); // Rising figure R
+          break;
+        case 21: // The World: Oval green laurel wreath + central dancer + 4 corner diamonds
+          ctx.strokeStyle = '#58a65c'; ctx.lineWidth = 14;
+          ctx.beginPath(); ctx.ellipse(128, 150, 62, 92, 0, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.ellipse(128, 150, 62, 92, 0, 0, Math.PI * 2); ctx.stroke();
+          poly(ctx, [108, 108, 148, 118, 138, 202, 102, 192], '#9c6bff', '#f1ede4', 1.2); // Central figure sash
+          [[44, 52], [212, 52], [44, 248], [212, 248]].forEach(([cx, cy]) => {
+            poly(ctx, [cx, cy - 16, cx + 16, cy, cx, cy + 16, cx - 16, cy], '#d4af37', '#f1ede4', 1);
+          });
+          break;
+      }
+    }
+
+    function drawMinorArcanaScene(ctx, card) {
+      const suit = card.suit;
+      const rankName = card.name.split(' ')[0]; // Ace, Two..Ten, Page, Knight, Queen, King
+      const rankMap = { Ace: 1, Two: 2, Three: 3, Four: 4, Five: 5, Six: 6, Seven: 7, Eight: 8, Nine: 9, Ten: 10 };
+      const num = rankMap[rankName] || 0;
+
+      // Bespoke iconic Rider-Waite Minor Arcana scenes first
+      if (suit === 'Swords' && num === 3) {
+        // Three of Swords: Giant Crimson Low-Poly Heart pierced by 3 Swords under storm clouds
+        poly(ctx, [36, 40, 220, 40, 202, 76, 54, 76], '#4a5568', null);
+        poly(ctx, [128, 118, 172, 92, 196, 132, 128, 222, 60, 132, 84, 92], '#c93b4b', '#f1ede4', 2);
+        drawSuitItem(ctx, 'Swords', 128, 152, 1.35, 0);
+        drawSuitItem(ctx, 'Swords', 118, 152, 1.3, -0.42);
+        drawSuitItem(ctx, 'Swords', 138, 152, 1.3, 0.42);
+        return;
+      }
+      if (suit === 'Cups' && num === 10) {
+        // Ten of Cups: Grand Rainbow Arch studded with 10 Golden Cups above a home
+        const colors = ['#c94a4a', '#ffcf5c', '#58a65c', '#3568a6', '#9c6bff'];
+        colors.forEach((col, idx) => {
+          ctx.strokeStyle = col; ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.arc(128, 175, 88 - idx * 5, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+        });
+        for (let i = 0; i < 10; i++) {
+          const a = Math.PI * 1.1 + (i / 9) * Math.PI * 0.8;
+          drawSuitItem(ctx, 'Cups', 128 + Math.cos(a) * 74, 175 + Math.sin(a) * 74, 0.36);
+        }
+        poly(ctx, [88, 225, 128, 195, 168, 225, 168, 265, 88, 265], '#c99b38', '#f1ede4', 1.2); // Home
+        return;
+      }
+      if (suit === 'Cups' && num === 5) {
+        // Five of Cups: Dark cloaked figure + 3 spilled cups in front + 2 upright cups behind
+        poly(ctx, [98, 92, 154, 92, 168, 245, 84, 245], '#1e2233', '#a6a8b8', 1.5); // Cloaked figure
+        drawSuitItem(ctx, 'Cups', 56, 225, 0.55, 0, true);
+        drawSuitItem(ctx, 'Cups', 96, 242, 0.55, 0, true);
+        drawSuitItem(ctx, 'Cups', 142, 235, 0.55, 0, true);
+        drawSuitItem(ctx, 'Cups', 194, 162, 0.58, 0, false);
+        drawSuitItem(ctx, 'Cups', 194, 215, 0.58, 0, false);
+        return;
+      }
+      if (suit === 'Pentacles' && num === 2) {
+        // Two of Pentacles: Infinity loop around 2 pentacles over ocean waves
+        poly(ctx, [20, 228, 86, 205, 168, 235, 236, 210, 236, 276, 20, 276], '#2b587a', '#f1ede4', 1);
+        ctx.strokeStyle = '#c94a4a'; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.ellipse(128, 108, 42, 36, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(128, 178, 42, 36, 0, 0, Math.PI * 2); ctx.stroke();
+        drawSuitItem(ctx, 'Pentacles', 128, 108, 0.85);
+        drawSuitItem(ctx, 'Pentacles', 128, 178, 0.85);
+        return;
+      }
+      if (suit === 'Pentacles' && num === 10) {
+        // Ten of Pentacles: Kabbalistic Tree of Life layout
+        const pts = [[128, 52], [68, 82], [188, 82], [68, 132], [188, 132], [128, 148], [68, 188], [188, 188], [128, 205], [128, 248]];
+        ctx.strokeStyle = 'rgba(212,175,55,0.45)'; ctx.lineWidth = 2;
+        ctx.beginPath(); pts.forEach(([x, y], i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke();
+        pts.forEach(([x, y]) => drawSuitItem(ctx, 'Pentacles', x, y, 0.54));
+        return;
+      }
+
+      // Ace (1): Radiant Aura + Giant Suit Emblem
+      if (num === 1) {
+        ctx.save(); ctx.translate(128, 152);
+        for (let i = 0; i < 12; i++) {
+          ctx.rotate(Math.PI / 6);
+          poly(ctx, [0, -82, 8, -28, -8, -28], 'rgba(212,175,55,0.35)', null);
+        }
+        ctx.restore();
+        drawSuitItem(ctx, suit, 128, 152, 1.85);
+        return;
+      }
+
+      // Pips 2 to 10 Canonical Layouts with exact item counts
+      if (num >= 2 && num <= 10) {
+        const layouts = {
+          2: [[128, 98], [128, 204]],
+          3: [[128, 82], [76, 198], [180, 198]],
+          4: [[76, 96], [180, 96], [76, 204], [180, 204]],
+          5: [[72, 86], [184, 86], [128, 150], [72, 214], [184, 214]],
+          6: [[76, 78], [180, 78], [76, 150], [180, 150], [76, 222], [180, 222]],
+          7: [[128, 58], [74, 108], [182, 108], [74, 168], [182, 168], [74, 228], [182, 228]],
+          8: [[74, 66], [182, 66], [74, 122], [182, 122], [74, 178], [182, 178], [74, 234], [182, 234]],
+          9: [[66, 72], [128, 72], [190, 72], [66, 150], [128, 150], [190, 150], [66, 228], [128, 228], [190, 228]],
+          10: [[66, 62], [190, 62], [128, 92], [66, 122], [190, 122], [66, 182], [190, 182], [128, 212], [66, 242], [190, 242]]
+        };
+        const coords = layouts[num];
+        const sc = num <= 4 ? 0.95 : (num <= 7 ? 0.72 : 0.58);
+        coords.forEach(([px, py], i) => {
+          const rot = (suit === 'Wands' && num === 8) ? 0.45 : 0;
+          drawSuitItem(ctx, suit, px, py, sc, rot);
+        });
+        return;
+      }
+
+      // Court Cards: Page, Knight, Queen, King
+      if (rankName === 'Page') {
+        // Youthful standing squire + large emblem held in hand
+        poly(ctx, [86, 125, 148, 125, 158, 255, 76, 255], card.color, '#f1ede4', 1.2);
+        poly(ctx, [117, 84, 135, 102, 117, 120, 99, 102], '#e0b899', null);
+        poly(ctx, [94, 72, 146, 66, 134, 88, 100, 88], '#d4af37', '#f1ede4', 1); // Beret cap
+        drawSuitItem(ctx, suit, 178, 142, 1.15);
+      } else if (rankName === 'Knight') {
+        // Armored Low-Poly Steed + Charging Knight holding emblem
+        poly(ctx, [42, 258, 68, 142, 118, 112, 146, 138, 118, 182, 162, 258], '#4a5268', '#f1ede4', 1.5); // Steed neck & head
+        poly(ctx, [98, 72, 136, 72, 142, 115, 92, 115], '#cfd6e6', '#d4af37', 1.2); // Knight helm
+        drawSuitItem(ctx, suit, 186, 128, 1.2, 0.22);
+      } else if (rankName === 'Queen') {
+        // Ornate Curved Throne + Pointed Crown + Flowing Robe + Suit Emblem
+        poly(ctx, [52, 68, 204, 68, 194, 258, 62, 258], '#353b52', '#d4af37', 1.4); // Throne
+        poly(ctx, [82, 128, 174, 128, 190, 258, 66, 258], card.color, '#f1ede4', 1.2);
+        poly(ctx, [128, 86, 144, 104, 128, 122, 112, 104], '#e0b899', null);
+        poly(ctx, [104, 58, 116, 74, 128, 52, 140, 74, 152, 58, 146, 86, 110, 86], '#ffcf5c', '#f1ede4', 1.2); // Queen Crown
+        drawSuitItem(ctx, suit, 168, 168, 1.05);
+      } else {
+        // King: Grand High-Backed Throne + Heavy 5-Peak Crown + Mantle + Suit Emblem
+        poly(ctx, [44, 52, 212, 52, 212, 262, 44, 262], '#2c3146', '#d4af37', 1.8); // High Throne
+        poly(ctx, [72, 122, 184, 122, 198, 262, 58, 262], card.color, '#f1ede4', 1.4);
+        poly(ctx, [128, 82, 146, 102, 128, 120, 110, 102], '#e0b899', null);
+        poly(ctx, [112, 112, 144, 112, 128, 144], '#e2e5ec', null); // Royal beard
+        poly(ctx, [98, 48, 158, 48, 150, 82, 106, 82], '#d4af37', '#f1ede4', 1.5); // King Crown
+        drawSuitItem(ctx, suit, 174, 162, 1.15);
+      }
+    }
+
+    function createCardFrontTexture(card) {
+      if (cardTextureCache[card.uid]) return cardTextureCache[card.uid];
+
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 384;
+      const ctx = c.getContext('2d');
+
+      // 1. Deep Low-Poly Stained-Glass Sky Backdrop
+      ctx.fillStyle = '#14182b';
+      ctx.fillRect(0, 0, 256, 384);
+
+      const baseCol = card.color;
+      ctx.fillStyle = baseCol;
+      ctx.globalAlpha = 0.18;
+      poly(ctx, [16, 16, 240, 16, 128, 155], baseCol, null);
+      ctx.globalAlpha = 0.12;
+      poly(ctx, [16, 16, 128, 155, 16, 286], baseCol, null);
+      poly(ctx, [240, 16, 128, 155, 240, 286], baseCol, null);
+      ctx.globalAlpha = 1;
+
+      // 2. Render Unique Card Artwork (All 22 Major + All 56 Minor)
+      if (card.suit === 'Major') {
+        const majId = parseInt(card.uid.replace('M_', ''), 10);
+        drawMajorArcanaScene(ctx, majId);
+      } else {
+        drawMinorArcanaScene(ctx, card);
+      }
+
+      // 3. Ornate Gold Frame & Top Numeral / Suit Badge
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 5;
+      ctx.strokeRect(12, 12, 232, 360);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(18, 18, 220, 266);
+
+      // Top Roman/Rank Pill
+      ctx.fillStyle = 'rgba(11, 13, 25, 0.88)';
+      ctx.fillRect(88, 14, 80, 22);
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(88, 14, 80, 22);
+      ctx.fillStyle = '#d4af37';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 12px Cinzel, serif';
+      const badgeText = card.suit === 'Major' ? `ARCANA ${card.uid.replace('M_', '')}` : card.suit.toUpperCase();
+      ctx.fillText(badgeText, 128, 29);
+
+      // 4. Bottom Card Title Banner
+      ctx.fillStyle = 'rgba(11, 13, 25, 0.94)';
+      ctx.fillRect(18, 286, 220, 78);
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(18, 286, 220, 78);
+
+      ctx.fillStyle = '#f1ede4';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 15px Cinzel, serif';
+      ctx.fillText(card.name.toUpperCase(), 128, 315, 206);
+      ctx.fillStyle = '#d4af37';
+      ctx.font = '15px Kanit, sans-serif';
+      ctx.fillText(card.th, 128, 344, 206);
+
+      const tex = new THREE.CanvasTexture(c);
+      cardTextureCache[card.uid] = tex;
+      return tex;
+    }
+
+    // =========================================================================
+    // 5. THREE.JS 3D LOW-POLY SANCTUARY & CHARACTER SCENE
+    // =========================================================================
+    let scene, camera, renderer, raycaster, pointer;
+    let satiGroup, satiLeftArm, satiRightArm, satiHead;
+    let playerLeftHand, playerRightHand;
+    let fanCardMeshes = [];
+    let spreadCardMeshes = [];
+    let candleLights = [];
+    let hoveredCardMesh = null;
+    let cardBackTex = null;
+
+    const CAM_POS = {
+      login: new THREE.Vector3(0, 4.2, 8.2),
+      loginLook: new THREE.Vector3(0, 2.2, -2),
+      ledger: new THREE.Vector3(0, 2.9, 3.6),
+      ledgerLook: new THREE.Vector3(0, 0.9, 1.3),
+      view1P: new THREE.Vector3(0, 3.25, 4.45),
+      view1PLook: new THREE.Vector3(0, 1.35, -0.35),
+      view2P: new THREE.Vector3(0, 5.25, 2.05),
+      view2PLook: new THREE.Vector3(0, 0.95, 0.15)
+    };
+    const currentCamPos = CAM_POS.login.clone();
+    const currentCamLook = CAM_POS.loginLook.clone();
+    let targetCamPos = CAM_POS.login.clone();
+    let targetCamLook = CAM_POS.loginLook.clone();
+
+    function init3DScene() {
+      const canvas = document.getElementById('scene-canvas');
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color('#0c0f1d');
+      scene.fog = new THREE.Fog('#0c0f1d', 9, 22);
+
+      camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 50);
+      camera.position.copy(currentCamPos);
+      camera.lookAt(currentCamLook);
+
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      updateCameraForAspect();
+      renderer.shadowMap.enabled = true;
+
+      raycaster = new THREE.Raycaster();
+      pointer = new THREE.Vector2(0, 0);
+      cardBackTex = createCardBackTexture();
+
+      // Lighting: Cool Indigo Backlight + Warm Candle Key Lights
+      const ambient = new THREE.AmbientLight('#4d5785', 0.85);
+      scene.add(ambient);
+
+      const moonLight = new THREE.DirectionalLight('#7d8cff', 1.15);
+      moonLight.position.set(0, 7, -8);
+      scene.add(moonLight);
+
+      const warmTableLight = new THREE.PointLight('#ffaa44', 1.6, 10);
+      warmTableLight.position.set(0, 3.4, 1.2);
+      scene.add(warmTableLight);
+
+      buildSanctuaryRoom();
+      buildDivinationTable();
+      buildArchmageSati();
+      buildPlayerHands();
+
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerdown', onPointerDown);
+
+      animate3D();
+    }
+
+    function updateCameraForAspect() {
+      if (!camera) return;
+      const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+      camera.aspect = aspect;
+      if (aspect < 0.75) {
+        camera.fov = 60;
+      } else if (aspect < 1.0) {
+        camera.fov = 54;
+      } else {
+        camera.fov = 44;
+      }
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onWindowResize() {
+      updateCameraForAspect();
+    }
+
+    function buildSanctuaryRoom() {
+      // Floor
+      const floorGeo = new THREE.CircleGeometry(14, 12);
+      const floorMat = new THREE.MeshStandardMaterial({ color: '#1a1d30', roughness: 0.9, flatShading: true });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      scene.add(floor);
+
+      // Gothic Stained Glass Arch Window in Back
+      const archGroup = new THREE.Group();
+      archGroup.position.set(0, 4.2, -7.2);
+      const glassMat = new THREE.MeshBasicMaterial({ color: '#6b78d6' });
+      const archMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.2, 8, 1, false, 0, Math.PI), glassMat);
+      archMesh.rotation.x = Math.PI / 2;
+      archMesh.rotation.z = Math.PI / 2;
+      archMesh.position.y = 1.6;
+      const rectGlass = new THREE.Mesh(new THREE.BoxGeometry(5.2, 4.2, 0.18), glassMat);
+      rectGlass.position.y = -0.5;
+      archGroup.add(archMesh, rectGlass);
+
+      // Dark wood frame pillars
+      const frameMat = new THREE.MeshStandardMaterial({ color: '#2b201c', flatShading: true });
+      [-2.7, 0, 2.7].forEach((x) => {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.25, 6.8, 0.35), frameMat);
+        bar.position.set(x, 0.5, 0.05);
+        archGroup.add(bar);
+      });
+      scene.add(archGroup);
+
+      // Symmetrical Curved Bookshelves (Left & Right)
+      const shelfMat = new THREE.MeshStandardMaterial({ color: '#3b2820', flatShading: true });
+      const bookColors = ['#6e2b2b', '#2b4e6e', '#594270', '#8c6b2e'];
+      [-5.2, 5.2].forEach((xPos) => {
+        const shelf = new THREE.Mesh(new THREE.BoxGeometry(2.4, 5.2, 1.2), shelfMat);
+        shelf.position.set(xPos, 2.6, -4.6);
+        shelf.rotation.y = xPos < 0 ? 0.45 : -0.45;
+        scene.add(shelf);
+        for (let row = 0; row < 4; row++) {
+          for (let b = 0; b < 5; b++) {
+            const bMat = new THREE.MeshStandardMaterial({
+              color: bookColors[(row + b) % bookColors.length],
+              flatShading: true
+            });
+            const book = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.65, 0.6), bMat);
+            book.position.set(xPos + (b - 2) * 0.34, 1.1 + row * 1.05, -4.1);
+            scene.add(book);
+          }
+        }
+      });
+
+      // Crystal Orbs on Pedestals
+      const pedMat = new THREE.MeshStandardMaterial({ color: '#4d3a2c', flatShading: true });
+      const orbMat = new THREE.MeshStandardMaterial({
+        color: '#8f5cff', emissive: '#5b2ec4', emissiveIntensity: 0.7, flatShading: true
+      });
+      [-2.8, 2.8].forEach((x) => {
+        const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.45, 1.6, 6), pedMat);
+        ped.position.set(x, 0.8, -1.6);
+        const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), orbMat);
+        orb.position.set(x, 1.95, -1.6);
+        const orbLight = new THREE.PointLight('#9c6bff', 0.7, 5);
+        orbLight.position.set(x, 2.1, -1.6);
+        scene.add(ped, orb, orbLight);
+      });
+    }
+
+    function buildDivinationTable() {
+      const tableGroup = new THREE.Group();
+      const woodMat = new THREE.MeshStandardMaterial({ color: '#4a3121', roughness: 0.85, flatShading: true });
+      const goldMat = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.45, roughness: 0.4, flatShading: true });
+      const clothMat = new THREE.MeshStandardMaterial({ color: '#1b1e36', roughness: 0.95, flatShading: true });
+
+      // Octagonal Table Top
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(2.35, 2.2, 0.22, 8), woodMat);
+      top.position.y = 0.85;
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(2.42, 2.42, 0.08, 8), goldMat);
+      rim.position.y = 0.92;
+      const cloth = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 0.04, 8), clothMat);
+      cloth.position.y = 0.97;
+
+      // Golden Sun Emblem Center
+      const sunCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.05, 8), goldMat);
+      sunCenter.position.set(0, 0.98, 0);
+
+      // Pedestal Base
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.95, 0.85, 8), woodMat);
+      base.position.y = 0.42;
+
+      tableGroup.add(top, rim, cloth, sunCenter, base);
+
+      // Candles on Left & Right Edges of Table
+      const candleMat = new THREE.MeshStandardMaterial({ color: '#efe6d5', flatShading: true });
+      const flameMat = new THREE.MeshBasicMaterial({ color: '#ffcb5c' });
+      [[-2.05, 0.2], [2.05, 0.2]].forEach(([cx, cz]) => {
+        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.42, 6), candleMat);
+        candle.position.set(cx, 1.18, cz);
+        const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), flameMat);
+        flame.position.set(cx, 1.46, cz);
+        const cLight = new THREE.PointLight('#ff9d3b', 0.85, 4.5);
+        cLight.position.set(cx, 1.55, cz);
+        candleLights.push({ light: cLight, flame, baseY: 1.46 });
+        tableGroup.add(candle, flame, cLight);
+      });
+
+      scene.add(tableGroup);
+    }
+
+    function buildArchmageSati() {
+      satiGroup = new THREE.Group();
+      satiGroup.position.set(0, 0.86, -2.05);
+
+      // All materials use flatShading: true for authentic faceted 3D Low-Poly game art
+      const robeMat = new THREE.MeshStandardMaterial({ color: '#f0ece1', roughness: 0.72, flatShading: true });
+      const robeShadowMat = new THREE.MeshStandardMaterial({ color: '#d5cfc0', roughness: 0.78, flatShading: true });
+      const innerSleeveMat = new THREE.MeshStandardMaterial({ color: '#3a3842', roughness: 0.85, flatShading: true });
+      const goldMat = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.45, roughness: 0.35, flatShading: true });
+      const skinMat = new THREE.MeshStandardMaterial({ color: '#d8a987', roughness: 0.65, flatShading: true });
+      const skinShadeMat = new THREE.MeshStandardMaterial({ color: '#bf8e6d', roughness: 0.7, flatShading: true });
+      const beardMat = new THREE.MeshStandardMaterial({ color: '#e2e5ec', roughness: 0.75, flatShading: true });
+      const beardShadeMat = new THREE.MeshStandardMaterial({ color: '#bec4d0', roughness: 0.8, flatShading: true });
+      const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: '#f4f4f6' });
+      const irisMat = new THREE.MeshBasicMaterial({ color: '#2b241e' });
+      const chairMat = new THREE.MeshStandardMaterial({ color: '#382417', roughness: 0.85, flatShading: true });
+
+      // 1. Carved Low-Poly Sanctuary Throne Behind Sati
+      const chairGroup = new THREE.Group();
+      chairGroup.position.set(0, 0, -0.36);
+      const chairBack = new THREE.Mesh(new THREE.BoxGeometry(1.36, 2.05, 0.14), chairMat);
+      chairBack.position.set(0, 1.15, 0);
+      const chairCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.72, 0.38, 6), chairMat);
+      chairCrown.position.set(0, 2.32, 0);
+      chairCrown.scale.set(1.2, 1, 0.25);
+      [-0.68, 0.68].forEach((px) => {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.25, 6), chairMat);
+        post.position.set(px, 1.15, 0.04);
+        const finial = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), goldMat);
+        finial.position.set(px, 2.36, 0.04);
+        chairGroup.add(post, finial);
+      });
+      satiGroup.add(chairGroup);
+
+      // 2. Anatomically Proportioned 3D Low-Poly Torso, Capelet & Gold Vestments
+      const torsoGroup = new THREE.Group();
+
+      // Lower & Upper Chest
+      const abdomen = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.56, 0.75, 8), robeShadowMat);
+      abdomen.position.set(0, 0.45, 0);
+      abdomen.scale.set(1.15, 1, 0.78);
+
+      const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.42, 0.72, 8), robeMat);
+      chest.position.set(0, 1.02, 0.02);
+      chest.scale.set(1.22, 1, 0.82);
+
+      // Draped Shoulder Mantle / Capelet (Layered polygon panels)
+      const mantleMain = new THREE.Mesh(new THREE.ConeGeometry(0.76, 0.62, 8, 1, true), robeMat);
+      mantleMain.position.set(0, 1.24, 0.02);
+      mantleMain.scale.set(1.18, 1, 0.76);
+
+      const collarV = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.16, 0.32, 6), robeShadowMat);
+      collarV.position.set(0, 1.32, 0.12);
+
+      // Gold Trim Lapels (Left & Right V-chest stripes)
+      [-1, 1].forEach((side) => {
+        const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.68, 0.06), goldMat);
+        lapel.position.set(side * 0.14, 1.02, 0.34);
+        lapel.rotation.z = side * 0.24;
+        lapel.rotation.x = -0.12;
+        torsoGroup.add(lapel);
+
+        // Winged Gold Brooch on Chest (from reference)
+        const brooch = new THREE.Mesh(new THREE.OctahedronGeometry(0.065, 0), goldMat);
+        brooch.scale.set(1.6, 0.7, 0.4);
+        brooch.position.set(side * 0.32, 1.12, 0.35);
+        brooch.rotation.z = -side * 0.35;
+        torsoGroup.add(brooch);
+      });
+
+      // Gold Belt & Ceremonial Front Tabard
+      const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.46, 0.09, 8), goldMat);
+      belt.position.set(0, 0.68, 0.02);
+      belt.scale.set(1.16, 1, 0.82);
+
+      const beltRing = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.018, 6, 8), goldMat);
+      beltRing.position.set(0, 0.68, 0.41);
+
+      const tabard = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.65, 0.05), robeMat);
+      tabard.position.set(0, 0.36, 0.39);
+      const tabardBorder = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.67, 0.03), goldMat);
+      tabardBorder.position.set(0, 0.36, 0.37);
+
+      torsoGroup.add(abdomen, chest, mantleMain, collarV, belt, beltRing, tabard, tabardBorder);
+      satiGroup.add(torsoGroup);
+
+      // 3. Sculpted 3D Faceted Low-Poly Human Head, Face, Beard & Archmage Hood
+      satiHead = new THREE.Group();
+      satiHead.position.set(0, 1.62, 0.08);
+
+      // Neck
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.24, 6), skinShadeMat);
+      neck.position.set(0, -0.18, -0.02);
+      satiHead.add(neck);
+
+      // Upper Cranium & Cheekbones (Faceted Low-Poly Human Head Structure)
+      const cranium = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24, 1), skinMat);
+      cranium.scale.set(0.92, 1.08, 0.95);
+      cranium.position.set(0, 0.04, 0);
+      satiHead.add(cranium);
+
+      // Left & Right Cheekbone Planes (Zygomatic arches)
+      [-1, 1].forEach((side) => {
+        const cheek = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), skinMat);
+        cheek.scale.set(0.85, 1.1, 0.9);
+        cheek.position.set(side * 0.13, -0.02, 0.14);
+        cheek.rotation.y = side * 0.35;
+        satiHead.add(cheek);
+      });
+
+      // Prominent Brow Ridge & Furrowed Forehead
+      const browBar = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.048, 0.12), skinShadeMat);
+      browBar.position.set(0, 0.095, 0.17);
+      satiHead.add(browBar);
+
+      // Eyes (Sockets, Sclera, Dark Irises, Upper Eyelids, Silver Eyebrows)
+      [-1, 1].forEach((side) => {
+        const ex = side * 0.082;
+        const socket = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.045, 0.04), skinShadeMat);
+        socket.position.set(ex, 0.052, 0.195);
+
+        const sclera = new THREE.Mesh(new THREE.OctahedronGeometry(0.028, 1), eyeWhiteMat);
+        sclera.scale.set(1.25, 0.75, 0.6);
+        sclera.position.set(ex, 0.052, 0.212);
+
+        const iris = new THREE.Mesh(new THREE.OctahedronGeometry(0.016, 1), irisMat);
+        iris.position.set(ex, 0.052, 0.228);
+
+        const eyebrow = new THREE.Mesh(new THREE.BoxGeometry(0.092, 0.026, 0.045), beardMat);
+        eyebrow.position.set(ex, 0.092, 0.222);
+        eyebrow.rotation.z = -side * 0.14;
+        eyebrow.rotation.y = -side * 0.22;
+
+        satiHead.add(socket, sclera, iris, eyebrow);
+      });
+
+      // Sculpted Low-Poly Human Nose (Bridge + Tip + Nostril Wings)
+      const noseBridge = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.036, 0.13, 4), skinMat);
+      noseBridge.position.set(0, 0.018, 0.235);
+      noseBridge.rotation.x = -0.28;
+      noseBridge.rotation.y = Math.PI / 4;
+
+      const noseTip = new THREE.Mesh(new THREE.OctahedronGeometry(0.034, 0), skinShadeMat);
+      noseTip.position.set(0, -0.035, 0.258);
+      satiHead.add(noseBridge, noseTip);
+
+      // Multi-Layered Faceted Low-Poly Mustache & Flowing Silver Beard
+      [-1, 1].forEach((side) => {
+        const stacheWing = new THREE.Mesh(new THREE.ConeGeometry(0.048, 0.16, 5), beardMat);
+        stacheWing.position.set(side * 0.068, -0.085, 0.235);
+        stacheWing.rotation.z = side * 1.15;
+        stacheWing.rotation.x = 0.25;
+        satiHead.add(stacheWing);
+      });
+
+      // Beard Layers (Jawline volume + Center longlocks + Side locks)
+      const beardJaw = new THREE.Mesh(new THREE.DodecahedronGeometry(0.19, 0), beardShadeMat);
+      beardJaw.scale.set(1.05, 0.9, 0.85);
+      beardJaw.position.set(0, -0.15, 0.12);
+
+      const beardCenterUpper = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.42, 6), beardMat);
+      beardCenterUpper.position.set(0, -0.28, 0.16);
+      beardCenterUpper.rotation.x = Math.PI - 0.12;
+      beardCenterUpper.scale.set(1.1, 1, 0.72);
+
+      const beardCenterTip = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.38, 5), beardShadeMat);
+      beardCenterTip.position.set(0, -0.42, 0.17);
+      beardCenterTip.rotation.x = Math.PI - 0.08;
+
+      [-1, 1].forEach((side) => {
+        const sideLock = new THREE.Mesh(new THREE.ConeGeometry(0.085, 0.38, 5), beardMat);
+        sideLock.position.set(side * 0.12, -0.26, 0.15);
+        sideLock.rotation.x = Math.PI - 0.1;
+        sideLock.rotation.z = side * 0.16;
+        satiHead.add(sideLock);
+      });
+
+      satiHead.add(beardJaw, beardCenterUpper, beardCenterTip);
+
+      // Sculpted Multi-Piece Faceted Low-Poly Archmage Hood (Framing the Face)
+      const hoodGroup = new THREE.Group();
+      // Outer Cowl Dome
+      const hoodDome = new THREE.Mesh(new THREE.DodecahedronGeometry(0.34, 1), robeMat);
+      hoodDome.scale.set(1.04, 1.15, 1.08);
+      hoodDome.position.set(0, 0.08, -0.05);
+
+      // Hood Peak Pointing Back/Up
+      const hoodPeak = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.36, 6), robeMat);
+      hoodPeak.position.set(0, 0.32, -0.12);
+      hoodPeak.rotation.x = -0.45;
+
+      // Left & Right Hood Cheek Drapes (Framing face down to shoulders)
+      [-1, 1].forEach((side) => {
+        const drape = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.48, 0.28), robeMat);
+        drape.position.set(side * 0.25, -0.02, 0.06);
+        drape.rotation.z = side * 0.18;
+        drape.rotation.y = -side * 0.25;
+
+        const goldEdge = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.46, 0.05), goldMat);
+        goldEdge.position.set(side * 0.21, 0.0, 0.19);
+        goldEdge.rotation.z = side * 0.22;
+
+        hoodGroup.add(drape, goldEdge);
+      });
+
+      // Brow Peak of Hood & Gold Sun-Eye Crest on Forehead
+      const hoodVisor = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.22, 4), robeMat);
+      hoodVisor.position.set(0, 0.26, 0.12);
+      hoodVisor.rotation.x = 0.35;
+      hoodVisor.rotation.y = Math.PI / 4;
+      hoodVisor.scale.set(1.15, 1, 0.65);
+
+      const visorGoldTrim = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.035, 0.06), goldMat);
+      visorGoldTrim.position.set(0, 0.18, 0.24);
+
+      // 3D Faceted Sun-Eye Emblem on Hood Forehead
+      const sunDisc = new THREE.Mesh(new THREE.OctahedronGeometry(0.058, 0), goldMat);
+      sunDisc.scale.set(1.35, 0.85, 0.35);
+      sunDisc.position.set(0, 0.26, 0.26);
+      const sunCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.022, 0), irisMat);
+      sunCore.position.set(0, 0.26, 0.28);
+
+      hoodGroup.add(hoodDome, hoodPeak, hoodVisor, visorGoldTrim, sunDisc, sunCore);
+      satiHead.add(hoodGroup);
+      satiGroup.add(satiHead);
+
+      // 4. Articulated 3D Low-Poly Wizard Arms, Wide Sleeves & Sculpted 5-Finger Hands
+      const createWizardArm = (side) => {
+        const armRoot = new THREE.Group();
+        armRoot.position.set(side * 0.56, 1.15, 0.06);
+
+        // Upper Arm & Elbow
+        const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.17, 0.48, 7), robeMat);
+        upperArm.position.set(side * 0.08, -0.18, 0.12);
+        upperArm.rotation.z = -side * 0.28;
+        upperArm.rotation.x = 0.45;
+
+        // Forearm Wide Bell Sleeve resting toward Table
+        const forearmSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.22, 0.52, 7), robeMat);
+        forearmSleeve.position.set(side * 0.04, -0.36, 0.42);
+        forearmSleeve.rotation.x = 1.18;
+        forearmSleeve.rotation.z = side * 0.18;
+
+        const goldCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.22, 0.05, 7), goldMat);
+        goldCuff.position.set(side * 0.01, -0.44, 0.62);
+        goldCuff.rotation.x = 1.18;
+        goldCuff.rotation.z = side * 0.18;
+
+        const innerWrist = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.16, 6), innerSleeveMat);
+        innerWrist.position.set(0, -0.46, 0.66);
+        innerWrist.rotation.x = 1.25;
+
+        // Sculpted 3D Low-Poly Human Hand (Palm + 4 Articulated Fingers + Thumb)
+        const handGroup = new THREE.Group();
+        handGroup.position.set(-side * 0.02, -0.49, 0.78);
+        handGroup.rotation.x = 0.15;
+
+        const palm = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.055, 0.16), skinMat);
+        handGroup.add(palm);
+
+        for (let f = 0; f < 4; f++) {
+          const fx = (f - 1.5) * 0.036;
+          const fLen = f === 1 || f === 2 ? 0.095 : 0.082;
+          const knuckle = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.038, fLen), skinMat);
+          knuckle.position.set(fx, -0.008, 0.11);
+          knuckle.rotation.x = 0.28;
+          const tip = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.032, 0.065), skinShadeMat);
+          tip.position.set(fx, -0.032, 0.175);
+          tip.rotation.x = 0.55;
+          handGroup.add(knuckle, tip);
+        }
+
+        const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.038, 0.09), skinMat);
+        thumb.position.set(-side * 0.088, -0.01, 0.04);
+        thumb.rotation.y = -side * 0.55;
+        thumb.rotation.x = 0.25;
+        handGroup.add(thumb);
+
+        armRoot.add(upperArm, forearmSleeve, goldCuff, innerWrist, handGroup);
+        return armRoot;
+      };
+
+      satiLeftArm = createWizardArm(-1);
+      satiRightArm = createWizardArm(1);
+      satiGroup.add(satiLeftArm, satiRightArm);
+
+      scene.add(satiGroup);
+    }
+
+    function buildPlayerHands() {
+      const skinMat = new THREE.MeshStandardMaterial({ color: '#d8a987', roughness: 0.65, flatShading: true });
+      const skinShadeMat = new THREE.MeshStandardMaterial({ color: '#bf8e6d', roughness: 0.7, flatShading: true });
+      const sleeveMat = new THREE.MeshStandardMaterial({ color: '#232842', roughness: 0.85, flatShading: true });
+      const goldMat = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.4, roughness: 0.4, flatShading: true });
+
+      const createPlayerHand = (side) => {
+        const g = new THREE.Group();
+
+        // Forearm Cuff Sleeve coming from bottom of screen
+        const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.45, 7), sleeveMat);
+        forearm.rotation.x = Math.PI / 2 - 0.22;
+        forearm.position.set(0, -0.06, 0.32);
+
+        const cuffTrim = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.04, 7), goldMat);
+        cuffTrim.rotation.x = Math.PI / 2 - 0.22;
+        cuffTrim.position.set(0, -0.01, 0.11);
+
+        // Faceted Low-Poly Palm
+        const palm = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.065, 0.23), skinMat);
+        g.add(forearm, cuffTrim, palm);
+
+        // 4 Sculpted Multi-Joint Fingers
+        for (let i = 0; i < 4; i++) {
+          const fx = (i - 1.5) * 0.048;
+          const isMid = (i === 1 || i === 2);
+          const prox = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.045, isMid ? 0.12 : 0.105), skinMat);
+          prox.position.set(fx, -0.005, -0.15);
+          prox.rotation.x = -0.18;
+
+          const dist = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.038, 0.085), skinShadeMat);
+          dist.position.set(fx, -0.028, -0.235);
+          dist.rotation.x = -0.42;
+          g.add(prox, dist);
+        }
+
+        // Articulated Thumb
+        const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.045, 0.12), skinMat);
+        thumb.position.set(-side * 0.125, -0.012, -0.06);
+        thumb.rotation.y = side * 0.52;
+        thumb.rotation.x = -0.2;
+        g.add(thumb);
+
+        return g;
+      };
+
+      playerLeftHand = createPlayerHand(-1);
+      playerLeftHand.position.set(-0.85, 1.22, 2.35);
+      playerRightHand = createPlayerHand(1);
+      playerRightHand.position.set(0.85, 1.22, 2.35);
+      scene.add(playerLeftHand, playerRightHand);
+    }
+
+    // =========================================================================
+    // 6. 3D CARD FAN & SPREAD MANAGEMENT
+    // =========================================================================
+    function clear3DCards() {
+      fanCardMeshes.forEach((m) => scene.remove(m));
+      spreadCardMeshes.forEach((m) => scene.remove(m));
+      fanCardMeshes = [];
+      spreadCardMeshes = [];
+    }
+
+    function spawn78CardFan() {
+      clear3DCards();
+      const total = state.remainingDeck.length;
+      const geo = new THREE.BoxGeometry(0.22, 0.014, 0.34);
+      const edgeMat = new THREE.MeshStandardMaterial({ color: '#d4af37', flatShading: true });
+      const backMat = new THREE.MeshStandardMaterial({ map: cardBackTex, flatShading: true });
+
+      const radius = 1.62;
+      const startAngle = Math.PI * 0.16;
+      const endAngle = Math.PI * 0.84;
+
+      state.remainingDeck.forEach((cardData, idx) => {
+        const frontTex = createCardFrontTexture(cardData);
+        const frontMat = new THREE.MeshStandardMaterial({ map: frontTex, flatShading: true });
+        // BoxGeometry face order: +x, -x, +y (top/back initially), -y (bottom/front), +z, -z
+        const mats = [edgeMat, edgeMat, backMat, frontMat, edgeMat, edgeMat];
+        const mesh = new THREE.Mesh(geo, mats);
+
+        const t = total > 1 ? idx / (total - 1) : 0.5;
+        const angle = startAngle + t * (endAngle - startAngle);
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius * 0.85 + 0.18;
+
+        mesh.position.set(x, 1.02 + idx * 0.0008, z);
+        mesh.rotation.y = -angle + Math.PI / 2;
+        mesh.userData = {
+          cardData,
+          slotIndex: idx,
+          baseY: 1.02 + idx * 0.0008,
+          isFanCard: true
+        };
+        scene.add(mesh);
+        fanCardMeshes.push(mesh);
+      });
+    }
+
+    function placeSpreadCardIn3D(mesh, cardData, slotIdx, totalSlots) {
+      // Remove from fan list (leaves real physical gap in the fan!)
+      fanCardMeshes = fanCardMeshes.filter((m) => m !== mesh);
+      mesh.userData.isFanCard = false;
+      mesh.userData.isSpreadCard = true;
+
+      // Calculate target slot position in center of octagonal table
+      let tx = 0, tz = 0;
+      if (totalSlots === 10) {
+        const row = slotIdx < 5 ? 0 : 1;
+        const col = slotIdx % 5;
+        tx = (col - 2) * 0.34;
+        tz = row === 0 ? -0.34 : 0.16;
+      } else if (totalSlots === 3) {
+        tx = (slotIdx - 1) * 0.42;
+        tz = -0.1;
+      } else {
+        tx = 0;
+        tz = -0.1;
+      }
+
+      mesh.userData.targetPos = new THREE.Vector3(tx, 1.05, tz);
+      mesh.userData.targetRotX = Math.PI; // Flip face-up!
+      mesh.userData.targetRotY = 0;
+      mesh.userData.flipping = true;
+      spreadCardMeshes.push(mesh);
+    }
+
+    function tuckNatalSpreadAway3D() {
+      spreadCardMeshes.forEach((m) => {
+        scene.remove(m);
+      });
+      spreadCardMeshes = [];
+    }
+
+    // =========================================================================
+    // 7. POINTER & RAYCASTING INTERACTIONS
+    // =========================================================================
+    function onPointerMove(e) {
+      pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      if (state.screen !== 'game') return;
+      raycaster.setFromCamera(pointer, camera);
+      const targets = state.isPicking ? fanCardMeshes : spreadCardMeshes;
+      const hits = raycaster.intersectObjects(targets, false);
+      hoveredCardMesh = hits.length > 0 ? hits[0].object : null;
+      document.body.style.cursor = hoveredCardMesh ? 'pointer' : 'default';
+    }
+
+    function onPointerDown(e) {
+      SoundFX.init();
+      if (state.screen !== 'game' || state.isAnimatingShuffle) return;
+      // Ignore clicks on UI panels
+      if (e.target.closest('.pointer-auto')) return;
+
+      pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+
+      if (state.isPicking) {
+        const hits = raycaster.intersectObjects(fanCardMeshes, false);
+        if (hits.length > 0) {
+          handlePickCard(hits[0].object);
+        }
+      } else {
+        const hits = raycaster.intersectObjects(spreadCardMeshes, false);
+        if (hits.length > 0) {
+          openCardModal(hits[0].object.userData.cardData, hits[0].object.userData.posLabel || 'หน้าไพ่บนโต๊ะ');
+        }
+      }
+    }
+
+    // =========================================================================
+    // 8. ANIMATION LOOP (3D)
+    // =========================================================================
+    let clock = new THREE.Clock();
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+      const t = clock.getElapsedTime();
+
+      // Smooth camera interpolation
+      currentCamPos.lerp(targetCamPos, 0.06);
+      currentCamLook.lerp(targetCamLook, 0.06);
+      camera.position.copy(currentCamPos);
+      camera.lookAt(currentCamLook);
+
+      // Gentle idle login orbit
+      if (state.screen === 'login') {
+        camera.position.x = Math.sin(t * 0.25) * 0.8;
+        camera.lookAt(CAM_POS.loginLook);
+      }
+
+      // Candle flicker
+      candleLights.forEach((c, idx) => {
+        const flick = Math.sin(t * 9 + idx * 2) * 0.08 + Math.cos(t * 14) * 0.05;
+        c.light.intensity = 0.85 + flick;
+        c.flame.position.y = c.baseY + flick * 0.12;
+      });
+
+      // Archmage Sati 3D Low-Poly breathing, head look & arm gestures
+      if (satiGroup && satiHead && satiLeftArm && satiRightArm) {
+        satiHead.position.y = 1.62 + Math.sin(t * 1.6) * 0.014;
+        satiHead.rotation.y = Math.sin(t * 0.7) * 0.06;
+        satiHead.rotation.x = Math.sin(t * 1.1) * 0.03;
+        if (state.isAnimatingShuffle) {
+          satiLeftArm.rotation.x = Math.sin(t * 14) * 0.28;
+          satiRightArm.rotation.x = -Math.sin(t * 14) * 0.28;
+          satiLeftArm.rotation.z = Math.cos(t * 14) * 0.15;
+          satiRightArm.rotation.z = -Math.cos(t * 14) * 0.15;
+        } else {
+          satiLeftArm.rotation.x = Math.sin(t * 1.4) * 0.05;
+          satiRightArm.rotation.x = Math.cos(t * 1.4) * 0.05;
+          satiLeftArm.rotation.z = 0;
+          satiRightArm.rotation.z = 0;
+        }
+      }
+
+      // Fan cards hover lift
+      fanCardMeshes.forEach((m) => {
+        const targetY = (m === hoveredCardMesh && state.isPicking) ? m.userData.baseY + 0.14 : m.userData.baseY;
+        m.position.y += (targetY - m.position.y) * 0.18;
+      });
+
+      // Spread cards flip & glide animation
+      spreadCardMeshes.forEach((m) => {
+        if (m.userData.targetPos) {
+          m.position.lerp(m.userData.targetPos, 0.14);
+          m.rotation.x += (m.userData.targetRotX - m.rotation.x) * 0.14;
+          m.rotation.y += (m.userData.targetRotY - m.rotation.y) * 0.14;
+        }
+      });
+
+      // Player Hands: Left Hand reaches for Left side of table (x < 0), Right Hand reaches for Right side (x >= 0)
+      if (playerRightHand && playerLeftHand) {
+        const visible = state.screen === 'game';
+        playerLeftHand.visible = visible;
+        playerRightHand.visible = visible;
+        if (visible) {
+          const restLeftPos = new THREE.Vector3(-0.92, 1.16 + Math.sin(t * 2) * 0.02, 2.22);
+          const restRightPos = new THREE.Vector3(0.92, 1.16 + Math.sin(t * 2 + 1) * 0.02, 2.22);
+
+          const grabActive = state.handGrab && (t - state.handGrab.startTime < 0.38);
+          if (grabActive) {
+            const gp = state.handGrab.pos;
+            const grabTarget = new THREE.Vector3(gp.x, 1.14, gp.z + 0.24);
+            if (state.handGrab.side === 'left') {
+              playerLeftHand.position.lerp(grabTarget, 0.32);
+              playerLeftHand.rotation.x = THREE.MathUtils.lerp(playerLeftHand.rotation.x, -0.26, 0.3);
+              playerLeftHand.rotation.y = THREE.MathUtils.lerp(playerLeftHand.rotation.y, -gp.x * 0.18, 0.25);
+              playerRightHand.position.lerp(restRightPos, 0.12);
+              playerRightHand.rotation.set(0, 0, 0);
+            } else {
+              playerRightHand.position.lerp(grabTarget, 0.32);
+              playerRightHand.rotation.x = THREE.MathUtils.lerp(playerRightHand.rotation.x, -0.26, 0.3);
+              playerRightHand.rotation.y = THREE.MathUtils.lerp(playerRightHand.rotation.y, -gp.x * 0.18, 0.25);
+              playerLeftHand.position.lerp(restLeftPos, 0.12);
+              playerLeftHand.rotation.set(0, 0, 0);
+            }
+          } else {
+            const focusX = hoveredCardMesh ? hoveredCardMesh.position.x : pointer.x * 1.45;
+            const focusZ = hoveredCardMesh ? hoveredCardMesh.position.z + 0.32 : 2.08;
+            const focusY = hoveredCardMesh ? 1.24 : 1.18 + Math.sin(t * 2) * 0.02;
+
+            if (focusX < 0) {
+              // Left side of table -> Animate Left Hand
+              const leftTarget = new THREE.Vector3(Math.min(-0.05, focusX), focusY, focusZ);
+              playerLeftHand.position.lerp(leftTarget, 0.16);
+              playerLeftHand.rotation.x = THREE.MathUtils.lerp(playerLeftHand.rotation.x, hoveredCardMesh ? -0.12 : 0, 0.18);
+              playerLeftHand.rotation.y = THREE.MathUtils.lerp(playerLeftHand.rotation.y, -focusX * 0.15, 0.18);
+
+              playerRightHand.position.lerp(restRightPos, 0.1);
+              playerRightHand.rotation.x = THREE.MathUtils.lerp(playerRightHand.rotation.x, 0, 0.15);
+              playerRightHand.rotation.y = THREE.MathUtils.lerp(playerRightHand.rotation.y, 0, 0.15);
+            } else {
+              // Right side of table -> Animate Right Hand
+              const rightTarget = new THREE.Vector3(Math.max(0.05, focusX), focusY, focusZ);
+              playerRightHand.position.lerp(rightTarget, 0.16);
+              playerRightHand.rotation.x = THREE.MathUtils.lerp(playerRightHand.rotation.x, hoveredCardMesh ? -0.12 : 0, 0.18);
+              playerRightHand.rotation.y = THREE.MathUtils.lerp(playerRightHand.rotation.y, -focusX * 0.15, 0.18);
+
+              playerLeftHand.position.lerp(restLeftPos, 0.1);
+              playerLeftHand.rotation.x = THREE.MathUtils.lerp(playerLeftHand.rotation.x, 0, 0.15);
+              playerLeftHand.rotation.y = THREE.MathUtils.lerp(playerLeftHand.rotation.y, 0, 0.15);
+            }
+          }
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // =========================================================================
+    // 9. MASTER SATI ENGINE: THAKSA NAME ASTROLOGY + 78-CARD MULTI-TURN BRAIN
+    // =========================================================================
+    const THAKSA_GROUPS = [
+      { name: 'อาทิตย์', chars: 'ออาอิอีอุอูเอโอ', elem: 'ไฟ', trait: 'มีภาวะผู้นำ รักศักดิ์ศรี คิดการณ์ไกล แต่บางครั้งกดดันตัวเองสูงเกินไป' },
+      { name: 'จันทร์', chars: 'กขคฆง', elem: 'ดิน', trait: 'ประนีประนอมเก่ง เข้าใจความรู้สึกคนอื่นละเอียดอ่อน แต่เวลาตัดสินใจเรื่องตัวเองมักเกรงใจคนรอบข้าง' },
+      { name: 'อังคาร', chars: 'จฉชซฌญ', elem: 'ลม', trait: 'กล้าลุย กล้าชน คิดไวทำไว มีไฟในการแก้ปัญหา แต่ต้องระวังความใจร้อนและคำพูดตรงเกินไป' },
+      { name: 'พุธ', chars: 'ฎฏฐฑฒณดตถทธน', elem: 'น้ำ', trait: 'มีไหวพริบในการสื่อสาร ปรับตัวเก่ง วิเคราะห์ข้อมูลรอบด้านได้ดี แต่บางจังหวะคิดซ้อนหลายชั้นจนเหนื่อยเอง' },
+      { name: 'พฤหัสบดี', chars: 'บปผฝพฟภม', elem: 'ดิน', trait: 'มีเหตุผล รักการเรียนรู้ มีหลักการชัดเจนและวางแผนเป็นระบบ แต่มักแบกความรับผิดชอบของคนอื่นไว้เยอะ' },
+      { name: 'ศุกร์', chars: 'ยรลว', elem: 'น้ำ', trait: 'มีเสน่ห์ มีรสนิยมและเซนส์ด้านศิลปะหรือการออกแบบที่โดดเด่น แต่เวลามีเรื่องกระทบใจจะคิดวนอยู่นาน' },
+      { name: 'เสาร์', chars: 'ศษสหฬฮ', elem: 'ไฟ', trait: 'อดทนสูง เด็ดเดี่ยว จริงจังกับเป้าหมายระยะยาว ไม่ยอมแพ้ง่ายๆ แต่ระวังความเครียดสะสมที่เก็บไว้คนเดียว' }
+    ];
+
+    const CELTIC_POSITIONS = [
+      'สถานการณ์เจ้าชะตาปัจจุบัน',
+      'อุปสรรคหรือโจทย์ที่กำลังเผชิญหน้า',
+      'รากฐานจิตใต้สำนึกและเป้าหมายลึกๆ',
+      'อดีตที่เพิ่งผ่านพ้นและส่งผลถึงตอนนี้',
+      'สิ่งที่ปรากฏให้เห็นหรือเป้าหมายตรงหน้า',
+      'แนวโน้มที่จะเข้ามาในอนาคตอันใกล้',
+      'ท่าทีและวิธีรับมือของตัวเราเอง',
+      'อิทธิพลจากคนรอบข้างและสภาพแวดล้อม',
+      'ความหวังหรือความกังวลที่ซ่อนอยู่ในใจ',
+      'บทสรุปภาพรวมและจุดเปลี่ยนสำคัญ'
+    ];
+
+    function computeNatalProfile(user) {
+      // Calculate accurate day of week from birth date (Gregorian conversion from B.E.)
+      const gYear = user.year - 543;
+      const dt = new Date(gYear, user.month - 1, user.day);
+      const dow = isNaN(dt.getTime()) ? ((user.day + user.month) % 7) : dt.getDay(); // 0=Sun..6=Sat
+      const dayGroup = THAKSA_GROUPS[dow];
+
+      // Analyze Thai Full Name & Nickname against Thaksa Sequence
+      // Order: อาทิตย์(0), จันทร์(1), อังคาร(2), พุธ(3), เสาร์(6), พฤหัส(4), ศุกร์(5)
+      const thaksaOrder = [0, 1, 2, 3, 6, 4, 5];
+      const startIdx = thaksaOrder.indexOf(dow);
+      const roleNames = ['บริวาร (การจัดการคน)', 'อายุ (พลังชีวิต)', 'เดช (อำนาจและบารมี)', 'ศรี (โชคลาภและเสน่ห์)', 'มูละ (ฐานการเงินและทรัพย์สิน)', 'อุตสาหะ (ความขยันและงานใหญ่)', 'มนตรี (ผู้ใหญ่และคนสนับสนุน)'];
+
+      const fullStr = (user.fullname || '') + (user.nickname || '');
+      const matchedRoles = [];
+      roleNames.forEach((rName, offset) => {
+        const gIdx = thaksaOrder[(startIdx + offset) % 7];
+        const grp = THAKSA_GROUPS[gIdx];
+        for (let ch of fullStr) {
+          if (grp.chars.includes(ch)) {
+            matchedRoles.push(rName);
+            break;
+          }
+        }
+      });
+
+      const topStrengths = matchedRoles.length >= 2
+        ? `${matchedRoles[0]} และ ${matchedRoles[1]}`
+        : 'อุตสาหะ (สร้างด้วยลำแข้งตัวเอง) และ เดช (การตัดสินใจเด็ดขาด)';
+
+      // Calculate Life Path Number
+      const sumDigits = (n) => String(n).split('').reduce((a, b) => a + (parseInt(b, 10) || 0), 0);
+      let lp = sumDigits(user.day) + sumDigits(user.month) + sumDigits(gYear);
+      while (lp > 9) lp = sumDigits(lp);
+
+      const birthIdx = (user.day + user.month + (gYear % 100)) % 22;
+      const birthCard = MAJOR_ARCANA[birthIdx];
+
+      user.dayName = `วัน${dayGroup.name}`;
+      user.element = `ธาตุ${dayGroup.elem} (${dayGroup.trait})`;
+      user.thaksaStrength = topStrengths;
+      user.lifePath = lp;
+      user.birthCard = `${birthCard.en} (${birthCard.th})`;
+      user.birthCardCore = birthCard.core;
+    }
+
+    function appendHistory(speaker, text) {
+      state.chatHistory.push({ speaker, text });
+    }
+
+    function setDialogueCollapsed(collapsed) {
+      state.dialogueCollapsed = collapsed;
+      document.getElementById('dialogue-content').classList.toggle('hidden', collapsed);
+      document.getElementById('dialogue-preview').classList.toggle('hidden', !collapsed);
+      document.getElementById('btn-toggle-dialogue').textContent = collapsed ? 'ขยายคำพูด' : 'ย่อกล่อง';
+    }
+
+    function setSatiDialogue(text, mood = 'คุยตรงประเด็น') {
+      document.getElementById('sati-mood-tag').textContent = mood;
+      const box = document.getElementById('dialogue-content');
+      box.textContent = text;
+      document.getElementById('dialogue-preview').textContent = text;
+      box.scrollTop = 0;
+      appendHistory('สติ', text);
+    }
+
+    function buildNatal10Reading(cards) {
+      const nick = state.user.nickname || 'เพื่อน';
+      const cPast = cards[0];
+      const cObstacle = cards[1];
+      const cPresent = cards[4];
+      const cOutcome = cards[9];
+
+      return `จากชื่อ ${state.user.fullname} และวันเกิด (${state.user.dayName} รหัสชีวิตเลข ${state.user.lifePath}) ของ${nick} พื้นดวงหลักเป็นคน${state.user.element} เด่นเรื่อง${state.user.thaksaStrength} โดยมีไพ่ประจำตัวคือ ${state.user.birthCard} พอจับ 10 ใบนี้ขึ้นมาแล้ว สติขอสรุปตรงๆ แบบเพื่อนเลยนะ ช่วงที่ผ่านมา${nick}แบกความคาดหวังไว้เยอะมาก (${cPast.th}) และมีเรื่องที่คอยสะกิดใจคือ ${cObstacle.core} (${cObstacle.th}) พอมาดูปัจจุบันที่ใบ ${cPresent.th} กำลังบอกว่าถึงจุดที่ต้องจัดลำดับความสำคัญใหม่ อย่าพยายามแก้ทุกปัญหาพร้อมกัน ส่วนแนวโน้มตรงหน้า (${cOutcome.th}) มีทางขยับขยายที่ดีแน่นอน (${cOutcome.core}) แต่ต้องตัดเรื่องที่บั่นทอนใจออกก่อน อยากเจาะเรื่องไหนต่อ กดเลือกจั่วเพิ่ม 1 หรือ 3 ใบแล้วพิมพ์ถามสติได้เลย`;
+    }
+
+    // Deep Contextual & Multi-Turn Tarot Reasoning with Original Conversational Summary Style
+    function analyzeCardElementalSynergy(cards) {
+      if (cards.length < 2) return '';
+      const suits = cards.map((c) => c.suit);
+      const count = (s) => suits.filter((x) => x === s).length;
+      if (count('Major') >= 2) return 'ยิ่งมีไพ่ใหญ่ขึ้นมาพร้อมกันแบบนี้ แปลว่าเป็นจุดเปลี่ยนสำคัญของชีวิต ไม่ใช่เรื่องชั่วคราว';
+      if (count('Wands') >= 2) return 'พลังธาตุไฟของไพ่ไม้เท้าขึ้นมาซ้อนกัน แปลว่าไฟในการลุยมีเต็มร้อย แต่ต้องระวังความใจร้อนอยากเห็นผลเร็วเกินไป';
+      if (count('Swords') >= 2) return 'ไพ่ดาบขึ้นมาตอกย้ำว่าตอนนี้ความคิดในหัวตีกันหนักมาก ต้องใช้ข้อเท็จจริงตัดความฟุ้งซ่านออกไป';
+      if (count('Pentacles') >= 2) return 'ไพ่เหรียญหนุนกันแน่น แปลว่าเรื่องนี้วัดกันที่ตัวเลขจริง ผลลัพธ์จริง และความสม่ำเสมอระยะยาว';
+      if (count('Cups') >= 2) return 'ไพ่ถ้วยนำหน้าแบบนี้ แปลว่าความรู้สึกลึกๆ มีผลต่อการตัดสินใจครั้งนี้มากเป็นพิเศษ';
+      if (suits.includes('Wands') && suits.includes('Pentacles')) return 'ไพ่ไม้เท้าคู่กับไพ่เหรียญบอกเลยว่าสิ่งที่ลงมือทำจะเปลี่ยนเป็นรายได้และผลลัพธ์ที่จับต้องได้จริง';
+      if (suits.includes('Swords') && suits.includes('Cups')) return 'ไพ่ดาบคู่กับไพ่ถ้วยสะท้อนว่าเหตุผลในหัวกับความรู้สึกในใจกำลังดึงไปคนละทาง';
+      return '';
+    }
+
+    function detectTopicAndIntent(q, prevTopic) {
+      let topic = prevTopic || 'general';
+      if (/งาน|โปรเจกต์|เจ้านาย|ลูกค้า|ธุรกิจ|บริษัท|ออฟฟิศ|เรียน|สอบ|สมัคร|ลาออก|ย้ายงาน|ทำแอป|ออกแบบ|เขียนโค้ด|รับเหมา|สถาปนิก/.test(q)) topic = 'work';
+      else if (/เงิน|รายได้|ลงทุน|หนี้|ขาย|กำไร|ทุน|ค่าใช้จ่าย|รวย|ซื้อ|ผ่อน|เทรด|ทอง|หุ้น|เหรียญ/.test(q)) topic = 'money';
+      else if (/รัก|แฟน|คุย|เขา|เธอ|ความสัมพันธ์|แต่ง|โสด|เลิก|ง้อ|ชอบ|คบ|คนคุย|นอกใจ|คู่/.test(q)) topic = 'love';
+      else if (/สุขภาพ|เหนื่อย|ท้อ|เครียด|พัก|นอน|หมดไฟ|สับสน|กดดัน/.test(q)) topic = 'self';
+
+      let intent = 'explain';
+      if (/หรือ|ดีไหม|ควรไหม|เอาไง|เลือก|ระหว่าง|ไปต่อหรือพอ|ลาออกดีไหม|เสี่ยงดีไหม/.test(q)) intent = 'decision';
+      else if (/เมื่อไหร่|นานไหม|กี่เดือน|กี่วัน|ช่วงไหน|เร็วๆ|ตอนไหน|ปีนี้|เดือนนี้/.test(q)) intent = 'timing';
+      else if (/คิดยังไง|รู้สึกยังไง|จริงใจ|มองเรา|เขารู้สึก|เขาจะ|กลับมาไหม|มีคนอื่นไหม/.test(q)) intent = 'other_person';
+      else if (/ทำยังไง|แก้ยังไง|เริ่มยังไง|ควรทำ|แนะนำ|ทางออก|รับมือ|ต้องระวังอะไร|แก้ตรงไหน/.test(q)) intent = 'action';
+      else if (/ทำไม|เพราะอะไร|ติดอะไร|เกิดจาก|สาเหตุ/.test(q)) intent = 'why';
+      else if (/สำเร็จไหม|รอดไหม|ได้ไหม|สมหวังไหม|มีโอกาสไหม|ปังไหม|เวิร์คไหม|คุ้มไหม/.test(q)) intent = 'outcome';
+
+      return { topic, intent };
+    }
+
+    function scoreCardPolarity(card) {
+      const challenging = ['The Devil', 'The Tower', 'The Moon', 'The Hanged Man', 'Death', 'Three of Swords', 'Five of', 'Seven of', 'Eight of Swords', 'Nine of Swords', 'Ten of Swords', 'Ten of Wands'];
+      const strongPositive = ['The Sun', 'The Star', 'The World', 'The Magician', 'The Chariot', 'Wheel of Fortune', 'Ace of', 'Three of Pentacles', 'Six of Wands', 'Nine of Pentacles', 'Ten of Cups', 'Ten of Pentacles', 'King of', 'Queen of'];
+      if (challenging.some((k) => card.name.includes(k))) return 'caution';
+      if (strongPositive.some((k) => card.name.includes(k))) return 'favorable';
+      return 'balanced';
+    }
+
+    function findMatchingNatalCard(topic, outcomeCard) {
+      if (!state.natalCards || state.natalCards.length < 10) return null;
+      if (topic === 'work') return state.natalCards[4];
+      if (topic === 'money') return state.natalCards[5];
+      if (topic === 'love') return state.natalCards[7];
+      if (outcomeCard.suit === state.natalCards[1].suit) return state.natalCards[1];
+      return state.natalCards[9];
+    }
+
+    function synthesizeDeepReply(question, cards, isNewDraw) {
+      const nick = state.user.nickname || 'เพื่อน';
+      const q = question.trim();
+      const { topic, intent } = detectTopicAndIntent(q, state.lastTopic);
+      state.lastTopic = topic;
+
+      const refCards = cards.length > 0 ? cards : (state.natalCards.length > 0 ? state.natalCards.slice(0, 3) : []);
+      const outcomeCard = refCards[refCards.length - 1];
+      const polarity = scoreCardPolarity(outcomeCard);
+      const synergy = analyzeCardElementalSynergy(refCards);
+      const natalCard = findMatchingNatalCard(topic, outcomeCard);
+
+      const cardNames = refCards.map((c) => `${c.name} (${c.th})`).join(' คู่กับ ');
+      const essence = refCards.map((c) => c.core).join(' ขณะเดียวกัน ');
+
+      // 1. Natural Conversational Opening & Direct Answer to the User's Question
+      const orMatch = q.match(/(.+?)\s*หรือ\s*(.+?)(\?|$|ดี|ครับ|ค่ะ|คับ)/);
+      let leadIn = '';
+
+      if (orMatch && orMatch[1] && orMatch[2]) {
+        const optA = orMatch[1].replace(/^(แล้ว|ถ้า|ควร|จะ|เลือก|ระหว่าง)\s*/, '').trim();
+        const optB = orMatch[2].replace(/(ดีไหม|ดี|ก่อน|มากกว่า).*$/, '').trim();
+        if (polarity === 'favorable') {
+          leadIn = `ที่${nick}ถามเปรียบเทียบระหว่าง "${optA}" กับ "${optB}" ไพ่ ${cardNames} ชี้ชัดให้เลือกฝั่ง "${optA}" เลย เพราะเปิดโอกาสให้${nick}ได้ใช้จุดแข็งด้าน${state.user.thaksaStrength.split(' ')[0]}ของตัวเองลุยได้เต็มที่`;
+        } else if (polarity === 'caution') {
+          leadIn = `ระหว่าง "${optA}" กับ "${optB}" ที่${nick}ลังเลอยู่ ไพ่ ${cardNames} เตือนให้เบรกทางที่เสี่ยงเกินตัวไว้ก่อน แล้วเลือกทาง "${optB}" เพื่อเซฟกำลังและตั้งหลักให้ชัวร์จะดีกว่า`;
+        } else {
+          leadIn = `สำหรับทางแยกระหว่าง "${optA}" กับ "${optB}" ไพ่ ${cardNames} บอกว่ายังไม่ต้องหักดิบเลือกทางเดียว ให้ลองทดสอบ "${optA}" ควบคู่ไปก่อนจนกว่าจังหวะจะนิ่ง`;
+        }
+      } else if (intent === 'decision') {
+        leadIn = polarity === 'caution'
+          ? `สำหรับเรื่องที่${nick}ถามว่าควรตัดสินใจยังไง ไพ่ ${cardNames} เตือนว่าตอนนี้ยังไม่ควรรีบทุ่มสุดตัว`
+          : (polarity === 'favorable'
+            ? `จากคำถามของ${nick} ไพ่ ${cardNames} เปิดทางให้ตัดสินใจเดินหน้าลุยได้เลย`
+            : `เรื่องการตัดสินใจที่${nick}ชั่งใจอยู่ ไพ่ ${cardNames} บอกว่าทำได้แต่ต้องวางกรอบและเงื่อนไขให้ชัดเจนก่อน`);
+      } else if (intent === 'timing') {
+        const timingPhrase = {
+          Wands: 'จังหวะจะขยับค่อนข้างไวภายใน 1-3 สัปดาห์นี้',
+          Swords: 'จะเห็นความชัดเจนเร็วมากภายในไม่เกิน 1 เดือน ทันทีที่กล้าพูดคุยเคลียร์ตรงๆ',
+          Cups: 'ต้องค่อยๆ บ่มเพาะตามจังหวะอารมณ์ประมาณ 1-2 เดือนถึงจะลงตัว',
+          Pentacles: 'ต้องใช้เวลาวางฐานจริงจังราว 3-6 เดือนถึงจะเห็นผลลัพธ์ที่มั่นคง',
+          Major: 'จุดเปลี่ยนนี้จะปลดล็อกทันทีที่ตัดสินใจเปลี่ยนท่าทีของตัวเองโดยไม่ต้องรอเวลา'
+        };
+        leadIn = `ถ้าถามเรื่องจังหวะเวลา ไพ่ ${cardNames} บอกว่า${timingPhrase[outcomeCard.suit]}`;
+      } else if (intent === 'other_person') {
+        leadIn = `ถ้าถามถึงความรู้สึกและท่าทีของอีกฝ่าย ไพ่ ${cardNames} สะท้อนตรงๆ เลยว่า`;
+      } else if (intent === 'outcome') {
+        leadIn = polarity === 'favorable'
+          ? `ถามว่าเรื่องนี้จะสำเร็จไหม ไพ่ ${cardNames} ตอบเลยว่ามีเกณฑ์สำเร็จและไปต่อได้ดีมาก`
+          : (polarity === 'caution'
+            ? `ถามตรงๆ ก็ตอบตรงๆ นะ${nick} จากไพ่ ${cardNames} ถ้ายังปล่อยไว้แบบเดิมจะเหนื่อยฟรี ต้องรีบแก้จุดติดขัดก่อน`
+            : `สำหรับแนวโน้มผลลัพธ์ที่${nick}ถามมา ไพ่ ${cardNames} บอกว่าไปรอดได้ถ้าคุมความสม่ำเสมอให้ดี`);
+      } else if (topic === 'work' || topic === 'money') {
+        leadIn = `ในมุมเรื่องงานและการเงินที่${nick}ถามมา ไพ่ที่เปิดอยู่คือ ${cardNames}`;
+      } else if (topic === 'love') {
+        leadIn = `สำหรับเรื่องความสัมพันธ์ที่${nick}ค้างคาใจอยู่ ไพ่ที่เปิดขึ้นมาคือ ${cardNames}`;
+      } else {
+        leadIn = `จากคำถามของ${nick}ตรงนี้ ไพ่ที่เปิดอยู่คือ ${cardNames}`;
+      }
+
+      // 2. Original Concise Summary + Friend's Reality Check
+      const natalLink = natalCard ? ` ซึ่งสอดคล้องกับไพ่พื้นดวง (${natalCard.th}) ของ${nick}พอดี` : '';
+      const synergySentence = synergy ? ` ${synergy}` : '';
+      const elemShort = state.user.element ? state.user.element.split(' ')[0] : 'พื้นดวงนี้';
+
+      const nudge = `สติขอเตือนแบบไม่อวยนะ ด้วยนิสัยพื้นดวง${elemShort} (${state.user.dayName}) ของ${nick} ระวังอย่าใช้อารมณ์ชั่ววูบหรือความกดดันมาตัดสินเรื่องนี้ ลองถอยมาตั้งสติหนึ่งก้าวแล้วลงมือทำตามความจริงตรงหน้าจะปลอดภัยที่สุด`;
+
+      return `${leadIn} — สรุปสั้นๆ เลยคือ ${essence}${natalLink}${synergySentence} ${nudge} (เหลือไพ่ในสำรับ ${state.remainingDeck.length} ใบ)`;
+    }
+
+    function respondAsSati(question, cards, isNewDraw, mood = 'ตอบตรงประเด็น') {
+      const reply = synthesizeDeepReply(question, cards, isNewDraw);
+      setSatiDialogue(reply, mood);
+    }
+
+    function buildFollowUpReading(question, cards) {
+      return synthesizeDeepReply(question, cards, true);
+    }
+
+    // =========================================================================
+    // 10. UI FLOW CONTROLLERS
+    // =========================================================================
+    function showToast(msg) {
+      const el = document.getElementById('toast-box');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.add('hidden'), 2600);
+    }
+
+    function updateHUD() {
+      document.getElementById('hud-deck-count').textContent = `${state.remainingDeck.length} / 78`;
+      document.getElementById('hud-coins').textContent = state.hasDeckPass ? 'ไม่จำกัด' : `${state.coins} เหรียญ`;
+      document.getElementById('hud-pass-badge').classList.toggle('hidden', !state.hasDeckPass);
+
+      const camBtn = document.getElementById('btn-camera-toggle');
+      camBtn.disabled = !state.cameraUnlocked;
+      document.getElementById('hud-cam-label').textContent =
+        state.cameraMode === '1P' ? 'มุมมอง: สายตา 1P' : 'มุมมอง: โต๊ะไพ่ 2P';
+
+      document.getElementById('btn-natal-drawer').classList.toggle('hidden', !state.natalCompleted);
+      document.getElementById('btn-draw-10-opt').classList.toggle('hidden', state.deckNumber < 2 && !state.natalCompleted);
+
+      const needReshuffle = state.remainingDeck.length < 3;
+      document.getElementById('btn-reshuffle').classList.toggle('hidden', !needReshuffle && state.remainingDeck.length > 0);
+    }
+
+    function updateActiveStrip() {
+      const strip = document.getElementById('active-cards-strip');
+      if (state.activeSpread.length === 0) {
+        strip.classList.add('hidden');
+        strip.innerHTML = '';
+        return;
+      }
+      strip.classList.remove('hidden');
+      strip.innerHTML = '';
+      state.activeSpread.forEach((c, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-slate chamfer-sm px-2.5 py-1 text-[11px] shrink-0 flex items-center gap-1.5';
+        btn.innerHTML = `<span class="text-[#d4af37]">#${idx + 1}</span><span>${c.th}</span>`;
+        btn.addEventListener('click', () => openCardModal(c, `ไพ่ใบที่ ${idx + 1}`));
+        strip.appendChild(btn);
+      });
+    }
+
+    function enterPickingPhase(count, instructionText) {
+      state.isPicking = true;
+      state.pickTargetCount = count;
+      state.activeSpread = [];
+      tuckNatalSpreadAway3D();
+      updateActiveStrip();
+
+      document.getElementById('dock-picking').classList.remove('hidden');
+      document.getElementById('dock-chat').classList.add('hidden');
+      document.getElementById('pick-instruction').textContent = `${instructionText} (0 / ${count})`;
+      setDialogueCollapsed(true);
+    }
+
+    function startShuffleAndFan(onDone) {
+      state.isAnimatingShuffle = true;
+      state.cameraUnlocked = false;
+      updateHUD();
+      SoundFX.playShuffle();
+      setSatiDialogue(`กำลังสับไพ่ 78 ใบให้${state.user.nickname} สักครู่นะ...`, 'สับสำรับ');
+
+      setTimeout(() => {
+        state.isAnimatingShuffle = false;
+        state.cameraUnlocked = true;
+        spawn78CardFan();
+        updateHUD();
+        if (onDone) onDone();
+      }, 1350);
+    }
+
+    function handlePickCard(mesh) {
+      if (!state.isPicking) return;
+      SoundFX.playPick();
+      state.handGrab = {
+        side: mesh.position.x < 0 ? 'left' : 'right',
+        pos: mesh.position.clone(),
+        startTime: clock.getElapsedTime()
+      };
+      const cardData = mesh.userData.cardData;
+
+      // Remove from remainingDeck
+      state.remainingDeck = state.remainingDeck.filter((c) => c.uid !== cardData.uid);
+      state.activeSpread.push(cardData);
+      const currentCount = state.activeSpread.length;
+
+      mesh.userData.posLabel = `ใบที่ ${currentCount}`;
+      placeSpreadCardIn3D(mesh, cardData, currentCount - 1, state.pickTargetCount);
+      setTimeout(() => SoundFX.playFlip(), 180);
+
+      updateHUD();
+      updateActiveStrip();
+
+      document.getElementById('pick-instruction').textContent =
+        `แตะเลือกไพ่จากวงพัดบนโต๊ะ (${currentCount} / ${state.pickTargetCount})`;
+
+      if (currentCount >= state.pickTargetCount) {
+        finishPickingPhase();
+      }
+    }
+
+    function finishPickingPhase() {
+      state.isPicking = false;
+      if (state.uiHidden) {
+        document.getElementById('top-ui-group').classList.remove('hidden');
+        document.getElementById('game-footer').classList.remove('hidden');
+        document.getElementById('clean-mode-bar').classList.add('hidden');
+        state.uiHidden = false;
+      }
+      document.getElementById('dock-picking').classList.add('hidden');
+      document.getElementById('dock-chat').classList.remove('hidden');
+      setDialogueCollapsed(false);
+
+      if (!state.natalCompleted && state.pickTargetCount === 10) {
+        state.natalCompleted = true;
+        state.natalCards = [...state.activeSpread];
+        setSatiDialogue(buildNatal10Reading(state.natalCards), 'อ่านพื้นดวง 10 ใบ');
+        updateHUD();
+      } else {
+        const q = document.getElementById('chat-input').value.trim() || 'ช่วยอ่านความหมายไพ่ชุดนี้เชื่อมกับเรื่องที่คุยค้างไว้';
+        document.getElementById('chat-input').value = '';
+        respondAsSati(q, state.activeSpread, true, 'ตอบตรงประเด็น');
+      }
+    }
+
+    function openCardModal(card, posLabel) {
+      document.getElementById('modal-card-pos').textContent = posLabel;
+      document.getElementById('modal-card-name').textContent = card.name;
+      document.getElementById('modal-card-th').textContent = card.th;
+      document.getElementById('modal-card-note').textContent = card.core;
+
+      const tex = createCardFrontTexture(card);
+      const artBox = document.getElementById('modal-card-art');
+      artBox.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = tex.image.toDataURL();
+      img.className = 'w-full h-full object-cover';
+      artBox.appendChild(img);
+
+      document.getElementById('modal-card').classList.remove('hidden');
+    }
+
+    function spendCoins(amount) {
+      if (state.hasDeckPass) return true;
+      if (state.coins < amount) {
+        showToast('เหรียญไม่พอ กดดูคลิปสั้นจั่ว 1 ใบฟรี หรือเปิดคลังพลังงานด้านบนได้เลย');
+        document.getElementById('modal-shop').classList.remove('hidden');
+        return false;
+      }
+      state.coins -= amount;
+      updateHUD();
+      return true;
+    }
+
+    function triggerFollowUpDraw(count, freeViaAd = false) {
+      if (state.remainingDeck.length < count) {
+        showToast('ไพ่ในสำรับเหลือน้อยเกินไป กดสับสำรับใหม่ 78 ใบได้เลย');
+        document.getElementById('btn-reshuffle').classList.remove('hidden');
+        return;
+      }
+      if (!freeViaAd && !spendCoins(count === 10 ? 8 : count)) return;
+
+      const q = document.getElementById('chat-input').value.trim();
+      if (q) appendHistory(state.user.nickname, q);
+
+      enterPickingPhase(count, `แตะเลือกไพ่ขยายความ ${count} ใบ`);
+      setSatiDialogue(`เลือกหยิบมา ${count} ใบจากกองเดิมได้เลย เดี๋ยวสติอ่านเชื่อมให้ฟัง`, 'รอเลือกไพ่');
+    }
+
+    // =========================================================================
+    // 11. EVENT BINDINGS & INIT
+    // =========================================================================
+    function populateBirthdateSelectors() {
+      const daySel = document.getElementById('input-day');
+      const monthSel = document.getElementById('input-month');
+      const yearSel = document.getElementById('input-year');
+      const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+      for (let d = 1; d <= 31; d++) {
+        const opt = document.createElement('option');
+        opt.value = d; opt.textContent = d;
+        if (d === 25) opt.selected = true;
+        daySel.appendChild(opt);
+      }
+      months.forEach((m, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx + 1; opt.textContent = m;
+        if (idx === 5) opt.selected = true;
+        monthSel.appendChild(opt);
+      });
+      for (let y = 2550; y >= 2495; y--) {
+        const opt = document.createElement('option');
+        opt.value = y; opt.textContent = y;
+        if (y === 2539) opt.selected = true;
+        yearSel.appendChild(opt);
+      }
+    }
+
+    window.onload = () => {
+      init3DScene();
+      populateBirthdateSelectors();
+
+      // Gmail Login
+      document.getElementById('btn-gmail-login').addEventListener('click', () => {
+        SoundFX.init();
+        SoundFX.playPick();
+        document.getElementById('modal-gmail').classList.remove('hidden');
+      });
+
+      document.getElementById('btn-close-gmail').addEventListener('click', () => {
+        document.getElementById('modal-gmail').classList.add('hidden');
+      });
+
+      document.querySelectorAll('.gmail-choice').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.user.email = btn.dataset.email;
+          document.getElementById('ledger-email-tag').textContent = btn.dataset.email;
+          document.getElementById('input-fullname').value = btn.dataset.name;
+          document.getElementById('input-nickname').value = btn.dataset.nick;
+
+          document.getElementById('modal-gmail').classList.add('hidden');
+          document.getElementById('screen-login').classList.add('hidden');
+          document.getElementById('screen-ledger').classList.remove('hidden');
+          state.screen = 'ledger';
+          targetCamPos = CAM_POS.ledger.clone();
+          targetCamLook = CAM_POS.ledgerLook.clone();
+          SoundFX.playPick();
+        });
+      });
+
+      // Natal Ledger Submit
+      document.getElementById('ledger-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        SoundFX.playSeal();
+        state.user.nickname = document.getElementById('input-nickname').value.trim();
+        state.user.fullname = document.getElementById('input-fullname').value.trim();
+        state.user.day = parseInt(document.getElementById('input-day').value, 10);
+        state.user.month = parseInt(document.getElementById('input-month').value, 10);
+        state.user.year = parseInt(document.getElementById('input-year').value, 10);
+        computeNatalProfile(state.user);
+
+        document.getElementById('screen-ledger').classList.add('hidden');
+        document.getElementById('top-hud').classList.remove('hidden');
+        document.getElementById('sati-speech-wrap').classList.remove('hidden');
+        document.getElementById('game-footer').classList.remove('hidden');
+
+        state.screen = 'game';
+        state.cameraMode = '1P';
+        targetCamPos = CAM_POS.view1P.clone();
+        targetCamLook = CAM_POS.view1PLook.clone();
+
+        state.remainingDeck = shuffleArray(buildFullDeck78());
+        updateHUD();
+
+        startShuffleAndFan(() => {
+          enterPickingPhase(10, 'เลือกไพ่พื้นดวง 10 ใบแรก');
+          setSatiDialogue(
+            `สวัสดีนะ${state.user.nickname} เราชื่อสติ เดี๋ยวรอบแรกนี้หยิบไพ่มา 10 ใบก่อน เราจะได้ผูกเข้ากับชื่อและวันเกิดของ${state.user.nickname} เพื่อเช็กสถานการณ์อดีตถึงปัจจุบันให้ชัดๆ (กดสลับมุมมองด้านขวาบนได้แล้วนะ)`,
+            'ทักทาย'
+          );
+        });
+      });
+
+      // Camera Toggle (1P vs 2P)
+      document.getElementById('btn-camera-toggle').addEventListener('click', () => {
+        if (!state.cameraUnlocked) return;
+        SoundFX.playPick();
+        if (state.cameraMode === '1P') {
+          state.cameraMode = '2P';
+          targetCamPos = CAM_POS.view2P.clone();
+          targetCamLook = CAM_POS.view2PLook.clone();
+        } else {
+          state.cameraMode = '1P';
+          targetCamPos = CAM_POS.view1P.clone();
+          targetCamLook = CAM_POS.view1PLook.clone();
+        }
+        updateHUD();
+      });
+
+      // Mute Toggle
+      document.getElementById('btn-mute').addEventListener('click', () => {
+        SoundFX.muted = !SoundFX.muted;
+        document.getElementById('icon-sound-on').classList.toggle('hidden', SoundFX.muted);
+        document.getElementById('icon-sound-off').classList.toggle('hidden', !SoundFX.muted);
+      });
+
+      // Auto-Pick remaining cards in current spread
+      document.getElementById('btn-auto-pick').addEventListener('click', () => {
+        if (!state.isPicking) return;
+        const needed = state.pickTargetCount - state.activeSpread.length;
+        for (let i = 0; i < needed; i++) {
+          if (fanCardMeshes.length === 0) break;
+          const randIdx = Math.floor(Math.random() * fanCardMeshes.length);
+          handlePickCard(fanCardMeshes[randIdx]);
+        }
+      });
+
+      // Follow-up Draw Buttons
+      document.getElementById('btn-draw-1').addEventListener('click', () => triggerFollowUpDraw(1, false));
+      document.getElementById('btn-draw-1-ad').addEventListener('click', () => {
+        showToast('รับสิทธิ์ดูคลิปสั้นเรียบร้อย จั่วเพิ่ม 1 ใบฟรี');
+        triggerFollowUpDraw(1, true);
+      });
+      document.getElementById('btn-draw-3').addEventListener('click', () => triggerFollowUpDraw(3, false));
+      document.getElementById('btn-draw-10-opt').addEventListener('click', () => triggerFollowUpDraw(10, false));
+
+      // Reshuffle New 78-Card Deck
+      document.getElementById('btn-reshuffle').addEventListener('click', () => {
+        state.deckNumber += 1;
+        state.remainingDeck = shuffleArray(buildFullDeck78());
+        state.activeSpread = [];
+        tuckNatalSpreadAway3D();
+        updateActiveStrip();
+        startShuffleAndFan(() => {
+          setSatiDialogue(
+            `สับสำรับใหม่ครบ 78 ใบแล้วนะ${state.user.nickname} รอบนี้ไม่ต้องเปิดพื้นดวง 10 ใบซ้ำแล้ว พิมพ์ถามหรือกดจั่ว 1 ใบ / 3 ใบต่อได้เลย`,
+            'สำรับใหม่พร้อม'
+          );
+        });
+      });
+
+      // Chat Form Submit (Context-aware deep follow-up)
+      document.getElementById('chat-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('chat-input');
+        const q = input.value.trim();
+        if (!q) return;
+        appendHistory(state.user.nickname, q);
+        input.value = '';
+        SoundFX.playPick();
+
+        const refCards = state.activeSpread.length > 0 ? state.activeSpread : state.natalCards.slice(0, 3);
+        respondAsSati(q, refCards, false, 'คุยเจาะลึก');
+      });
+
+
+
+      // Full-Table Clean View (Hide / Restore all UI panels to see table & cards in full screen)
+      function setCleanTableMode(clean) {
+        state.uiHidden = clean;
+        document.getElementById('top-ui-group').classList.toggle('hidden', clean);
+        document.getElementById('game-footer').classList.toggle('hidden', clean);
+        document.getElementById('clean-mode-bar').classList.toggle('hidden', !clean);
+        document.getElementById('clean-pick-badge').classList.toggle('hidden', !state.isPicking);
+      }
+
+      document.getElementById('btn-hide-ui').addEventListener('click', () => {
+        SoundFX.playPick();
+        setCleanTableMode(true);
+      });
+
+      document.getElementById('btn-restore-ui').addEventListener('click', () => {
+        SoundFX.playPick();
+        setCleanTableMode(false);
+      });
+
+      // Collapse / Expand Bottom Action Dock only
+      document.getElementById('btn-toggle-dock').addEventListener('click', (e) => {
+        state.dockCollapsed = !state.dockCollapsed;
+        document.getElementById('action-dock').classList.toggle('hidden', state.dockCollapsed);
+        e.target.textContent = state.dockCollapsed ? 'แสดงแผงปุ่ม' : 'ซ่อนแผงปุ่ม';
+      });
+
+      // Collapse / Expand Dialogue Box
+      document.getElementById('btn-toggle-dialogue').addEventListener('click', () => {
+        setDialogueCollapsed(!state.dialogueCollapsed);
+      });
+
+      // Modals
+      const all78Cards = buildFullDeck78();
+      function renderGalleryGrid(filterSuit = 'ALL') {
+        const grid = document.getElementById('gallery-grid');
+        grid.innerHTML = '';
+        const list = filterSuit === 'ALL' ? all78Cards : all78Cards.filter((c) => c.suit === filterSuit);
+        list.forEach((card) => {
+          const tex = createCardFrontTexture(card);
+          const item = document.createElement('button');
+          item.className = 'btn-slate chamfer-sm p-1.5 flex flex-col items-center text-center hover:border-[#d4af37] transition';
+          item.innerHTML = `<img src="${tex.image.toDataURL()}" class="w-full h-auto mb-1 border border-[#d4af37]/30" alt="${card.name}" /><div class="text-[11px] font-medium text-[#f1ede4] truncate w-full">${card.th}</div>`;
+          item.addEventListener('click', () => openCardModal(card, 'สมุดภาพไพ่ 78 ใบ'));
+          grid.appendChild(item);
+        });
+      }
+
+      document.getElementById('btn-deck-gallery').addEventListener('click', () => {
+        renderGalleryGrid('ALL');
+        document.getElementById('modal-gallery').classList.remove('hidden');
+      });
+      document.getElementById('btn-close-gallery').addEventListener('click', () => {
+        document.getElementById('modal-gallery').classList.add('hidden');
+      });
+      document.querySelectorAll('.gallery-filter').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.gallery-filter').forEach((b) => {
+            b.classList.remove('btn-gold');
+            b.classList.add('btn-slate');
+          });
+          btn.classList.remove('btn-slate');
+          btn.classList.add('btn-gold');
+          renderGalleryGrid(btn.dataset.filter);
+        });
+      });
+
+      document.getElementById('btn-close-card').addEventListener('click', () => {
+        document.getElementById('modal-card').classList.add('hidden');
+      });
+
+      document.getElementById('btn-natal-drawer').addEventListener('click', () => {
+        document.getElementById('natal-summary-sub').textContent =
+          `${state.user.fullname} | ${state.user.birthCard}`;
+        const list = document.getElementById('natal-list');
+        list.innerHTML = '';
+        state.natalCards.forEach((c, idx) => {
+          const item = document.createElement('div');
+          item.className = 'p-2.5 bg-[#0b0d19]/70 border border-[#d4af37]/25 flex items-start justify-between gap-3';
+          item.innerHTML = `<div><div class="text-xs font-medium text-[#d4af37]">ใบที่ ${idx + 1}: ${c.name} (${c.th})</div><div class="text-xs text-[#c5c7d4] mt-0.5">${c.core}</div></div>`;
+          list.appendChild(item);
+        });
+        document.getElementById('modal-natal').classList.remove('hidden');
+      });
+      document.getElementById('btn-close-natal').addEventListener('click', () => {
+        document.getElementById('modal-natal').classList.add('hidden');
+      });
+
+      document.getElementById('btn-chat-history').addEventListener('click', () => {
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        state.chatHistory.forEach((entry) => {
+          const row = document.createElement('div');
+          const isSati = entry.speaker === 'สติ';
+          row.className = `p-2.5 border ${isSati ? 'border-[#d4af37]/30 bg-[#141933]/70' : 'border-[#4d5785]/40 bg-[#0b0d19]/80'}`;
+          row.innerHTML = `<div class="text-xs font-semibold ${isSati ? 'text-[#d4af37]' : 'text-[#9dd2ff]'} mb-1">${entry.speaker}</div><div class="text-xs text-[#f1ede4] leading-relaxed">${entry.text}</div>`;
+          list.appendChild(row);
+        });
+        document.getElementById('modal-history').classList.remove('hidden');
+      });
+      document.getElementById('btn-close-history').addEventListener('click', () => {
+        document.getElementById('modal-history').classList.add('hidden');
+      });
+
+      document.getElementById('btn-shop-open').addEventListener('click', () => {
+        document.getElementById('modal-shop').classList.remove('hidden');
+      });
+      document.getElementById('btn-close-shop').addEventListener('click', () => {
+        document.getElementById('modal-shop').classList.add('hidden');
+      });
+      document.getElementById('btn-buy-coins').addEventListener('click', () => {
+        state.coins += 15;
+        updateHUD();
+        document.getElementById('modal-shop').classList.add('hidden');
+        showToast('เติม 15 เหรียญเรียบร้อย');
+      });
+      document.getElementById('btn-buy-pass').addEventListener('click', () => {
+        state.hasDeckPass = true;
+        updateHUD();
+        document.getElementById('modal-shop').classList.add('hidden');
+        showToast('เปิดใช้งานตั๋วเหมาสำรับ 78 ใบแล้ว');
+      });
+    };
+  </script>
+</body>
+</html>

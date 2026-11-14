@@ -1,0 +1,9 @@
+﻿node_modules/
+dist/
+tools/
+.venv*/
+backend/data/*.json
+*.exe
+.env
+.env.*
+
