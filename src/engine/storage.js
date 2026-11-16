@@ -14,6 +14,8 @@ export function buildStoragePayload(state) {
     vipExpiresAt: state.vipExpiresAt || null,
     freeChatQuota: typeof state.freeChatQuota === 'number' ? state.freeChatQuota : 1,
     deckNumber: state.deckNumber,
+    deckResetAtIndex: typeof state.deckResetAtIndex === 'number' ? state.deckResetAtIndex : 0,
+    deckCarryoverSummary: state.deckCarryoverSummary || '',
     sessionActive: Boolean(state.sessionActive),
     remainingDeck: state.remainingDeck,
     discardPile: state.discardPile || [],
@@ -101,7 +103,9 @@ export async function clearAccountState(email, preserveMeta = null) {
         natalCards: [],
         activeSpread: [],
         discardPile: [],
-        chatHistory: []
+        chatHistory: [],
+        deckResetAtIndex: 0,
+        deckCarryoverSummary: ''
       }
     : { natalCompleted: false, sessionActive: false };
 

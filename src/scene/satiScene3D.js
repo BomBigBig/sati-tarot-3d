@@ -636,9 +636,7 @@ export function createSati3DEngine({
 
   function syncDiscardPile3D(discardList = state.discardPile) {
     clearDiscardPile3D();
-    const totalUsed = Array.isArray(discardList)
-      ? discardList.length
-      : Math.max(0, 78 - (state.remainingDeck?.length ?? 78));
+    const totalUsed = Array.isArray(discardList) ? discardList.length : 0;
     if (totalUsed <= 0) return;
 
     const layers = Math.min(totalUsed, 24);

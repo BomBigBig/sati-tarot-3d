@@ -21,10 +21,13 @@ export const UI_TEXT = {
     btnDrawNewNatal: 'เลือกไพ่พื้นดวง 10 ใบใหม่ (เริ่มสำรับ 78 ใบ)',
     btnLedgerHistory: (count) => `ดูประวัติที่บันทึกไว้ (${count} รอบ)`,
     labelNickname: 'ชื่อเล่น (สติจะใช้เรียกชื่อนี้ตลอดการคุย)',
-    placeholderNickname: 'เช่น บอม',
+    placeholderNickname: 'เช่น มิน',
     labelFullname: 'ชื่อจริง - นามสกุล (สำหรับวิเคราะห์พลังทักษา)',
-    placeholderFullname: 'เช่น ธนภัทร พิมพ์มากร',
+    placeholderFullname: 'เช่น นรินทร์ สุขสวัสดิ์',
     labelBirthdate: 'วัน เดือน ปีเกิด (พ.ศ.)',
+    placeholderDay: 'วัน',
+    placeholderMonth: 'เดือน',
+    placeholderYear: 'ปี พ.ศ.',
     btnSubmitLedger: 'ประทับตราเริ่มดูดวง',
     months: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'],
     formatYear: (beYear) => `${beYear}`,
@@ -231,6 +234,15 @@ export const UI_TEXT = {
     toastAddCoins: 'เติม 19 เหรียญเรียบร้อย พร้อมดูดวงต่อได้เลย',
     toastUnlockPass: 'เปิดใช้งานตั๋วเหมาสำรับ 78 ใบเรียบร้อย',
     toastUnlockVip: 'เปิดใช้งาน Sati VIP รายเดือน (30 วัน) เรียบร้อย',
+    toastNeedQuestionBeforeDraw: 'กรุณาพิมพ์คำถามหรือแตะเลือกคำถามพรีเซ็ตก่อนกดจั่วไพ่ครับ',
+
+    drawGateLockedHint: 'ตั้งคำถามในช่องพิมพ์ หรือแตะเลือกคำถามพรีเซ็ตด้านล่างก่อน จึงจะกดจั่วไพ่เพิ่มได้',
+    drawGateReadyHint: 'ตั้งคำถามพร้อมแล้ว — กด "ถามสติ" เพื่ออ่านจากไพ่บนโต๊ะ หรือกด "จั่วเพิ่ม 1 / 3 ใบ" ด้านบนได้เลย',
+    expandPrevLabelFmt: (q) => `ขยายคำถามเดิม: "${q}"`,
+    btnExpandPrev1: 'ขยาย 1 ใบ (1 เหรียญ)',
+    btnExpandPrev3: 'ขยาย 3 ใบ (3 เหรียญ)',
+    expandPrevActionLogFmt: (count, q) => `ขอจั่วไพ่เพิ่ม ${count} ใบ เพื่อขยายคำถามเดิม: "${q}"`,
+    offlineBadgeLabel: 'โหมดออฟไลน์ · ทักษาสำรอง',
 
     satiPaywallDialogue: (nick, cost) =>
       `เหรียญเปิดดวงของ${nick}ไม่พอสำหรับรอบนี้แล้วนะ (ต้องใช้ ${cost} เหรียญ) เรื่องที่เราคุยกันกำลังเข้าจุดสำคัญเลย ถ้าอยากเจาะให้สุดทาง เลือกเติม 19 เหรียญ (99฿) หรือเปิดตั๋วเหมาสำรับ 78 ใบ (299฿) ในคลังพลังงานได้เลย เดี๋ยวสติช่วยอ่านต่อให้ชัดๆ`,
@@ -242,31 +254,31 @@ export const UI_TEXT = {
         { label: '⚡ จุดเปลี่ยนงานใน 3 เดือนนี้', question: 'จุดเปลี่ยนสำคัญเรื่องงานในอีก 3 เดือนข้างหน้าคืออะไร และฉันควรตัดสินใจยังไงดี', drawCount: 0 },
         { label: '🧭 งานนี้ไปต่อหรือเปลี่ยนทาง?', question: 'งานหรือโปรเจกต์ที่ทำอยู่ตอนนี้ ควรทุ่มไปต่อหรือมองหาทางใหม่ที่คุ้มกว่า', drawCount: 0 },
         { label: '🤝 หัวหน้า/ทีมมองเราอย่างไร', question: 'ตอนนี้หัวหน้า ทีมงาน หรือผู้ใหญ่รอบตัวมองผลงานของเราอย่างไรและควรปรับจุดไหน', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: เส้นทางงาน (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบเจาะลึกเส้นทางงาน โอกาสเติบโต และสิ่งที่ต้องระวังตรงหน้า', drawCount: 3 }
+        { label: '🚀 เส้นทางเติบโตและข้อควรระวัง', question: 'เส้นทางงาน โอกาสเติบโต และสิ่งที่ต้องระวังตรงหน้าในตอนนี้เป็นอย่างไร', drawCount: 0 }
       ],
       money: [
         { label: '💰 จุดรั่วการเงินที่มองไม่เห็น', question: 'ตอนนี้มีจุดรั่วทางการเงินหรือจังหวะเสี่ยงตรงไหนที่สติเห็นว่าต้องรีบอุดบ้าง', drawCount: 0 },
         { label: '📈 โอกาสเก็บเงินก้อนช่วงนี้', question: 'ช่วงนี้จังหวะรายรับและเงินก้อนจะขยับขึ้นจากทางไหนได้ชัดที่สุด', drawCount: 0 },
         { label: '⚖️ ลงทุนหรือเก็บสำรองก่อนดี', question: 'เรื่องเงินช่วงนี้ควรลุยลงทุนขยับขยาย หรือเก็บเงินสดสำรองไว้ก่อนดีกว่า', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: กระแสเงิน (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบดูทิศทางกระแสเงิน โอกาสรับทรัพย์ และจุดที่ห้ามประมาท', drawCount: 3 }
+        { label: '🪙 ทิศทางกระแสเงิน & โชคลาภ', question: 'ทิศทางกระแสเงิน โอกาสรับทรัพย์ และจุดที่ห้ามประมาทช่วงนี้เป็นยังไง', drawCount: 0 }
       ],
       love: [
         { label: '❤️ ความคิดลึกๆ ของอีกฝ่าย', question: 'ความรู้สึกและความคิดลึกๆ ของอีกฝ่ายที่มีต่อฉันตอนนี้เป็นยังไงกันแน่', drawCount: 0 },
         { label: '⏳ ควรลุยต่อหรือถอยตั้งหลัก?', question: 'ในความสัมพันธ์นี้ ฉันควรเดินหน้าเปิดใจต่อ หรือควรถอยมาตั้งหลักให้ชัดก่อน', drawCount: 0 },
         { label: '🌸 แนวโน้มคนใหม่ / คู่ครอง', question: 'ช่วงนี้มีเกณฑ์เจอคนที่ใช่หรือพัฒนาความสัมพันธ์ให้ชัดเจนขึ้นเมื่อไหร่', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: ทิศทางความรัก (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบเจาะลึกความรู้สึกจริง ปมที่ค้างคา และบทสรุปความสัมพันธ์นี้', drawCount: 3 }
+        { label: '💞 บทสรุปและปมในความสัมพันธ์', question: 'ความรู้สึกจริง ปมที่ค้างคา และบทสรุปความสัมพันธ์นี้จะเดินไปทางไหน', drawCount: 0 }
       ],
       self: [
         { label: '🎯 ก้าวแรกที่ต้องลงมือทันที', question: 'จากไพ่ตรงหน้า อะไรคือสิ่งแรกที่ฉันควรลงมือเปลี่ยนหรือโฟกัสภายในสัปดาห์นี้', drawCount: 0 },
         { label: '⚠️ อุปสรรคในใจที่ฉุดไว้', question: 'ตอนนี้ความกลัวหรือนิสัยเดิมแบบไหนที่กำลังฉุดไม่ให้ฉันไปข้างหน้า', drawCount: 0 },
         { label: '🛡️ สิ่งที่ต้องระวังและสุขภาพ', question: 'ช่วงนี้มีเรื่องสุขภาพ อารมณ์ หรือคนรอบข้างตรงไหนที่ควรระวังเป็นพิเศษบ้าง', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: ปลดล็อกชีวิต (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบดูทางออกชีวิต จุดแข็งที่ต้องใช้ และคำเตือนสำคัญช่วงนี้', drawCount: 3 }
+        { label: '🌅 แนวทางปลดล็อกชีวิตช่วงนี้', question: 'ทางออกชีวิต จุดแข็งที่ต้องใช้ และคำเตือนสำคัญช่วงนี้คืออะไร', drawCount: 0 }
       ],
       general: [
         { label: '🔎 เรื่องสำคัญสุดที่ไพ่เตือน', question: 'จากไพ่ทั้งหมดตอนนี้ เรื่องไหนเร่งด่วนและสำคัญที่สุดที่ฉันต้องรีบจัดการ', drawCount: 0 },
         { label: '🚀 สิ่งที่ควรทำภายในสัปดาห์นี้', question: 'ในสัปดาห์นี้ ถ้าต้องเลือกโฟกัสเพียง 1 อย่างให้คุ้มแรงที่สุด ควรทำอะไร', drawCount: 0 },
         { label: '🌿 พลังกายใจและคนรอบข้าง', question: 'ตอนนี้สมดุลชีวิต พลังงานส่วนตัว และสิ่งแวดล้อมรอบข้างเป็นยังไง มีอะไรต้องรีบปรับ', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: เจาะลึกภาพรวม (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบเจาะลึกสถานการณ์ตรงหน้า แนวโน้ม และวิธีรับมือที่ดีที่สุด', drawCount: 3 }
+        { label: '🔮 แนวโน้มและวิธีรับมือตรงหน้า', question: 'ภาพรวมสถานการณ์ตรงหน้า แนวโน้มที่จะเกิด และวิธีรับมือที่ดีที่สุดคืออะไร', drawCount: 0 }
       ]
     },
 
@@ -314,10 +326,13 @@ export const UI_TEXT = {
     btnDrawNewNatal: 'Draw 10 New Natal Cards (Full 78 Deck)',
     btnLedgerHistory: (count) => `Saved Reading History (${count} sessions)`,
     labelNickname: 'Nickname (Sati will address you by this name)',
-    placeholderNickname: 'e.g., Bom',
+    placeholderNickname: 'e.g., Alex',
     labelFullname: 'Full Name (Used for Thaksa natal analysis)',
-    placeholderFullname: 'e.g., Thanapat Phimmakorn',
+    placeholderFullname: 'e.g., Narin Suksawat',
     labelBirthdate: 'Date of Birth',
+    placeholderDay: 'Day',
+    placeholderMonth: 'Month',
+    placeholderYear: 'Year',
     btnSubmitLedger: 'Seal Ledger & Begin Reading',
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     formatYear: (beYear) => `${beYear - 543}`,
@@ -524,6 +539,15 @@ export const UI_TEXT = {
     toastAddCoins: 'Added 19 Coins — ready to continue your reading.',
     toastUnlockPass: 'Full 78-Card Deck Pass activated.',
     toastUnlockVip: 'Sati VIP Monthly Pass (30 Days) activated.',
+    toastNeedQuestionBeforeDraw: 'Please type a question or select a preset question before drawing cards.',
+
+    drawGateLockedHint: 'Type a question or tap a preset below first to unlock drawing new cards',
+    drawGateReadyHint: 'Question ready — press "Ask Sati" using current table cards, or press "Draw 1 / 3 Cards" above',
+    expandPrevLabelFmt: (q) => `Expand previous question: "${q}"`,
+    btnExpandPrev1: 'Expand 1 Card (1 Coin)',
+    btnExpandPrev3: 'Expand 3 Cards (3 Coins)',
+    expandPrevActionLogFmt: (count, q) => `Drew ${count} card(s) to expand on: "${q}"`,
+    offlineBadgeLabel: 'Offline · Thaksa Engine',
 
     satiPaywallDialogue: (nick, cost) =>
       `Your energy coins are running low, ${nick || 'friend'} (this step needs ${cost} coin${cost > 1 ? 's' : ''}). We're right at the heart of the reading — top up 19 coins (99 THB) or unlock the 78-Card Deck Pass (299 THB) so we can trace the next card clearly.`,
@@ -534,27 +558,27 @@ export const UI_TEXT = {
       work: [
         { label: '⚡ 3-Month Career Shift', question: 'What key career shift awaits in the next 3 months, and what move should I make?', drawCount: 0 },
         { label: '🧭 Stay or Pivot Path?', question: 'Should I double down on this current project/job or start pivoting to something new?', drawCount: 0 },
-        { label: '🔮 Draw 3 Cards: Career Path (3 Coins)', question: 'Pull 3 cards to reveal my career trajectory, hidden opportunity, and main risk ahead.', drawCount: 3 }
+        { label: '🔮 Career Path & Hidden Risks', question: 'What is my career trajectory, hidden opportunity, and main risk ahead?', drawCount: 0 }
       ],
       money: [
         { label: '💰 Hidden Money Leak', question: 'Where is the blind spot or financial leak the cards warn me to plug right now?', drawCount: 0 },
         { label: '📈 Best Income Channel', question: 'Which channel or strategy brings the clearest cash-flow breakthrough next?', drawCount: 0 },
-        { label: '🔮 Draw 3 Cards: Money Flow (3 Coins)', question: 'Pull 3 cards to examine upcoming income, cash traps, and the smartest financial move.', drawCount: 3 }
+        { label: '🪙 Income Traps & Opportunities', question: 'What is ahead for my upcoming income, cash traps, and smartest financial move?', drawCount: 0 }
       ],
       love: [
         { label: '❤️ What They Truly Feel', question: 'How does the other person genuinely feel about me beneath the surface right now?', drawCount: 0 },
         { label: '⏳ Lean In or Step Back?', question: 'In this connection, should I open up and move closer or step back for clarity?', drawCount: 0 },
-        { label: '🔮 Draw 3 Cards: Relationship Path (3 Coins)', question: 'Pull 3 cards to unpack real feelings, the unspoken block, and where this bond is heading.', drawCount: 3 }
+        { label: '💞 Unspoken Block & Direction', question: 'What are their real feelings, the unspoken block, and where is this bond heading?', drawCount: 0 }
       ],
       self: [
         { label: '🎯 First Concrete Step Now', question: 'Based on these cards, what is the single most impactful action I must take this week?', drawCount: 0 },
         { label: '⚠️ Inner Block Holding Me Back', question: 'What subtle fear or old habit is quietly holding me back right now?', drawCount: 0 },
-        { label: '🔮 Draw 3 Cards: Inner Reset (3 Coins)', question: 'Pull 3 cards to clarify my blind spot, strongest leverage, and practical next move.', drawCount: 3 }
+        { label: '🌅 Blind Spot & Next Leverage', question: 'What is my blind spot, strongest leverage, and practical next move right now?', drawCount: 0 }
       ],
       general: [
         { label: '🔎 Most Urgent Warning', question: 'Across all cards on the table, what is the single most urgent priority I should handle now?', drawCount: 0 },
         { label: '🚀 Best Focus This Week', question: 'If I can focus on just one decisive move this week, what gives the highest payoff?', drawCount: 0 },
-        { label: '🔮 Draw 3 Cards: Deep Situation (3 Coins)', question: 'Pull 3 cards to inspect what happens next, unseen resistance, and the best approach.', drawCount: 3 }
+        { label: '🔮 Unseen Resistance & Path', question: 'What happens next, what unseen resistance exists, and what is the best approach?', drawCount: 0 }
       ]
     },
 
@@ -602,10 +626,13 @@ export const UI_TEXT = {
     btnDrawNewNatal: '重选 10 张新本命牌（78 张全新牌库开局）',
     btnLedgerHistory: (count) => `查看历史占卜存档（${count} 场）`,
     labelNickname: '常用昵称（思谛在对话中将这样称呼你）',
-    placeholderNickname: '例如：阿博 / Bom',
+    placeholderNickname: '例如：小敏',
     labelFullname: '真实姓名（用于生辰八字与姓名能量推演）',
-    placeholderFullname: '例如：陈思远',
+    placeholderFullname: '例如：林心然',
     labelBirthdate: '出生年月日（公历）',
+    placeholderDay: '日',
+    placeholderMonth: '月',
+    placeholderYear: '年份',
     btnSubmitLedger: '盖印启盘占卜',
     months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
     formatYear: (beYear) => `${beYear - 543} 年`,
@@ -812,6 +839,15 @@ export const UI_TEXT = {
     toastAddCoins: '已补充 19 枚金币，可继续占卜。',
     toastUnlockPass: '已激活 78 张全副通行证。',
     toastUnlockVip: '已激活思谛 VIP 月卡（30 天）。',
+    toastNeedQuestionBeforeDraw: '请先输入问题或选择预设问题后再抽牌。',
+
+    drawGateLockedHint: '请先在输入框填写问题或点击下方预设问题，即可解锁加抽新牌',
+    drawGateReadyHint: '问题已就绪——可点击“提问”结合桌面现有牌解读，或点击上方“加抽 1 / 3 张”',
+    expandPrevLabelFmt: (q) => `追问上一题：“${q}”`,
+    btnExpandPrev1: '加抽 1 张 (1 金币)',
+    btnExpandPrev3: '加抽 3 张 (3 金币)',
+    expandPrevActionLogFmt: (count, q) => `加抽 ${count} 张牌深入追问：“${q}”`,
+    offlineBadgeLabel: '离线 · 八宫推演',
 
     satiPaywallDialogue: (nick, cost) =>
       `${nick || '朋友'}，能量金币已经不够这一步了（需要 ${cost} 枚金币）。我们正好推演到关键节点，点击上方补充 19 枚金币（99 泰铢）或解锁全副通行证（299 泰铢），思谛马上继续为你看透全局。`,
@@ -822,27 +858,27 @@ export const UI_TEXT = {
       work: [
         { label: '⚡ 未来 3 个月事业转折', question: '未来 3 个月我的事业会迎来什么关键转折，现在该如何抉择？', drawCount: 0 },
         { label: '🧭 坚持现职还是换赛道？', question: '目前的工作或项目应该继续深耕，还是准备转向新赛道更划算？', drawCount: 0 },
-        { label: '🔮 加抽 3 张：深挖事业走向（3 金币）', question: '再抽 3 张牌深挖事业前景、隐藏机会以及必须避开的坑。', drawCount: 3 }
+        { label: '🔮 深挖事业前景与风险', question: '我的事业前景、隐藏机会以及必须避开的坑是什么？', drawCount: 0 }
       ],
       money: [
         { label: '💰 看不见的财务漏洞', question: '牌面上有没有提醒我必须立刻堵住的漏财点或资金风险？', drawCount: 0 },
         { label: '📈 近期最清晰的进账突破', question: '接下来哪条路最有机会帮我明显提升现金流与收入？', drawCount: 0 },
-        { label: '🔮 加抽 3 张：财运与机遇（3 金币）', question: '再抽 3 张牌看清接下来财运走势、进账契机与财务禁忌。', drawCount: 3 }
+        { label: '🪙 财运走势与机遇契机', question: '接下来财运走势、进账契机与财务禁忌在哪里？', drawCount: 0 }
       ],
       love: [
         { label: '❤️ 对方心底真实想法', question: '对方现在心底对我的真实感受和顾虑究竟是什么？', drawCount: 0 },
         { label: '⏳ 主动推进还是先观望？', question: '这段关系我该主动跨前一步，还是先退后看清局势再决定？', drawCount: 0 },
-        { label: '🔮 加抽 3 张：感情心结与结局（3 金币）', question: '再抽 3 张牌深挖双方真实心意、卡住的结以及感情走向。', drawCount: 3 }
+        { label: '💞 感情心结与未来走向', question: '双方真实心意、卡住的结以及感情未来会往哪走？', drawCount: 0 }
       ],
       self: [
         { label: '🎯 本周最该立刻做的事', question: '结合桌上的牌，这周我最应该立刻落地改变的一件事是什么？', drawCount: 0 },
         { label: '⚠️ 暗中拖住我的心态', question: '现在有什么习惯或担忧正在悄悄拖慢我的行动与状态？', drawCount: 0 },
-        { label: '🔮 加抽 3 张：破局与行动指南（3 金币）', question: '再抽 3 张牌看清当前盲点、最大优势与实际破局方法。', drawCount: 3 }
+        { label: '🌅 当前盲点与破局之法', question: '我现在最大的盲点、核心优势和实际破局方法是什么？', drawCount: 0 }
       ],
       general: [
         { label: '🔎 牌阵里最紧迫的提醒', question: '结合全部牌面来看，眼下最紧急、最需要优先处理的问题是什么？', drawCount: 0 },
         { label: '🚀 本周最值得专注的一步', question: '如果本周只集中精力做一件事来扭转局面，最该选哪一步？', drawCount: 0 },
-        { label: '🔮 加抽 3 张：深度局势拆解（3 金币）', question: '再抽 3 张牌深度推演后续走向、暗藏阻力与最佳应对。', drawCount: 3 }
+        { label: '🔮 后续走势与最佳应对', question: '后续走势、暗藏阻力与眼下最佳应对方法是什么？', drawCount: 0 }
       ]
     },
 

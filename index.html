@@ -99,6 +99,9 @@
     .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
     .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.4); border-radius: 2px; }
+    .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .hud-pill { min-height: 32px; display: inline-flex; align-items: center; }
     #scene-canvas {
       position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1;
       touch-action: none;
@@ -190,25 +193,25 @@
 
     <!-- TOP GROUP (Ordered Single-Row Arcane HUD + Sati Speech Scroll) -->
     <div id="top-ui-group" class="w-full flex flex-col">
-      <header id="top-hud" class="hidden w-full px-2.5 pt-2 sm:px-4 sm:pt-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5">
+      <header id="top-hud" class="hidden w-full px-2 pt-2 sm:px-4 sm:pt-3 flex flex-wrap lg:flex-nowrap items-center justify-between gap-1.5 sm:gap-2">
         <!-- Left Cluster: Deck Counter + Discard Pile + Card Gallery + Natal 10 Cards -->
-        <div class="flex items-center gap-1.5 pointer-auto overflow-x-auto scrollbar-thin py-0.5">
-          <div class="arcane-plaque chamfer-sm px-2.5 py-1 flex items-center gap-1.5 text-xs shrink-0">
-            <span class="w-2 h-2 bg-[#d4af37] rotate-45 inline-block"></span>
+        <div class="flex flex-wrap sm:flex-nowrap items-center gap-1 sm:gap-1.5 pointer-auto max-w-full">
+          <div class="arcane-plaque chamfer-sm h-7 sm:h-8 px-2 sm:px-2.5 flex items-center gap-1.5 text-[11px] sm:text-xs shrink-0 whitespace-nowrap">
+            <span class="w-2 h-2 bg-[#d4af37] rotate-45 inline-block shrink-0"></span>
             <span data-i18n="hudDeckLabel" class="text-[#b0a999] hidden sm:inline">สำรับ</span>
             <span id="hud-deck-count" class="font-semibold text-[#f3d266]">78 / 78</span>
           </div>
 
-          <button id="btn-discard-pile" type="button" data-i18n-title="titleDiscardPile" class="btn-slate chamfer-sm px-2 sm:px-2.5 py-1 text-xs flex items-center gap-1 shrink-0 cursor-pointer" title="ดูกองไพ่ทิ้งที่ใช้ไปแล้ว">
-            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <button id="btn-discard-pile" type="button" data-i18n-title="titleDiscardPile" class="btn-slate chamfer-sm h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer" title="ดูกองไพ่ทิ้งที่ใช้ไปแล้ว">
+            <svg class="w-3.5 h-3.5 text-[#d4af37] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <rect x="6" y="4" width="12" height="16" rx="1"/>
               <path d="M4 8h2M18 8h2"/>
             </svg>
             <span id="hud-discard-count" class="font-semibold text-[#f4efe6]">กองทิ้ง: 0 ใบ</span>
           </button>
 
-          <button id="btn-deck-gallery" type="button" data-i18n-title="titleGallery" class="btn-slate chamfer-sm px-2.5 py-1 text-xs flex items-center gap-1 shrink-0" title="สมุดภาพไพ่ 78 ใบ">
-            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <button id="btn-deck-gallery" type="button" data-i18n-title="titleGallery" class="btn-slate chamfer-sm h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer" title="สมุดภาพไพ่ 78 ใบ">
+            <svg class="w-3.5 h-3.5 text-[#d4af37] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <rect x="3" y="3" width="7" height="9" rx="1"/>
               <rect x="14" y="3" width="7" height="9" rx="1"/>
               <rect x="3" y="14" width="7" height="7" rx="1"/>
@@ -217,8 +220,8 @@
             <span data-i18n="btnDeckGallery">สมุดภาพไพ่ 78 ใบ</span>
           </button>
 
-          <button id="btn-natal-drawer" type="button" data-i18n-title="titleNatal" class="hidden btn-slate chamfer-sm px-2.5 py-1 text-xs flex items-center gap-1 shrink-0" title="ดูไพ่พื้นดวง 10 ใบแรก">
-            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <button id="btn-natal-drawer" type="button" data-i18n-title="titleNatal" class="hidden btn-slate chamfer-sm h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer" title="ดูไพ่พื้นดวง 10 ใบแรก">
+            <svg class="w-3.5 h-3.5 text-[#d4af37] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <circle cx="12" cy="12" r="4"/>
               <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
             </svg>
@@ -227,9 +230,9 @@
         </div>
 
         <!-- Right Cluster: Coins + Camera 1P/2P + Hide UI + Guide (?) + Settings Gear -->
-        <div class="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-1.5 pointer-auto w-full sm:w-auto sm:ml-auto">
-          <button id="btn-shop-open" type="button" class="arcane-plaque chamfer-sm px-2 sm:px-2.5 py-1 flex items-center gap-1 text-[11px] sm:text-xs whitespace-nowrap hover:border-[#f3d266] transition">
-            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <div class="flex items-center justify-end gap-1 sm:gap-1.5 pointer-auto shrink-0 ml-auto">
+          <button id="btn-shop-open" type="button" class="arcane-plaque chamfer-sm h-7 sm:h-8 px-2 sm:px-2.5 flex items-center gap-1 text-[11px] sm:text-xs whitespace-nowrap hover:border-[#f3d266] transition cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-[#d4af37] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <polygon points="12 2 19 7 19 17 12 22 5 17 5 7"/>
               <circle cx="12" cy="12" r="3"/>
             </svg>
@@ -238,22 +241,22 @@
           </button>
 
           <button id="btn-camera-toggle" type="button" disabled data-i18n-title="titleCamToggle" title="สลับมุมมอง 1P / 2P"
-            class="btn-slate chamfer-sm px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs whitespace-nowrap flex items-center gap-1">
-            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            class="btn-slate chamfer-sm h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] sm:text-xs whitespace-nowrap flex items-center gap-1 cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-[#d4af37] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>
               <circle cx="12" cy="12" r="2.5"/>
             </svg>
             <span id="hud-cam-label">มุมมอง: สายตา 1P</span>
           </button>
 
-          <button id="btn-hide-ui" type="button" data-i18n-title="titleHideUi" class="btn-gold chamfer-sm px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs whitespace-nowrap flex items-center gap-1 shrink-0" title="ซ่อนปุ่มทั้งหมดเพื่อดูโต๊ะและไพ่เต็มจอ">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button id="btn-hide-ui" type="button" data-i18n-title="titleHideUi" class="btn-gold chamfer-sm h-7 w-7 sm:h-8 sm:w-auto sm:px-2.5 text-xs whitespace-nowrap flex items-center justify-center gap-1.5 shrink-0 cursor-pointer" title="ซ่อนปุ่มทั้งหมดเพื่อดูโต๊ะและไพ่เต็มจอ">
+            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
             </svg>
             <span data-i18n="btnHideUi" class="hidden sm:inline">ดูโต๊ะเต็มจอ</span>
           </button>
 
-          <button id="btn-guide-open" type="button" data-i18n-title="titleGuideBtn" class="btn-slate chamfer-sm p-1.5 shrink-0 cursor-pointer" title="วิธีใช้งานแอปหมอดูสติ" aria-label="วิธีใช้งานแอปหมอดูสติ">
+          <button id="btn-guide-open" type="button" data-i18n-title="titleGuideBtn" class="btn-slate chamfer-sm h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center shrink-0 cursor-pointer" title="วิธีใช้งานแอปหมอดูสติ" aria-label="วิธีใช้งานแอปหมอดูสติ">
             <svg class="w-4 h-4 text-[#f3d266]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
@@ -261,7 +264,7 @@
             </svg>
           </button>
 
-          <button id="btn-settings-open" type="button" data-i18n-title="titleSettingsBtn" class="btn-slate chamfer-sm p-1.5 shrink-0 cursor-pointer" title="ตั้งค่า & ออกจากโต๊ะหมอดู" aria-label="ตั้งค่าและออกจากโต๊ะหมอดู">
+          <button id="btn-settings-open" type="button" data-i18n-title="titleSettingsBtn" class="btn-slate chamfer-sm h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center shrink-0 cursor-pointer" title="ตั้งค่า & ออกจากโต๊ะหมอดู" aria-label="ตั้งค่าและออกจากโต๊ะหมอดู">
             <svg class="w-4 h-4 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
               <circle cx="12" cy="12" r="3"/>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -277,6 +280,7 @@
             <div class="flex items-center gap-2 min-w-0">
               <span id="sati-speaker-tag" data-i18n="satiSpeaker" class="font-display px-2 py-0.5 bg-[#d4af37] text-[#120e0a] text-[11px] font-bold tracking-wider shrink-0">สติ</span>
               <span id="sati-mood-tag" class="text-[11px] text-[#f3d266] shrink-0">ประจำโต๊ะ</span>
+              <span id="sati-offline-badge" data-i18n="offlineBadgeLabel" class="hidden text-[10px] px-1.5 py-0.5 border border-[#d4af37]/40 bg-[#191f38]/90 text-[#f3d266]/90 chamfer-sm shrink-0">โหมดออฟไลน์ · ทักษาสำรอง</span>
               <span id="dialogue-preview" data-i18n="dialoguePreview" class="hidden text-xs text-[#b0a999] truncate">แตะเลือกไพ่บนโต๊ะได้เลย...</span>
             </div>
             <div class="flex items-center gap-2 shrink-0">
@@ -366,22 +370,22 @@
         <form id="ledger-form" class="space-y-4">
           <div>
             <label for="input-nickname" data-i18n="labelNickname" class="block text-xs text-[#c5c7d4] mb-1">ชื่อเล่น (สติจะใช้เรียกชื่อนี้ตลอดการคุย)</label>
-            <input id="input-nickname" type="text" required data-i18n-placeholder="placeholderNickname" placeholder="เช่น บอม"
+            <input id="input-nickname" type="text" required data-i18n-placeholder="placeholderNickname" placeholder="เช่น มิน"
               class="w-full px-3.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 focus:border-[#d4af37] outline-none text-sm text-[#f1ede4]" />
           </div>
 
           <div>
             <label for="input-fullname" data-i18n="labelFullname" class="block text-xs text-[#c5c7d4] mb-1">ชื่อจริง - นามสกุล (สำหรับวิเคราะห์พลังทักษา)</label>
-            <input id="input-fullname" type="text" required data-i18n-placeholder="placeholderFullname" placeholder="เช่น ธนภัทร พิมพ์มากร"
+            <input id="input-fullname" type="text" required data-i18n-placeholder="placeholderFullname" placeholder="เช่น นรินทร์ สุขสวัสดิ์"
               class="w-full px-3.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 focus:border-[#d4af37] outline-none text-sm text-[#f1ede4]" />
           </div>
 
           <div>
             <label data-i18n="labelBirthdate" class="block text-xs text-[#c5c7d4] mb-1">วัน เดือน ปีเกิด (พ.ศ.)</label>
             <div class="grid grid-cols-3 gap-2">
-              <select id="input-day" aria-label="Birth day" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
-              <select id="input-month" aria-label="Birth month" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
-              <select id="input-year" aria-label="Birth year" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
+              <select id="input-day" required aria-label="Birth day" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
+              <select id="input-month" required aria-label="Birth month" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
+              <select id="input-year" required aria-label="Birth year" class="px-2.5 py-2.5 bg-[#0b0d19]/85 border border-[#d4af37]/35 text-sm text-[#f1ede4] outline-none"></select>
             </div>
           </div>
 
@@ -426,45 +430,65 @@
 
         <!-- Mode B: Chat & Draw Loop -->
         <div id="dock-chat" class="hidden flex flex-col gap-1.5">
-          <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1">
-            <button id="btn-draw-1" type="button" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center leading-tight gap-0.5 sm:gap-1">
+          <div id="draw-actions-row" class="grid grid-cols-2 gap-1.5">
+            <button id="btn-draw-1" type="button" disabled class="btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-0.5 sm:gap-1 whitespace-nowrap cursor-pointer">
               <span data-i18n="btnDraw1">จั่วเพิ่ม 1 ใบ</span>
-              <span data-i18n="btnDraw1Cost" class="text-[#f3d266] text-[10px]">(1 เหรียญ)</span>
+              <span data-i18n="btnDraw1Cost" class="text-[#f3d266] text-[9.5px] sm:text-[10px]">(1 เหรียญ)</span>
             </button>
-            <button id="btn-draw-3" type="button" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center leading-tight gap-0.5 sm:gap-1">
+            <button id="btn-draw-3" type="button" disabled class="btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-0.5 sm:gap-1 whitespace-nowrap cursor-pointer">
               <span data-i18n="btnDraw3">จั่วเพิ่ม 3 ใบ</span>
-              <span data-i18n="btnDraw3Cost" class="text-[#f3d266] text-[10px]">(3 เหรียญ)</span>
+              <span data-i18n="btnDraw3Cost" class="text-[#f3d266] text-[9.5px] sm:text-[10px]">(3 เหรียญ)</span>
             </button>
-            <button id="btn-draw-10-opt" type="button" class="hidden btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center leading-tight gap-0.5 sm:gap-1">
+            <button id="btn-draw-10-opt" type="button" disabled class="hidden btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-0.5 sm:gap-1 whitespace-nowrap cursor-pointer">
               <span data-i18n="btnDraw10Opt">เปิดผังใหญ่ 10 ใบ</span>
-              <span data-i18n="btnDraw10Cost" class="text-[#f3d266] text-[10px]">(8 เหรียญ)</span>
+              <span data-i18n="btnDraw10Cost" class="text-[#f3d266] text-[9.5px] sm:text-[10px]">(8 เหรียญ)</span>
             </button>
-            <button id="btn-self-shuffle-chat" data-i18n="btnSelfShuffle" type="button" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs cursor-pointer">
+          </div>
+
+          <p id="draw-gate-hint" class="text-[10.5px] text-[#f3d266] text-center px-1 leading-snug">
+            ตั้งคำถามในช่องพิมพ์ หรือแตะเลือกคำถามพรีเซ็ตด้านล่างก่อน จึงจะกดจั่วไพ่เพิ่มได้
+          </p>
+
+          <!-- Expand Previous Question Quick Bar -->
+          <div id="expand-prev-bar" class="hidden p-2 bg-[#141933]/90 border border-[#d4af37]/45 chamfer-sm flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <div id="expand-prev-text" class="text-[11px] text-[#f3d266] truncate flex-1"></div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button id="btn-expand-prev-1" type="button" data-i18n="btnExpandPrev1" class="btn-slate chamfer-sm h-7 px-2.5 text-[11px] text-[#f4efe6] hover:border-[#f3d266] cursor-pointer whitespace-nowrap">
+                ขยาย 1 ใบ (1 เหรียญ)
+              </button>
+              <button id="btn-expand-prev-3" type="button" data-i18n="btnExpandPrev3" class="btn-gold chamfer-sm h-7 px-2.5 text-[11px] font-semibold cursor-pointer whitespace-nowrap">
+                ขยาย 3 ใบ (3 เหรียญ)
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-1.5">
+            <button id="btn-self-shuffle-chat" data-i18n="btnSelfShuffle" type="button" class="btn-slate chamfer-sm h-8 px-2 text-[11px] sm:text-xs flex items-center justify-center whitespace-nowrap cursor-pointer">
               สับไพ่ด้วยมือเรา
             </button>
-            <button id="btn-reshuffle" type="button" disabled class="btn-gold chamfer-sm px-2 py-1 text-[11px] sm:text-xs col-span-2 sm:ml-auto cursor-pointer">
+            <button id="btn-reshuffle" type="button" disabled class="btn-gold chamfer-sm h-8 px-2 text-[11px] sm:text-xs flex items-center justify-center whitespace-nowrap cursor-pointer truncate">
               รีเซ็ต 78 ใบ (รอเหลือ 0-9 ใบ)
             </button>
           </div>
 
-          <p id="table-tap-hint" data-i18n="tableTapCardHint" class="text-[10px] text-[#b0a999] px-0.5">
+          <p id="table-tap-hint" data-i18n="tableTapCardHint" class="text-[10px] text-[#b0a999] text-center px-0.5">
             แตะที่ไพ่บนโต๊ะ 3D ได้เลยเพื่อดูความหมายเต็มใบ
           </p>
 
           <!-- Preset Category Tabs (Req 6: Love / Work / Money / General) -->
-          <div id="preset-category-bar" class="flex items-center gap-1 overflow-x-auto scrollbar-thin">
-            <button type="button" data-cat="love" data-i18n="presetCatLove" class="preset-cat-btn btn-gold chamfer-sm px-2.5 py-0.5 text-[11px] shrink-0 cursor-pointer">❤️ ความรัก</button>
-            <button type="button" data-cat="work" data-i18n="presetCatWork" class="preset-cat-btn btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] shrink-0 cursor-pointer">💼 การงาน</button>
-            <button type="button" data-cat="money" data-i18n="presetCatMoney" class="preset-cat-btn btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] shrink-0 cursor-pointer">💰 การเงิน</button>
-            <button type="button" data-cat="general" data-i18n="presetCatGeneral" class="preset-cat-btn btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] shrink-0 cursor-pointer">✨ อื่นๆ / ชีวิต</button>
+          <div id="preset-category-bar" class="grid grid-cols-4 gap-1.5">
+            <button type="button" data-cat="love" data-i18n="presetCatLove" class="preset-cat-btn btn-gold chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">❤️ ความรัก</button>
+            <button type="button" data-cat="work" data-i18n="presetCatWork" class="preset-cat-btn btn-slate chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">💼 การงาน</button>
+            <button type="button" data-cat="money" data-i18n="presetCatMoney" class="preset-cat-btn btn-slate chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">💰 การเงิน</button>
+            <button type="button" data-cat="general" data-i18n="presetCatGeneral" class="preset-cat-btn btn-slate chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">✨ อื่นๆ / ชีวิต</button>
           </div>
 
-          <div id="smart-prompt-chips" class="hidden flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-0.5"></div>
+          <div id="smart-prompt-chips" class="hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5"></div>
 
           <form id="chat-form" class="flex items-center gap-1.5">
             <input id="chat-input" type="text" data-i18n-placeholder="chatPlaceholder" placeholder="พิมพ์ถามสติต่อได้เลย..."
               class="flex-1 min-w-0 px-3 py-1.5 bg-[#0b0d19]/90 border border-[#d4af37]/40 focus:border-[#f3d266] outline-none text-xs sm:text-sm text-[#f4efe6]" />
-            <button id="btn-chat-submit" type="submit" class="btn-gold chamfer-sm px-3 py-1.5 text-xs sm:text-sm shrink-0 whitespace-nowrap">
+            <button id="btn-chat-submit" type="submit" class="btn-gold chamfer-sm px-3 py-1.5 text-xs sm:text-sm shrink-0 whitespace-nowrap cursor-pointer">
               ถามสติ (ฟรี 1 ครั้ง)
             </button>
           </form>
@@ -479,11 +503,11 @@
       <h3 id="title-modal-gmail" data-i18n="modalGmailTitle" class="font-display text-base font-bold text-[#f1ede4] mb-1">เลือกบัญชี Gmail เพื่อเข้าสู่ระบบ</h3>
       <p data-i18n="modalGmailSub" class="text-xs text-[#a6a8b8] mb-4">ระบบจะจำพื้นดวงและประวัติไพ่ผูกกับบัญชีนี้</p>
       <div class="space-y-2 mb-4">
-        <button type="button" autofocus data-email="thanapat.bom@gmail.com" data-name="ธนภัทร พิมพ์มากร" data-nick="บอม"
+        <button type="button" autofocus data-email="seeker.one@gmail.com" data-name="นรินทร์ สุขสวัสดิ์" data-nick="มิน"
           class="gmail-choice w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between">
           <div>
-            <div class="text-sm font-medium">thanapat.bom@gmail.com</div>
-            <div class="text-xs text-[#a6a8b8]">ธนภัทร พิมพ์มากร</div>
+            <div class="text-sm font-medium">seeker.one@gmail.com</div>
+            <div class="text-xs text-[#a6a8b8]">นรินทร์ สุขสวัสดิ์</div>
           </div>
           <span data-i18n="gmailPickLabel" class="text-xs text-[#d4af37]">เลือก</span>
         </button>

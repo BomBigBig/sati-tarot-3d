@@ -4,9 +4,12 @@ import { createTestCanvas, createMockState, disposalTracker } from '../harness/t
 import { createSati3DEngine } from '../../../src/scene/satiScene3D.js';
 import { buildFullDeck78, shuffleArray } from '../../../src/data/tarot78.js';
 import {
+  buildDeckCarryoverSummary,
   buildReadingBreakdown,
   computeElementalDignityInsight,
   computeNatalProfile,
+  detectTopicAndIntent,
+  extractGenuineBinaryChoices,
   synthesizeDeepReply
 } from '../../../src/engine/satiBrain.js';
 import { buildStoragePayload } from '../../../src/engine/storage.js';
@@ -26,6 +29,7 @@ describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', (
 
     assert.ok(SATI_SYSTEM_PROMPT.includes('Golden Dawn'), 'System prompt must guide Golden Dawn synthesis');
     assert.ok(SATI_SYSTEM_PROMPT.includes('ห้ามไล่ชื่อไพ่ทั้ง 10 ใบ'), 'System prompt must forbid textbook 10-card recitation');
+    assert.ok(SATI_SYSTEM_PROMPT.includes('กู มึง'), 'System prompt must explicitly forbid crude Thai pronouns');
 
     const user = computeNatalProfile({ fullname: 'ธนภัทร พิมพ์มากร', nickname: 'บอม', day: 25, month: 6, year: 2539 });
     const state = createMockState({ user, natalCards: deck.slice(0, 10), remainingDeck: deck.slice(10) });
@@ -50,8 +54,11 @@ describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', (
     const picked = engine.getFanCardMeshes().slice(0, 3);
     picked.forEach((m, i) => engine.placeSpreadCardIn3D(m, fullDeck[10 + i], i, 3));
 
+    engine.syncDiscardPile3D([]);
+    assert.equal(engine.getDiscardCardMeshes().length, 0, '3D discard pile must stay 0 while initial spread is still on the table');
+
     engine.syncDiscardPile3D(state.discardPile);
-    assert.equal(engine.getDiscardCardMeshes().length, 10, '3D discard pile renders layers matching discardPile count');
+    assert.equal(engine.getDiscardCardMeshes().length, 10, '3D discard pile renders layers matching discardPile count once replaced');
 
     disposalTracker.reset();
     // Test preserveSpread=true keeps drawn spread cards while re-fanning remainingDeck cleanly
@@ -98,5 +105,58 @@ describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', (
     assert.equal(canResetAt(10), false);
     assert.equal(canResetAt(9), true);
     assert.equal(canResetAt(0), true);
+  });
+
+  it('SC-06-04: Long-deck anti-repetition, topic isolation, or-choice guard & deck reshuffle carryover work cleanly', () => {
+    const deck = buildFullDeck78();
+    const user = computeNatalProfile({ fullname: 'กิตติภพ รัตนโชติ', nickname: 'ต้น', day: 14, month: 9, year: 2537 });
+
+    // 1. Standalone family/meta questions must not stick to previous 'work' topic
+    assert.equal(detectTopicAndIntent('ความสัมพันธ์ในครอบครัวช่วงนี้มีเรื่องอะไรที่ต้องใส่ใจเป็นพิเศษ', 'work').topic, 'self');
+    assert.equal(detectTopicAndIntent('จุดบอดที่ผมมองข้ามมานานที่สุดคืออะไร', 'work').topic, 'general');
+
+    // 2. Non-choice 'หรือ' predicates must not break into nonsensical "เลือก X" phrases
+    assert.equal(extractGenuineBinaryChoices('ถ้าอยากเริ่มทำโปรเจกต์เสริม จะรุ่งหรือเสี่ยง', 'th'), null);
+    assert.equal(extractGenuineBinaryChoices('คนที่คุยอยู่ตอนนี้เขาจริงจังแค่ไหน หรือแค่คุยแก้เหงา', 'th'), null);
+    assert.equal(extractGenuineBinaryChoices('ถ้าต้องเลือกวางแผนปลายปี ควรโฟกัสงาน เงิน หรือเรื่องคนรอบตัวก่อน', 'th'), null);
+    const genuinePair = extractGenuineBinaryChoices('ควรลาออกตอนนี้เลยไหม หรือรอโบนัสปลายปีก่อนดี', 'th');
+    assert.ok(Array.isArray(genuinePair) && genuinePair.length === 2);
+
+    // 3. Multi-turn offline synthesis avoids copying identical opening/closing boilerplate back-to-back
+    const st = createMockState({ user, natalCards: deck.slice(0, 10), remainingDeck: deck.slice(10), chatHistory: [] });
+    const prompts = [
+      'ความสัมพันธ์ในครอบครัวช่วงนี้มีเรื่องอะไรที่ต้องใส่ใจเป็นพิเศษ',
+      'จุดบอดที่ผมมองข้ามมานานที่สุดคืออะไร',
+      'โอกาสใหม่ที่ไม่คาดคิดใน 1 เดือนนี้จะมาทางไหน',
+      'ก่อนจบสำรับแรก ไพ่อยากย้ำคำแนะนำสุดท้ายเรื่องอะไร',
+      'ภาพรวมไพ่ช่วงท้ายสำรับนี้สรุปบทเรียนใหญ่ที่สุดของผมตอนนี้คืออะไร',
+      'ทิศทางชีวิตอีก 6 เดือนข้างหน้าควรปรับอะไรบ้าง'
+    ];
+    const replies = prompts.map((q, idx) => {
+      const spread = deck.slice(10 + idx * 3, 13 + idx * 3);
+      st.chatHistory.push({ speaker: user.nickname, role: 'user', text: q });
+      const ans = synthesizeDeepReply(st, q, spread);
+      st.chatHistory.push({ speaker: 'สติ', role: 'sati', text: ans });
+      assert.ok(!ans.includes('ถามวนเรื่องเดิมซ้ำ'), `Turn ${idx + 1} distinct question must not trigger repeat scolding`);
+      return ans;
+    });
+    for (let i = 1; i < replies.length; i += 1) {
+      assert.notEqual(replies[i].slice(0, 30), replies[i - 1].slice(0, 30), 'Consecutive offline openings should vary cleanly');
+      const lastLinePrev = replies[i - 1].split('\n').pop().slice(0, 26);
+      const lastLineCurr = replies[i].split('\n').pop().slice(0, 26);
+      assert.notEqual(lastLineCurr, lastLinePrev, 'Consecutive offline closing clauses must rotate cleanly');
+    }
+
+    // 4. Reshuffle carryover summary preserves thematic anchor while isolating active repeat checks
+    st.deckNumber = 1;
+    st.activeSpread = deck.slice(28, 31);
+    const summary = buildDeckCarryoverSummary(st, 'th');
+    assert.ok(summary.includes('สำรับ 1') && summary.length > 20);
+    st.deckCarryoverSummary = summary;
+    st.deckResetAtIndex = st.chatHistory.length;
+    st.deckNumber = 2;
+    st.lastTopic = 'general';
+    const postResetAns = synthesizeDeepReply(st, 'ในสำรับใหม่นี้ โอกาสใหญ่เรื่องงานจะเริ่มจากทางไหน', deck.slice(0, 3));
+    assert.ok(!postResetAns.includes('ถามวนเรื่องเดิมซ้ำ'), 'First question on newly reset Deck #2 must never accuse repeat against Deck #1');
   });
 });

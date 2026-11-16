@@ -355,30 +355,90 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
   return [pairLine, cycleLine].filter(Boolean).join(' ');
 }
 
+function cleanChoiceOption(s, isFirst, lang = 'th') {
+  if (lang === 'en') {
+    return (s || '').replace(/^(should i|choose between|between|is it better to)\s*/i, '').replace(/[?]+$/, '').trim() || (s || '').trim();
+  }
+  if (lang === 'zh') {
+    return (s || '').replace(/^(是|应该|选|要不要)\s*/g, '').replace(/[？?]+$/, '').trim() || (s || '').trim();
+  }
+  return (s || '')
+    .replace(isFirst ? /^(แล้ว|ถ้า|ควร|จะ|เลือก|ระหว่าง|อยากรู้ว่า)\s*/g : /^(ควร|จะ|ค่อย)\s*/g, '')
+    .replace(/(ตอนนี้เลย|ดีไหม|ไหม|มั้ย|ดีกว่า|ก่อนดี|ก่อน|มากกว่า|กันแน่|ครับ|ค่ะ|คับ|นะ)+$/g, '')
+    .replace(/\s*(ดี|ไหม)$/g, '')
+    .trim() || (s || '').trim();
+}
+
+function isBadBinaryPredicate(opt) {
+  const s = String(opt || '').trim();
+  if (!s || s.length < 3) return true;
+  if (/^(?:จะ|แค่)?(?:รุ่ง|พัง|เสี่ยง|ดี|ร้าย|ได้|ผ่าน|รอด|คุ้ม|เสีย|มาก|น้อย|ใช่|ไม่|จริง|เล่น|คุยแก้เหงา|จริงจังแค่ไหน|ดีลใหญ่เข้ามา|เดือนหน้าจะมีรายได้พิเศษ)$/i.test(s)) {
+    return true;
+  }
+  return false;
+}
+
+export function extractGenuineBinaryChoices(q, lang = 'th') {
+  const text = String(q || '').trim();
+  if (!text) return null;
+  if (lang === 'en') {
+    const m = text.match(/(.+?)\s+or\s+(.+?)(\?|$)/i);
+    if (!m || !m[1] || !m[2] || /\s+or\s+/i.test(m[2])) return null;
+    const optA = cleanChoiceOption(m[1], true, 'en');
+    const optB = cleanChoiceOption(m[2], false, 'en');
+    if (isBadBinaryPredicate(optA) || isBadBinaryPredicate(optB)) return null;
+    return [optA, optB];
+  }
+  if (lang === 'zh') {
+    const m = text.match(/(.+?)\s*还是\s*(.+?)([？?]|$)/);
+    if (!m || !m[1] || !m[2] || /还是/.test(m[2])) return null;
+    const optA = cleanChoiceOption(m[1], true, 'zh');
+    const optB = cleanChoiceOption(m[2], false, 'zh');
+    if (isBadBinaryPredicate(optA) || isBadBinaryPredicate(optB)) return null;
+    return [optA, optB];
+  }
+  // Reject 3+ item comma/space lists and non-choice outcome/priority predicates in Thai
+  if ((text.match(/หรือ/g) || []).length > 1) return null;
+  if (/,/.test(text.split('หรือ')[0] || '')) return null;
+  if (/(?:โฟกัส|เน้น|เริ่มจาก|ลำดับ).{2,30}ก่อน/.test(text)) return null;
+  const m = text.match(/(.+?)\s*หรือ\s*(?!เปล่า|ป่าว|ปล่าว|ไม่|ยัง)(.+?)(\?|$)/);
+  if (!m || !m[1] || !m[2]) return null;
+  const optA = cleanChoiceOption(m[1], true, 'th');
+  const optB = cleanChoiceOption(m[2], false, 'th');
+  if (isBadBinaryPredicate(optA) || isBadBinaryPredicate(optB)) return null;
+  const tailClauseA = optA.split(/ควร|โฟกัส|เน้น|เลือก|วางแผน/).pop()?.trim() || '';
+  if (/^\S{2,10}\s+\S{2,10}$/.test(tailClauseA)) return null;
+  // Require decision framing markers around the Thai options
+  const looksActionChoice = /ควร|เลือก|ระหว่าง|ย้าย|ลาออก|รอ|อยู่|ไป|ทำ|เปลี่ยน|คุย|คบ|ถอย|ซื้อ|ถือ|ขาย|should|launch|wait/i.test(text);
+  if (!looksActionChoice) return null;
+  return [optA, optB];
+}
+
 export function detectTopicAndIntent(q, prevTopic) {
-  let topic = prevTopic || 'general';
-  if (/ความรัก|แฟน|คนคุย|จีบ|นอกใจ|ง้อ|เลิกกัน|ขอคืนดี|คบกัน|แต่งงาน|มีใจ|คิดถึง|รักเรา|จริงใจ|เนื้อคู่|คู่รัก|โสด|อกหัก|แอบชอบ|เขารู้สึก|เขาคิด|เธอรู|เค้าคิด|เค้ายัง|เขายัง|มีคนอื่น|love|romance|relationship|partner|crush|dating|marriage|feelings|his heart|her heart|ex\b|感情|爱情|恋爱|对象|另一半|暗恋|前任|分手|复合|喜欢我|在乎|婚姻/i.test(q)) {
+  const rawQ = String(q || '').trim();
+  const isEllipticalFollowUp = rawQ.length > 0 && rawQ.length < 28 && /^(แล้ว|ส่วน|ต่อ|ขยาย|เรื่องนั้น|เรื่องเขา|แล้วถ้า|and what|what about|then|那|还有)/i.test(rawQ);
+  let topic = isEllipticalFollowUp && prevTopic ? prevTopic : 'general';
+
+  if (/ความรัก|แฟน|คนคุย|จีบ|นอกใจ|ง้อ|เลิกกัน|ขอคืนดี|คบกัน|แต่งงาน|มีใจ|คิดถึง|รักเรา|จริงใจ|จริงจัง|เนื้อคู่|คู่รัก|โสด|อกหัก|แอบชอบ|เขารู้สึก|เขาคิด|เธอรู|เค้าคิด|เค้ายัง|เขายัง|มีคนอื่น|love|romance|relationship|partner|crush|dating|marriage|feelings|his heart|her heart|ex\b|感情|爱情|恋爱|对象|另一半|暗恋|前任|分手|复合|喜欢我|在乎|婚姻/i.test(rawQ)) {
     topic = 'love';
-  } else if (/งาน|โปรเจกต์|เจ้านาย|หัวหน้า|ลูกน้อง|ทีม|ลูกค้า|ธุรกิจ|บริษัท|ออฟฟิศ|เรียน|สอบ|สมัครงาน|สัมภาษณ์|ลาออก|ย้ายงาน|เปลี่ยนงาน|เลื่อนขั้น|ทำแอป|ออกแบบ|เขียนโค้ด|รับเหมา|อาชีพ|work|job|career|project|boss|manager|team|client|business|company|office|study|exam|interview|resign|quit|promotion|startup|coding|工作|事业|项目|老板|上司|团队|客户|生意|公司|办公室|学习|考试|面试|辞职|跳槽|转行|升职|创业/i.test(q)) {
+  } else if (/งาน|โปรเจกต์|เจ้านาย|หัวหน้า|ลูกน้อง|ทีม|ลูกค้า|ธุรกิจ|บริษัท|ออฟฟิศ|เรียน|สอบ|สมัครงาน|สัมภาษณ์|ลาออก|ย้ายงาน|เปลี่ยนงาน|เลื่อนขั้น|ทำแอป|ออกแบบ|เขียนโค้ด|รับเหมา|อาชีพ|work|job|career|project|boss|manager|team|client|business|company|office|study|exam|interview|resign|quit|promotion|startup|coding|工作|事业|项目|老板|上司|团队|客户|生意|公司|办公室|学习|考试|面试|辞职|跳槽|转行|升职|创业/i.test(rawQ)) {
     topic = 'work';
-  } else if (/การเงิน|เงิน|รายได้|รายรับ|รายจ่าย|ลงทุน|หนี้|ค้าขาย|ขายของ|ยอดขาย|ขายได้|ขายดี|กำไร|ต้นทุน|เงินทุน|ขาดทุน|ค่าใช้จ่าย|ร่ำรวย|จะรวย|ซื้อ|ผ่อน|เทรด|ทองคำ|ราคาทอง|เล่นหุ้น|หุ้น|เหรียญ|โบนัส|เงินเดือน|ช็อต|ตึงมือ|money|income|salary|revenue|expense|invest|debt|sales|profit|cost|capital|loss|wealth|rich|trade|gold|stock|crypto|bonus|cash|finance|budget|钱|财运|收入|工资|支出|花销|投资|负债|债务|销量|利润|成本|本金|亏损|发财|暴富|贷款|交易|黄金|股票|资金/i.test(q)) {
+  } else if (/การเงิน|เงิน|รายได้|รายรับ|รายจ่าย|ลงทุน|หนี้|ค้าขาย|ขายของ|ยอดขาย|ขายได้|ขายดี|กำไร|ต้นทุน|เงินทุน|ขาดทุน|ค่าใช้จ่าย|ร่ำรวย|จะรวย|ซื้อ|ผ่อน|เทรด|ทองคำ|ราคาทอง|เล่นหุ้น|หุ้น|เหรียญ|โบนัส|เงินเดือน|ช็อต|ตึงมือ|สภาพคล่อง|ออมเงิน|ดีล|money|income|salary|revenue|expense|invest|debt|sales|profit|cost|capital|loss|wealth|rich|trade|gold|stock|crypto|bonus|cash|finance|budget|钱|财运|收入|工资|支出|花销|投资|负债|债务|销量|利润|成本|本金|亏损|发财|暴富|贷款|交易|黄金|股票|资金/i.test(rawQ)) {
     topic = 'money';
-  } else if (/รัก|เขา|เธอ/.test(q)) {
+  } else if (/รัก|เขา|เธอ/.test(rawQ)) {
     topic = 'love';
-  } else if (/สุขภาพ|เหนื่อย|ท้อ|เครียด|พักผ่อน|นอนไม่หลับ|หมดไฟ|สับสน|กดดัน|ตัวเอง|ชีวิต|ความฝัน|เป้าหมาย|health|tired|stressed|rest|insomnia|burnout|confused|pressure|myself|life\b|dream|goal|健康|累|疲惫|焦虑|压力|休息|失眠|迷茫|内耗|人生|梦想|目标/i.test(q)) {
+  } else if (/ครอบครัว|พ่อแม่|พี่น้อง|ญาติ|สุขภาพ|เหนื่อย|ท้อ|เครียด|พักผ่อน|นอนไม่หลับ|หมดไฟ|สับสน|กดดัน|ตัวเอง|ชีวิต|ความฝัน|เป้าหมาย|health|family|tired|stressed|rest|insomnia|burnout|confused|pressure|myself|life\b|dream|goal|健康|家庭|累|疲惫|焦虑|压力|休息|失眠|迷茫|内耗|人生|梦想|目标/i.test(rawQ)) {
     topic = 'self';
   }
 
   let intent = 'explain';
-  if (/คิดยังไง|รู้สึกยังไง|จริงใจ|มองเรา|เขารู้สึก|กลับมาไหม|มีคนอื่นไหม|รักเรา|ชอบเรา|คิดถึง|how does he feel|how does she feel|feel about me|still love|come back|someone else|sincere|怎么看我|他怎么想|她怎么想|喜欢我吗|还爱我吗|真心吗|会不会回来|有别人吗/i.test(q)) intent = 'other_person';
-  else if (/เมื่อไหร่|นานไหม|กี่เดือน|กี่วัน|กี่สัปดาห์|ช่วงไหน|เร็วๆ|ตอนไหน|ปีนี้|เดือนนี้|วันไหน|when\b|how long|how soon|which month|this year|this month|什么时候|多久|几个月|几天|几周|哪个月|今年|近期/i.test(q)) intent = 'timing';
-  else if ((/หรือ(?!เปล่า|ป่าว|ปล่าว|ไม่|ยัง|ไหม|มั้ย|คะ|ครับ|นะ|$)/.test(q) && /(.{2,})\s*หรือ\s*(?!เปล่า|ป่าว|ปล่าว|ไม่|ยัง)(.{2,})/.test(q) && !/จริงใจกับเรา|รักเรา|ชอบเรา|คิดถึงเรา/.test(q))
-    || /\s+or\s+/i.test(q)
-    || /还是/.test(q)) intent = 'decision';
-  else if (/ดีไหม|ควรไหม|เอาไง|เลือก|ระหว่าง|ไปต่อ|ลาออก|เสี่ยง|คุ้มไหม|ควรทำ|should i|worth it|choose|stay or go|quit|还是选|应该|好不好|值不值得|怎么选|要继续吗/i.test(q)) intent = 'decision';
-  else if (/ทำยังไง|แก้ยังไง|เริ่มยังไง|ควรทำ|แนะนำ|ทางออก|รับมือ|ต้องระวังอะไร|แก้ตรงไหน|ยังไงดี|how should i|what should i do|advice|fix|handle|start|怎么办|怎么做|怎么解决|建议|需要注意|如何应对/i.test(q)) intent = 'action';
-  else if (/ทำไม|เพราะอะไร|ติดอะไร|เกิดจาก|สาเหตุ|why\b|what is blocking|reason|cause|为什么|原因|卡在哪里|怎么会这样/i.test(q)) intent = 'why';
-  else if (/สำเร็จไหม|รอดไหม|ได้ไหม|ได้มั้ย|สมหวังไหม|มีโอกาส.*?(?:ไหม|มั้ย|ป่าว|เปล่า|ปล่าว)|ได้หรือ(?:เปล่า|ป่าว|ปล่าว|ไม่)|เป็นไปได้ไหม|จะ.*?(?:ได้ไหม|ได้มั้ย|ได้ป่าว|ได้หรือเปล่า|ได้หรือป่าว|ได้หรือปล่าว)|เก็บเงิน.*?(?:ไหม|มั้ย|ป่าว|เปล่า)|ปังไหม|เวิร์คไหม|ผ่านไหม|ดีขึ้นไหม|จะดีไหม|will it work|will i succeed|chances|possible|achieve|pass|improve|能成吗|顺利吗|有机会吗|做得到吗|实现吗|会变好吗|过得去吗/i.test(q)) intent = 'outcome';
+  if (/คิดยังไง|รู้สึกยังไง|จริงใจ|จริงจัง|มองเรา|เขารู้สึก|กลับมาไหม|มีคนอื่นไหม|รักเรา|ชอบเรา|คิดถึง|how does he feel|how does she feel|feel about me|still love|come back|someone else|sincere|怎么看我|他怎么想|她怎么想|喜欢我吗|还爱我吗|真心吗|会不会回来|有别人吗/i.test(rawQ)) intent = 'other_person';
+  else if (/เมื่อไหร่|นานไหม|กี่เดือน|กี่วัน|กี่สัปดาห์|ช่วงไหน|เร็วๆ|ตอนไหน|ปีนี้|เดือนนี้|วันไหน|when\b|how long|how soon|which month|this year|this month|什么时候|多久|几个月|几天|几周|哪个月|今年|近期/i.test(rawQ)) intent = 'timing';
+  else if (extractGenuineBinaryChoices(rawQ, /[\u4E00-\u9FFF]/.test(rawQ) ? 'zh' : /[a-zA-Z]{4}/.test(rawQ) ? 'en' : 'th')) intent = 'decision';
+  else if (/ดีไหม|ควรไหม|เอาไง|เลือก|ระหว่าง|ไปต่อ|ลาออก|คุ้มไหม|should i|worth it|choose|stay or go|quit|还是选|应该|好不好|值不值得|怎么选|要继续吗/i.test(rawQ)) intent = 'decision';
+  else if (/ทำยังไง|แก้ยังไง|เริ่มยังไง|ควรทำ|แนะนำ|ทางออก|รับมือ|ต้องระวังอะไร|แก้ตรงไหน|ยังไงดี|โฟกัส.*ก่อน|ใส่ใจ.*เป็นพิเศษ|how should i|what should i do|advice|fix|handle|start|怎么办|怎么做|怎么解决|建议|需要注意|如何应对/i.test(rawQ)) intent = 'action';
+  else if (/ทำไม|เพราะอะไร|ติดอะไร|เกิดจาก|สาเหตุ|why\b|what is blocking|reason|cause|为什么|原因|卡在哪里|怎么会这样/i.test(rawQ)) intent = 'why';
+  else if (/สำเร็จไหม|รอดไหม|ได้ไหม|ได้มั้ย|สมหวังไหม|รุ่งหรือเสี่ยง|เสี่ยงไหม|มีโอกาส.*?(?:ไหม|มั้ย|ป่าว|เปล่า|ปล่าว)|ได้หรือ(?:เปล่า|ป่าว|ปล่าว|ไม่)|เป็นไปได้ไหม|จะ.*?(?:ได้ไหม|ได้มั้ย|ได้ป่าว|ได้หรือเปล่า|ได้หรือป่าว|ได้หรือปล่าว)|เก็บเงิน.*?(?:ไหม|มั้ย|ป่าว|เปล่า)|ปังไหม|เวิร์คไหม|ผ่านไหม|ดีขึ้นไหม|จะดีไหม|will it work|will i succeed|chances|possible|achieve|pass|improve|能成吗|顺利吗|有机会吗|做得到吗|实现吗|会变好吗|过得去吗/i.test(rawQ)) intent = 'outcome';
 
   return { topic, intent };
 }
@@ -460,16 +520,55 @@ function selectRelevantNatalIndices(topic, intent, q) {
   return [0, 1, 9];
 }
 
-function buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang) {
+function pickFreshVariant(variants, seed = 0, recentTexts = []) {
+  if (!Array.isArray(variants) || variants.length === 0) return '';
+  const recentJoined = (recentTexts || []).join(' ');
+  const len = variants.length;
+  for (let offset = 0; offset < len; offset += 1) {
+    const cand = variants[(Math.abs(seed) + offset) % len];
+    const probe = String(cand || '').slice(0, 22).trim();
+    if (!probe || !recentJoined.includes(probe)) {
+      return cand;
+    }
+  }
+  return variants[Math.abs(seed) % len];
+}
+
+function getRecentSatiTexts(state, limit = 2) {
+  const hist = Array.isArray(state?.chatHistory) ? state.chatHistory : [];
+  const scoped = typeof state?.deckResetAtIndex === 'number' ? hist.slice(state.deckResetAtIndex) : hist;
+  return scoped
+    .filter((h) => h && (h.role === 'sati' || ['สติ', 'Sati', '思谛'].includes(h.speaker)))
+    .slice(-limit)
+    .map((h) => String(h.text || ''));
+}
+
+function buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed = 0, recentTexts = []) {
   const lbl = (c) => getLocalizedCardLabelInline(c, lang);
   const mean = (c) => getCardMeaningForTopic(c, topic, lang);
   let story = '';
 
   if (refCards.length === 1) {
     const c0 = refCards[0];
-    if (lang === 'en') story = `The card on the table is ${lbl(c0)} — ${mean(c0)}`;
-    else if (lang === 'zh') story = `眼下这张${lbl(c0)}说得很直白：${mean(c0)}`;
-    else story = `ไพ่ที่หยิบขึ้นมาคือ ${lbl(c0)} ซึ่งสะท้อนเรื่องนี้ตรงๆ ว่า${mean(c0)}`;
+    if (lang === 'en') {
+      story = pickFreshVariant([
+        `The card on the table is ${lbl(c0)} — ${mean(c0)}`,
+        `${lbl(c0)} speaks straight to your point: ${mean(c0)}`,
+        `Your draw lands squarely on ${lbl(c0)}, showing ${mean(c0)}`
+      ], turnSeed, recentTexts);
+    } else if (lang === 'zh') {
+      story = pickFreshVariant([
+        `眼下这张${lbl(c0)}说得很直白：${mean(c0)}`,
+        `手头这张${lbl(c0)}点出核心：${mean(c0)}`,
+        `抽出的${lbl(c0)}直接给出回应：${mean(c0)}`
+      ], turnSeed, recentTexts);
+    } else {
+      story = pickFreshVariant([
+        `ไพ่ที่หยิบขึ้นมาคือ ${lbl(c0)} ซึ่งสะท้อนเรื่องนี้ตรงๆ ว่า${mean(c0)}`,
+        `ใบนี้จับได้ ${lbl(c0)} ที่เปิดมุมชัดว่า${mean(c0)}`,
+        `หน้าไพ่ ${lbl(c0)} บอกตรงเป้าเรื่องนี้เลยว่า${mean(c0)}`
+      ], turnSeed, recentTexts);
+    }
   } else if (refCards.length === 2) {
     const [c0, c1] = refCards;
     const p0 = scoreCardPolarity(c0);
@@ -494,20 +593,58 @@ function buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, nata
     const p1 = scoreCardPolarity(c1);
     const p2 = outcomeTone;
     if (lang === 'en') {
-      if (p1 === 'favorable' && p2 === 'caution') story = `${lbl(c0)} sets the tone (${stripEnEnd(mean(c0))}). While ${lbl(c1)} tempts you to move fast (${stripEnEnd(mean(c1))}), ${lbl(c2)} cautions at the close: ${mean(c2)}`;
-      else if (p1 === 'caution' && p2 === 'favorable') story = `${lbl(c0)} opens well (${stripEnEnd(mean(c0))}), and despite ${lbl(c1)} causing friction (${stripEnEnd(mean(c1))}), everything clears at ${lbl(c2)}: ${mean(c2)}`;
-      else if (p2 === 'caution') story = `${lbl(c0)} shows where things sit (${stripEnEnd(mean(c0))}), and with ${lbl(c1)} (${stripEnEnd(mean(c1))}), ${lbl(c2)} flags caution: ${mean(c2)}`;
-      else story = `${lbl(c0)} shows the start (${stripEnEnd(mean(c0))}), ${lbl(c1)} shapes the turn (${stripEnEnd(mean(c1))}), leading into ${lbl(c2)}: ${mean(c2)}`;
+      if (p1 === 'favorable' && p2 === 'caution') {
+        story = pickFreshVariant([
+          `${lbl(c0)} sets the tone (${stripEnEnd(mean(c0))}). While ${lbl(c1)} tempts you to move fast (${stripEnEnd(mean(c1))}), ${lbl(c2)} cautions at the close: ${mean(c2)}`,
+          `Opening with ${lbl(c0)} (${stripEnEnd(mean(c0))}) and active momentum from ${lbl(c1)} (${stripEnEnd(mean(c1))}), watch the closing check in ${lbl(c2)}: ${mean(c2)}`
+        ], turnSeed, recentTexts);
+      } else if (p1 === 'caution' && p2 === 'favorable') {
+        story = pickFreshVariant([
+          `${lbl(c0)} opens well (${stripEnEnd(mean(c0))}), and despite ${lbl(c1)} causing friction (${stripEnEnd(mean(c1))}), everything clears at ${lbl(c2)}: ${mean(c2)}`,
+          `Right now ${lbl(c0)} points to ${stripEnEnd(mean(c0))}; once you handle the snag in ${lbl(c1)} (${stripEnEnd(mean(c1))}), ${lbl(c2)} brings relief: ${mean(c2)}`
+        ], turnSeed, recentTexts);
+      } else if (p2 === 'caution') {
+        story = pickFreshVariant([
+          `${lbl(c0)} shows where things sit (${stripEnEnd(mean(c0))}), and with ${lbl(c1)} (${stripEnEnd(mean(c1))}), ${lbl(c2)} flags caution: ${mean(c2)}`,
+          `Between ${lbl(c0)} (${stripEnEnd(mean(c0))}) and ${lbl(c1)} (${stripEnEnd(mean(c1))}), the closing signal ${lbl(c2)} tells you plainly: ${mean(c2)}`
+        ], turnSeed, recentTexts);
+      } else {
+        story = pickFreshVariant([
+          `${lbl(c0)} shows the start (${stripEnEnd(mean(c0))}), ${lbl(c1)} shapes the turn (${stripEnEnd(mean(c1))}), leading into ${lbl(c2)}: ${mean(c2)}`,
+          `Stepping from ${lbl(c0)} (${stripEnEnd(mean(c0))}) through ${lbl(c1)} (${stripEnEnd(mean(c1))}), the spread lands on ${lbl(c2)} — ${mean(c2)}`
+        ], turnSeed, recentTexts);
+      }
     } else if (lang === 'zh') {
       if (p1 === 'favorable' && p2 === 'caution') story = `眼下${lbl(c0)}反映${stripZhEnd(mean(c0))}；虽然${lbl(c1)}很让人想冲一把（${stripZhEnd(mean(c1))}），但收尾的${lbl(c2)}提醒：${mean(c2)}`;
       else if (p1 === 'caution' && p2 === 'favorable') story = `从${lbl(c0)}看，${stripZhEnd(mean(c0))}；哪怕中间夹着${lbl(c1)}的纠结（${stripZhEnd(mean(c1))}），最终仍会在${lbl(c2)}转晴：${mean(c2)}`;
       else if (p2 === 'caution') story = `${lbl(c0)}显示${stripZhEnd(mean(c0))}，加上${lbl(c1)}（${stripZhEnd(mean(c1))}），尾牌${lbl(c2)}提示谨慎：${mean(c2)}`;
       else story = `${lbl(c0)}点出起点（${stripZhEnd(mean(c0))}），中间由${lbl(c1)}承接（${stripZhEnd(mean(c1))}），最后落到${lbl(c2)}：${mean(c2)}`;
     } else {
-      if (p1 === 'favorable' && p2 === 'caution') story = `ตอนนี้ ${lbl(c0)} บอกว่า${mean(c0)} แม้ ${lbl(c1)} จะเปิดมุมให้เห็นว่า${mean(c1)} แต่ปลายทางยังมี ${lbl(c2)} เตือนชัดว่า${mean(c2)}`;
-      else if (p1 === 'caution' && p2 === 'favorable') story = `ตอนนี้ ${lbl(c0)} ชี้ว่า${mean(c0)} แม้ตรงกลางยังมีปมจาก ${lbl(c1)} คือ${mean(c1)} ทว่าปลายทางเปิดโล่งที่ ${lbl(c2)} — ${mean(c2)}`;
-      else if (p2 === 'caution') story = `จาก ${lbl(c0)} ตอนนี้ชี้ว่า${mean(c0)} ผสมกับ ${lbl(c1)} ที่บอกว่า${mean(c1)} ปลายทาง ${lbl(c2)} เลยเตือนไว้ว่า${mean(c2)}`;
-      else story = `เริ่มจาก ${lbl(c0)} ที่เห็นว่า${mean(c0)} มี ${lbl(c1)} เชื่อมตรงกลางว่า${mean(c1)} ก่อนไปจบที่ ${lbl(c2)} — ${mean(c2)}`;
+      if (p1 === 'favorable' && p2 === 'caution') {
+        story = pickFreshVariant([
+          `ตอนนี้ ${lbl(c0)} บอกว่า${mean(c0)} แม้ ${lbl(c1)} จะเปิดมุมให้เห็นว่า${mean(c1)} แต่ปลายทางยังมี ${lbl(c2)} เตือนชัดว่า${mean(c2)}`,
+          `ภาพรวมจาก ${lbl(c0)} คือ${mean(c0)} บวกจังหวะใน ${lbl(c1)} ที่ชี้ว่า${mean(c1)} ทว่าไพ่ปิด ${lbl(c2)} เบรกว่า${mean(c2)}`,
+          `จังหวะนี้เปิดหัวด้วย ${lbl(c0)} ว่า${mean(c0)} โดยมี ${lbl(c1)} ดันมุมให้เห็นว่า${mean(c1)} ก่อน ${lbl(c2)} จะขีดเส้นเตือนตรงๆ ว่า${mean(c2)}`
+        ], turnSeed, recentTexts);
+      } else if (p1 === 'caution' && p2 === 'favorable') {
+        story = pickFreshVariant([
+          `ตอนนี้ ${lbl(c0)} ชี้ว่า${mean(c0)} แม้ตรงกลางยังมีปมจาก ${lbl(c1)} คือ${mean(c1)} ทว่าปลายทางเปิดโล่งที่ ${lbl(c2)} — ${mean(c2)}`,
+          `เห็นชัดจาก ${lbl(c0)} ว่า${mean(c0)} ถึงจะต้องผ่านด่าน ${lbl(c1)} ตรงที่${mean(c1)} แต่สุดท้ายไปจบดีที่ ${lbl(c2)} คือ${mean(c2)}`,
+          `จุดตั้งต้น ${lbl(c0)} บอกว่า${mean(c0)} ช่วงกลางติดขัดที่ ${lbl(c1)} เพราะ${mean(c1)} ก่อนคลี่คลายด้วย ${lbl(c2)} — ${mean(c2)}`
+        ], turnSeed, recentTexts);
+      } else if (p2 === 'caution') {
+        story = pickFreshVariant([
+          `จาก ${lbl(c0)} ตอนนี้ชี้ว่า${mean(c0)} ผสมกับ ${lbl(c1)} ที่บอกว่า${mean(c1)} ปลายทาง ${lbl(c2)} เลยเตือนไว้ว่า${mean(c2)}`,
+          `หน้าไพ่ ${lbl(c0)} วางบริบทว่า${mean(c0)} ประกบกับ ${lbl(c1)} ซึ่งสะท้อนว่า${mean(c1)} ส่วนไพ่สรุป ${lbl(c2)} ทักตรงๆ ว่า${mean(c2)}`,
+          `เมื่อดูคู่กันระหว่าง ${lbl(c0)} (${mean(c0)}) กับ ${lbl(c1)} (${mean(c1)}) เลยส่งมาถึงจุดที่ ${lbl(c2)} ย้ำว่า${mean(c2)}`
+        ], turnSeed, recentTexts);
+      } else {
+        story = pickFreshVariant([
+          `เริ่มจาก ${lbl(c0)} ที่เห็นว่า${mean(c0)} มี ${lbl(c1)} เชื่อมตรงกลางว่า${mean(c1)} ก่อนไปจบที่ ${lbl(c2)} — ${mean(c2)}`,
+          `ไพ่เปิดเรื่องด้วย ${lbl(c0)} ชี้ว่า${mean(c0)} ตามด้วยแรงเสริมจาก ${lbl(c1)} ว่า${mean(c1)} และลงตัวที่ ${lbl(c2)} คือ${mean(c2)}`,
+          `เส้นเรื่องรอบนี้ไล่จาก ${lbl(c0)} (${mean(c0)}) ผ่านตัวแปรสำคัญอย่าง ${lbl(c1)} (${mean(c1)}) ไปสู่บทสรุป ${lbl(c2)} — ${mean(c2)}`
+        ], turnSeed, recentTexts);
+      }
     }
   }
 
@@ -533,18 +670,55 @@ function resolveElemKey(user) {
   return Object.keys(ELEM_I18N).find((k) => full.includes(k)) || '';
 }
 
+function extractTopicFocusTokens(q, lang = 'th') {
+  const s = String(q || '').toLowerCase();
+  if (!s) return [];
+  if (lang === 'th' && typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+    const seg = new Intl.Segmenter('th', { granularity: 'word' });
+    const stop = new Set(['ผม', 'ฉัน', 'เรา', 'คุณ', 'ไหม', 'มั้ย', 'หรือ', 'เปล่า', 'ป่าว', 'ปล่าว', 'กันแน่', 'ตอนนี้', 'ช่วงนี้', 'สรุป', 'ช่วย', 'หน่อย', 'ด้วย', 'ได้', 'จะ', 'คือ', 'อะไร', 'ยังไง', 'เลย', 'นะ', 'มาก', 'ครับ', 'ค่ะ']);
+    return [...seg.segment(s)]
+      .filter((x) => x.isWordLike && x.segment.length >= 2 && !stop.has(x.segment))
+      .map((x) => x.segment);
+  }
+  return s.split(/\s+/).filter((w) => w.length >= 3);
+}
+
+function hasLexicalQuestionOverlap(q1, q2, lang = 'th') {
+  const a = new Set(extractTopicFocusTokens(q1, lang));
+  const b = new Set(extractTopicFocusTokens(q2, lang));
+  if (a.size === 0 || b.size === 0) return false;
+  let shared = 0;
+  for (const t of a) {
+    if (b.has(t)) shared += 1;
+  }
+  const union = a.size + b.size - shared;
+  return shared >= 2 || (union > 0 && shared / union >= 0.35);
+}
+
 function isRepeatedTopicIntent(state, currentQ, topic, intent) {
   const hist = Array.isArray(state?.chatHistory) ? state.chatHistory : [];
   if (!currentQ || topic === 'general') return false;
-  const userMsgs = hist.filter((h) => h && (h.role === 'user' || (!h.role && !['สติ', 'Sati', '思谛'].includes(h.speaker))) && !h.isDrawAction);
   const curNorm = String(currentQ || '').trim();
+  if (/^(ขยายความต่อจากที่ถามไว้ว่า|Please expand further on:|请针对我刚才的问题继续深入讲讲：)/.test(curNorm)) {
+    return false;
+  }
+  const scopedHist = typeof state?.deckResetAtIndex === 'number' ? hist.slice(state.deckResetAtIndex) : hist;
+  const allUserMsgs = scopedHist.filter((h) => h && (h.role === 'user' || (!h.role && !['สติ', 'Sati', '思谛'].includes(h.speaker))));
+  if (allUserMsgs[allUserMsgs.length - 1]?.isExpandAction) return false;
+  const userMsgs = allUserMsgs.filter((h) => !h.isDrawAction && !h.isExpandAction);
   const prior = userMsgs.length > 0 && String(userMsgs[userMsgs.length - 1].text || '').trim() === curNorm
     ? userMsgs.slice(0, -1)
     : userMsgs;
   const lastPrev = prior[prior.length - 1];
   if (!lastPrev?.text) return false;
   const parsedPrev = detectTopicAndIntent(lastPrev.text, '');
-  return parsedPrev.topic === topic && parsedPrev.intent === intent;
+  if (parsedPrev.topic !== topic || parsedPrev.intent !== intent) return false;
+  // Require real semantic similarity (or shared relational target) so distinct work/life questions do not falsely accuse user
+  if (/[\u0E00-\u0E7F]/.test(curNorm)) {
+    const bothRomanticOther = topic === 'love' && intent === 'other_person' && /เขา|เธอ|แฟน|คนคุย/.test(curNorm) && /เขา|เธอ|แฟน|คนคุย/.test(lastPrev.text);
+    return bothRomanticOther || hasLexicalQuestionOverlap(curNorm, lastPrev.text, 'th');
+  }
+  return curNorm.toLowerCase() === String(lastPrev.text || '').trim().toLowerCase() || hasLexicalQuestionOverlap(curNorm, lastPrev.text, 'en');
 }
 
 function buildSubtextHook(intent, topic, isRepeat, nick, lang) {
@@ -608,7 +782,7 @@ function buildSubtextHook(intent, topic, isRepeat, nick, lang) {
   return { shortLead: h.shortLead[lang] || '', deepSubtext: h.deep[lang] || '' };
 }
 
-function buildPsychMirrorClause(user, refCards, spreadTone, nick, lang) {
+function buildPsychMirrorClause(user, refCards, spreadTone, nick, lang, turnSeed = 0, recentTexts = []) {
   const names = (refCards || []).map((c) => c?.name || '');
   const hasAny = (keys) => names.some((n) => keys.some((k) => n.includes(k)));
 
@@ -617,10 +791,17 @@ function buildPsychMirrorClause(user, refCards, spreadTone, nick, lang) {
   if (hasAuth && hasHeavy) {
     return {
       short: lang === 'en'
-        ? `Outside you look calm and capable, ${nick}, yet inside you’re carrying heavy tension alone`
+        ? pickFreshVariant([
+            `Outside you look calm and capable, ${nick}, yet inside you’re carrying heavy tension alone`,
+            `You keep everything looking composed outside, ${nick}, while quietly absorbing more strain than you admit`
+          ], turnSeed, recentTexts)
         : lang === 'zh'
           ? `外人看${nick}稳重扛事，可你心里其实一直独自顶着沉重压力`
-          : `คนนอกมองว่า${nick}นิ่งและจัดการได้ทุกเรื่อง แต่ข้างในกำลังแบกแรงกดดันอยู่เงียบๆ`,
+          : pickFreshVariant([
+              `คนนอกมองว่า${nick}นิ่งและจัดการได้ทุกเรื่อง แต่ข้างในกำลังแบกแรงกดดันอยู่เงียบๆ`,
+              `ภายนอก${nick}ยังดูคุมเกมไหว แต่ลึกๆ เหนื่อยจากการกั๊กความกังวลไว้คนเดียว`,
+              `ด้านนอก${nick}ดูนิ่งพึ่งได้ ทว่าข้างในกำลังกดดันตัวเองหนักกว่าที่คนรอบตัวเห็น`
+            ], turnSeed, recentTexts),
       deep: lang === 'en'
         ? 'Psychological Mirror (Jacques Statement): Composed leadership cards paired with strain cards reveal how well you hold it together outside while absorbing unspoken pressure privately.'
         : lang === 'zh'
@@ -633,10 +814,17 @@ function buildPsychMirrorClause(user, refCards, spreadTone, nick, lang) {
   if (hasSplit) {
     return {
       short: lang === 'en'
-        ? `Part of you sees the old path draining you, and part still hates letting go of sunk effort`
+        ? pickFreshVariant([
+            `Part of you sees the old path draining you, and part still hates letting go of sunk effort`,
+            `Half of you knows a shift is overdue, ${nick}, while the other half still protects what you’ve built`
+          ], turnSeed, recentTexts)
         : lang === 'zh'
           ? `${nick}一边明白老路越来越耗神，另一边又舍不得过去投入的心血`
-          : `ใจนึง${nick}ก็รู้ว่าแบบเดิมเริ่มฝืน และอีกใจนึงก็ยังเสียดายเวลาที่ลงแรงมา`,
+          : pickFreshVariant([
+              `ใจนึง${nick}ก็รู้ว่าแบบเดิมเริ่มฝืน และอีกใจนึงก็ยังเสียดายเวลาที่ลงแรงมา`,
+              `ในใจ${nick}ยังดึงกันอยู่ระหว่างความอยากเปลี่ยนให้โล่ง กับความเสียดายสิ่งที่ทุ่มมาแล้ว`,
+              `ลึกๆ ${nick}เห็นชัดแล้วว่าต้องปรับทาง แค่ยังตัดใจจากต้นทุนที่ลงแรงไปไม่ได้ขาด`
+            ], turnSeed, recentTexts),
       deep: lang === 'en'
         ? 'Psychological Mirror (Double-Sided Reflection): Both halves of your hesitation are real — recognizing what drains you AND honoring what you already built helps you choose without self-blame.'
         : lang === 'zh'
@@ -653,10 +841,17 @@ function buildPsychMirrorClause(user, refCards, spreadTone, nick, lang) {
   if (elemKey && (elemKey === 'ไฟ' || elemKey === 'ลม') && hasPause) {
     return {
       short: lang === 'en'
-        ? `${elemLbl} temperament moves fast, yet cards urge checking details first`
+        ? pickFreshVariant([
+            `${elemLbl} temperament moves fast, yet cards urge checking details first`,
+            `Your ${elemLbl} streak wants answers now, though holding one beat prevents a costly miss`
+          ], turnSeed, recentTexts)
         : lang === 'zh'
           ? `你${elemLbl}象求快，但牌提示先核实再动`
-          : `ธาตุ${elemLbl}ของ${nick}คิดไว แต่รอบนี้ต้องชะลอเช็กก่อน`,
+          : pickFreshVariant([
+              `ธาตุ${elemLbl}ของ${nick}คิดไว แต่รอบนี้ต้องชะลอเช็กก่อน`,
+              `นิสัยธาตุ${elemLbl}ชอบตัดสินใจฉับไว แต่จังหวะนี้ช้าลงครึ่งก้าวจะได้เปรียบกว่า`,
+              `พื้นดวงธาตุ${elemLbl}พาให้ใจร้อนอยากจบไว ลองตั้งหลักตรวจตัวแปรก่อนค่อยลุยนะ${nick}`
+            ], turnSeed, recentTexts),
       deep: lang === 'en'
         ? `Natal vs Spread Contrast (Rainbow Ruse): Your ${elemLbl} birth temperament wants swift action, which collides directly with cards calling for deliberate restraint before committing.`
         : lang === 'zh'
@@ -668,10 +863,17 @@ function buildPsychMirrorClause(user, refCards, spreadTone, nick, lang) {
   if (elemKey && (elemKey === 'ดิน' || elemKey === 'น้ำ') && hasPause) {
     return {
       short: lang === 'en'
-        ? `${elemLbl} depth stays cautious, just don’t stall too long`
+        ? pickFreshVariant([
+            `${elemLbl} depth stays cautious, just don’t stall too long`,
+            `Your steady ${elemLbl} side protects you well, just watch out not to freeze in place`
+          ], turnSeed, recentTexts)
         : lang === 'zh'
           ? `${elemLbl}象求稳，注意别顾虑过久错失时机`
-          : `ธาตุ${elemLbl}ทำให้คิดลึก แต่อย่าวนในเซฟโซนนานเกิน`,
+          : pickFreshVariant([
+              `ธาตุ${elemLbl}ทำให้คิดลึก แต่อย่าวนในเซฟโซนนานเกิน`,
+              `พื้นดวงธาตุ${elemLbl}ของ${nick}รอบคอบอยู่แล้ว แค่ระวังความลังเลจะทำให้พลาดจังหวะ`,
+              `ความเป็นธาตุ${elemLbl}ช่วยให้มองละเอียด ทว่าต้องกันตัวเองไม่ให้คิดซ้ำจนค้างเติ่ง`
+            ], turnSeed, recentTexts),
       deep: lang === 'en'
         ? `Natal vs Spread Contrast (Rainbow Ruse): Your steady ${elemLbl} temperament values certainty, yet cards here warn against letting over-caution freeze a needed adjustment.`
         : lang === 'zh'
@@ -683,10 +885,17 @@ function buildPsychMirrorClause(user, refCards, spreadTone, nick, lang) {
   if (elemKey && spreadTone === 'favorable') {
     return {
       short: lang === 'en'
-        ? `Your ${elemLbl} nature syncs with this spread to turn intent into results`
+        ? pickFreshVariant([
+            `Your ${elemLbl} nature syncs with this spread to turn intent into results`,
+            `Your ${elemLbl} focus matches this opening — steady action converts cleanly here`
+          ], turnSeed, recentTexts)
         : lang === 'zh'
           ? `本命${elemLbl}象正好顺应这组顺风牌`
-          : `พลังธาตุ${elemLbl}ของ${nick}หนุนให้ไพ่ชุดนี้เห็นผลไว`,
+          : pickFreshVariant([
+              `พลังธาตุ${elemLbl}ของ${nick}หนุนให้ไพ่ชุดนี้เห็นผลไว`,
+              `จังหวะธาตุ${elemLbl}เข้าขากับหน้าไพ่ชุดนี้พอดี ยิ่งทำจริงยิ่งต่อยอดไว`,
+              `จุดแข็งธาตุ${elemLbl}ของ${nick}รับส่งกับไพ่ดีชุดนี้ตรงๆ ลงมือตามแผนได้เลย`
+            ], turnSeed, recentTexts),
       deep: lang === 'en'
         ? `Personalized Anchoring: Your ${elemLbl} birth element aligns naturally with this supportive spread, turning clear intention into tangible momentum.`
         : lang === 'zh'
@@ -722,6 +931,8 @@ export function synthesizeDeepReply(state, question, cards) {
   const lang = normalizeLang(state.lang);
   const nick = state.user.nickname || (lang === 'en' ? 'my friend' : lang === 'zh' ? '朋友' : 'เพื่อน');
   const q = (question || '').trim();
+  const recentTexts = getRecentSatiTexts(state, 2);
+  const turnSeed = (Array.isArray(state?.chatHistory) ? state.chatHistory.length : 0) + (Number(state?.deckNumber) || 1);
   const { topic, intent } = detectTopicAndIntent(q, state.lastTopic);
   const isRepeat = isRepeatedTopicIntent(state, q, topic, intent);
   state.lastTopic = topic;
@@ -741,19 +952,15 @@ export function synthesizeDeepReply(state, question, cards) {
     : (refCards.find((c) => scoreCardPolarity(c) === 'caution') || outcomeCard);
   const actionAdvice = getLocalizedCardData(keyWarnCard, lang).advice || getLocalizedCardData(outcomeCard, lang).advice;
   const subtext = buildSubtextHook(intent, topic, isRepeat, nick, lang);
-  const psychMirror = buildPsychMirrorClause(state.user, refCards, spreadTone, nick, lang);
+  const psychMirror = buildPsychMirrorClause(state.user, refCards, spreadTone, nick, lang, turnSeed, recentTexts);
 
   if (lang === 'en' || lang === 'zh') {
     const isEn = lang === 'en';
-    const orSplit = intent === 'decision'
-      ? (isEn ? q.match(/(.+?)\s+or\s+(.+?)(\?|$)/i) : q.match(/(.+?)\s*还是\s*(.+?)([？?]|$)/))
-      : null;
+    const pair = intent === 'decision' ? extractGenuineBinaryChoices(q, lang) : null;
 
     let verdict = '';
-    if (orSplit && orSplit[1] && orSplit[2]) {
-      const cleanChoice = (s) => s.replace(/^(should i|choose between|between|is it better to|还是|选|要不要)\s*/i, '').replace(/[?？]+$/, '').trim() || s.trim();
-      const optA = cleanChoice(orSplit[1]);
-      const optB = cleanChoice(orSplit[2]);
+    if (pair) {
+      const [optA, optB] = pair;
       const warnCount = refCards.filter((c) => scoreCardPolarity(c) === 'caution').length;
       if (spreadTone === 'favorable' && warnCount === 0 && outcomeTone !== 'caution') {
         verdict = isEn
@@ -835,6 +1042,11 @@ export function synthesizeDeepReply(state, question, cards) {
               caution: `In your love life right now, ${nick}, lingering doubts need calm clarity before reacting.`,
               balanced: `In relationships right now, ${nick}, gentle patience and honest listening keep things steady.`
             },
+            self: {
+              favorable: `Looking at your personal balance right now, ${nick}, your energy is steady and supportive.`,
+              caution: `For your personal life and close circle right now, ${nick}, protect your peace before absorbing extra stress.`,
+              balanced: `For your personal rhythm right now, ${nick}, small intentional boundaries restore clarity fast.`
+            },
             general: {
               favorable: `Looking at what’s unfolding, ${nick}, momentum is opening up clearly on your side.`,
               caution: `Looking closely at these cards, ${nick}, take this as a cue to slow down and verify reality before pushing.`,
@@ -857,6 +1069,11 @@ export function synthesizeDeepReply(state, question, cards) {
               caution: `感情眼下还有些没摊开的顾虑，${nick}，先别在心不稳的时候急着下结论。`,
               balanced: `感情上正处于慢慢磨合的阶段，${nick}，放柔步调比急于讨答案更有用。`
             },
+            self: {
+              favorable: `看你自身与家宅近况，${nick}，气场顺畅且能稳稳顾好重心。`,
+              caution: `从你个人状态和身边关系来看，${nick}，先顾好心力边界再帮别人扛事。`,
+              balanced: `眼下个人生活与情绪都在调整期，${nick}，先留点喘息空间反而走得更稳。`
+            },
             general: {
               favorable: `从目前这组牌来看，${nick}，整体走势正在顺畅打开。`,
               caution: `从桌面这组牌来看，${nick}，眼下有明显需要停一拍、看清事实再行动的提醒。`,
@@ -866,26 +1083,20 @@ export function synthesizeDeepReply(state, question, cards) {
       verdict = (explainMap[topic] || explainMap.general)[explainTone];
     }
 
-    const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang);
+    const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed, recentTexts);
     const fallbackPrefix = isEn
-      ? `My honest advice right now, ${nick} — `
-      : `眼下最实在的提醒，${nick}——`;
+      ? pickFreshVariant([`My honest advice right now, ${nick} — `, `One grounded step now, ${nick} — `], turnSeed, recentTexts)
+      : pickFreshVariant([`眼下最实在的提醒，${nick}——`, `当下最稳的落脚点，${nick}——`], turnSeed, recentTexts);
 
     return assembleBalancedReply(verdict, cardStory, actionAdvice, subtext, psychMirror, fallbackPrefix, isRepeat, lang);
   }
 
   // Warm, direct, natural Thai tarot conversation (zero bullet dumps or duplicated meanings)
   let verdict = '';
-  const orMatch = intent === 'decision' ? q.match(/(.+?)\s*หรือ\s*(.+?)(\?|$)/) : null;
+  const pairTh = intent === 'decision' ? extractGenuineBinaryChoices(q, 'th') : null;
 
-  if (orMatch && orMatch[1] && orMatch[2]) {
-    const cleanOpt = (s, isFirst) => s
-      .replace(isFirst ? /^(แล้ว|ถ้า|ควร|จะ|เลือก|ระหว่าง|อยากรู้ว่า)\s*/g : /^(ควร|จะ|ค่อย)\s*/g, '')
-      .replace(/(ตอนนี้เลย|ดีไหม|ไหม|มั้ย|ดีกว่า|ก่อนดี|ก่อน|มากกว่า|กันแน่|ครับ|ค่ะ|คับ|นะ)+$/g, '')
-      .replace(/\s*(ดี|ไหม)$/g, '')
-      .trim() || s.trim();
-    const optA = cleanOpt(orMatch[1], true);
-    const optB = cleanOpt(orMatch[2], false);
+  if (pairTh) {
+    const [optA, optB] = pairTh;
     const warnCount = refCards.filter((c) => scoreCardPolarity(c) === 'caution').length;
 
     if (spreadTone === 'favorable' && warnCount === 0 && outcomeTone !== 'caution') {
@@ -932,9 +1143,17 @@ export function synthesizeDeepReply(state, question, cards) {
   } else if (intent === 'timing') {
     verdict = `เรื่องจังหวะเวลาที่${nick}ถาม: ${estimateTimingFromCard(outcomeCard, 'th')}`;
   } else if (intent === 'why') {
-    verdict = `ถ้าถามว่าเรื่องนี้ติดอยู่ตรงไหน ปมสำคัญสะท้อนชัดผ่านไพ่ชุดนี้เลยนะ${nick}`;
+    verdict = pickFreshVariant([
+      `ถ้าถามว่าเรื่องนี้ติดอยู่ตรงไหน ปมสำคัญสะท้อนชัดผ่านไพ่ชุดนี้เลยนะ${nick}`,
+      `ต้นตอที่ทำให้เรื่องนี้ค้างคา โผล่ชัดอยู่ในหน้าไพ่รอบนี้เลยนะ${nick}`,
+      `จุดที่สะดุดจริงไม่ได้อยู่ที่โชค แต่อยู่ตรงรายละเอียดในไพ่ชุดนี้แหละ${nick}`
+    ], turnSeed, recentTexts);
   } else if (intent === 'action') {
-    verdict = `ถ้าถามว่าควรขยับยังไงต่อดี ลองดูมุมจากหน้าไพ่ที่เปิดมาตรงนี้เลยนะ${nick}`;
+    verdict = pickFreshVariant([
+      `ถ้าถามว่าควรขยับยังไงต่อดี ลองดูมุมจากหน้าไพ่ที่เปิดมาตรงนี้เลยนะ${nick}`,
+      `แนวทางรับมือที่คุมความเสี่ยงได้จริงตอนนี้ เปิดชัดผ่านไพ่ชุดนี้แล้วนะ${nick}`,
+      `วิธีเดินต่อให้ไม่เสียเปรียบในจังหวะนี้ ไพ่ชี้หมุดไว้ตรงๆ เลย${nick}`
+    ], turnSeed, recentTexts);
   } else {
     const explainTone = (spreadTone === 'favorable' && outcomeTone !== 'caution')
       ? 'favorable'
@@ -955,20 +1174,65 @@ export function synthesizeDeepReply(state, question, cards) {
         caution: `เรื่องความสัมพันธ์ตอนนี้ยังมีปมไม่ชัดหรือความกังวลซ่อนอยู่นะ${nick} อย่าเพิ่งด่วนตัดสินตอนใจไม่นิ่ง`,
         balanced: `เรื่องความสัมพันธ์ช่วงนี้ต้องค่อยๆ ปรับจูนกันไปทีละนิดนะ${nick} อย่ารีบเร่งคำตอบเกินจังหวะ`
       },
+      self: {
+        favorable: `ด้านชีวิตส่วนตัวและคนใกล้ชิดช่วงนี้จังหวะนิ่งและมีแรงหนุนดีนะ${nick}`,
+        caution: `เรื่องส่วนตัวและคนใกล้ตัวตอนนี้เตือนให้ถนอมใจตัวเองก่อนนะ${nick} อย่าแบกทุกความคาดหวังไว้คนเดียว`,
+        balanced: `ด้านชีวิตส่วนตัวและคนรอบข้างช่วงนี้ค่อยๆ จัดสมดุลใหม่จะเบาสบายขึ้นเยอะเลย${nick}`
+      },
       general: {
-        favorable: `จากหน้าไพ่ชุดนี้ภาพรวมกำลังเปิดทางให้เดินหน้าได้ชัดเลยนะ${nick}`,
-        caution: `จากหน้าไพ่ชุดนี้มีสัญญาณเตือนให้ชะลอและตั้งหลักดูความจริงก่อนจะฝืนไปต่อนะ${nick}`,
-        balanced: `จากหน้าไพ่ชุดนี้สถานการณ์กำลังอยู่ในช่วงเปลี่ยนจังหวะนะ${nick} ค่อยๆ ประคองให้พอดี`
+        favorable: pickFreshVariant([
+          `จากหน้าไพ่ชุดนี้ภาพรวมกำลังเปิดทางให้เดินหน้าได้ชัดเลยนะ${nick}`,
+          `หน้าไพ่รอบนี้ส่งสัญญาณบวกให้${nick}ขยับตัวต่อได้มั่นใจขึ้นเลย`
+        ], turnSeed, recentTexts),
+        caution: pickFreshVariant([
+          `จากหน้าไพ่ชุดนี้มีสัญญาณเตือนให้ชะลอและตั้งหลักดูความจริงก่อนจะฝืนไปต่อนะ${nick}`,
+          `หน้าไพ่รอบนี้ทักตรงๆ ให้${nick}หยุดเช็กจุดเสี่ยงก่อนรีบตัดสินใจนะ`
+        ], turnSeed, recentTexts),
+        balanced: pickFreshVariant([
+          `จากหน้าไพ่ชุดนี้สถานการณ์กำลังอยู่ในช่วงเปลี่ยนจังหวะนะ${nick} ค่อยๆ ประคองให้พอดี`,
+          `จังหวะตรงหน้านี้กำลังหมุนปรับเข้าที่นะ${nick} แค่คุมสติและค่อยๆ เดินทีละขั้น`
+        ], turnSeed, recentTexts)
       }
     };
     verdict = (explainTh[topic] || explainTh.general)[explainTone];
   }
 
-  const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, 'th');
+  const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, 'th', turnSeed, recentTexts);
   const adviceText = actionAdvice || 'ตั้งหลักดูข้อมูลจริงตรงหน้าแล้วลงมือทีละขั้น';
-  const fallbackPrefix = `จังหวะนี้สติฝากไว้ตรงๆ นะ${nick} — `;
+  const fallbackPrefix = pickFreshVariant([
+    `จังหวะนี้สติฝากไว้ตรงๆ นะ${nick} — `,
+    `จุดลงมือที่ทำได้วันนี้เลยนะ${nick} — `,
+    `โฟกัสสำคัญที่ไพ่ย้ำตอนนี้คือ — `,
+    `ถ้าจะแก้เกมรอบนี้ให้คมขึ้นนะ${nick} — `,
+    `ก้าวถัดไปที่${nick}คุมเองได้ทันที — `
+  ], turnSeed, recentTexts);
 
   return assembleBalancedReply(verdict, cardStory, adviceText, subtext, psychMirror, fallbackPrefix, isRepeat, 'th');
+}
+
+export function buildDeckCarryoverSummary(state, lang = state?.lang || 'th') {
+  const target = normalizeLang(lang);
+  const hist = Array.isArray(state?.chatHistory) ? state.chatHistory : [];
+  const scoped = typeof state?.deckResetAtIndex === 'number' ? hist.slice(state.deckResetAtIndex) : hist;
+  const realQs = scoped
+    .filter((h) => h && (h.role === 'user' || (!h.role && !['สติ', 'Sati', '思谛'].includes(h.speaker))) && !h.isDrawAction && !h.isExpandAction)
+    .map((h) => String(h.text || '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const uniqueQs = [...new Set(realQs)].slice(-3);
+  const tailCards = (Array.isArray(state?.activeSpread) && state.activeSpread.length > 0 ? state.activeSpread : [])
+    .slice(0, 3)
+    .map((c) => getLocalizedCardShortName(c, target));
+  const deckNo = Number(state?.deckNumber) || 1;
+  if (target === 'en') {
+    const qPart = uniqueQs.length ? `Topics explored: ${uniqueQs.join(' | ')}` : 'Completed natal + initial cycle';
+    return `Deck #${deckNo} summary — ${qPart}${tailCards.length ? ` (last cards: ${tailCards.join(', ')})` : ''}`.slice(0, 220);
+  }
+  if (target === 'zh') {
+    const qPart = uniqueQs.length ? `上一副探讨过：${uniqueQs.join(' | ')}` : '已完成上一副牌本轮推演';
+    return `第 ${deckNo} 副牌总结——${qPart}${tailCards.length ? `（收尾牌：${tailCards.join('、')}）` : ''}`.slice(0, 220);
+  }
+  const qPart = uniqueQs.length ? `เรื่องที่คุยในสำรับ ${deckNo}: ${uniqueQs.join(' | ')}` : `จบสำรับที่ ${deckNo}`;
+  return `${qPart}${tailCards.length ? ` (ไพ่ท้ายสำรับ: ${tailCards.join(', ')})` : ''}`.slice(0, 220);
 }
 
 /**
@@ -981,6 +1245,8 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
   const fallbackReply = isNatal10
     ? buildNatal10Reading(state, cards)
     : synthesizeDeepReply(state, question, cards);
+  const hist = Array.isArray(state.chatHistory) ? state.chatHistory : [];
+  const scopedHist = typeof state.deckResetAtIndex === 'number' ? hist.slice(state.deckResetAtIndex) : hist;
 
   try {
     const res = await fetch('/api/sati/read', {
@@ -995,21 +1261,31 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
         elementalDignity: computeElementalDignityInsight(cards, lang),
         isNatal10,
         celticPositions: getLocalizedCelticPositions(lang),
+        deckNumber: Number(state.deckNumber) || 1,
+        deckCarryoverSummary: state.deckCarryoverSummary || '',
         question: isNatal10
           ? 'เปิดไพ่พื้นดวง 10 ใบแรกเชื่อมกับชื่อจริง นามสกุล ชื่อเล่น และวันเดือนปีเกิด'
           : question,
-        recentHistory: state.chatHistory.slice(-6)
+        recentHistory: scopedHist.slice(-6)
       })
     });
 
-    if (!res.ok) return fallbackReply;
+    if (!res.ok) {
+      state.lastReadingOffline = true;
+      state.lastReadingModel = 'offline-thaksa';
+      return fallbackReply;
+    }
     const data = await res.json();
     if (data && !data.fallback && data.reply) {
+      state.lastReadingOffline = false;
+      state.lastReadingModel = data.model || '';
       return data.reply;
     }
   } catch {
     // Offline or local static preview -> use local Thaksa synthesis seamlessly
   }
+  state.lastReadingOffline = true;
+  state.lastReadingModel = 'offline-thaksa';
   return fallbackReply;
 }
 

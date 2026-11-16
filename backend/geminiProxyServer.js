@@ -18,8 +18,8 @@ const DB_FILE = path.join(DB_DIR, 'users_db.json');
 const FEEDBACK_FILE = path.join(DB_DIR, 'feedback_db.json');
 const DIST_DIR = path.join(__dirname, '..', 'dist');
 const ENV_FILE = path.join(__dirname, '..', '.env');
-const PRIMARY_GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_MODEL_ORDER = ['gemini-2.5-flash', 'gemini-3.8-flash'];
+const PRIMARY_GEMINI_MODEL = 'gemini-3.6-flash';
+const GEMINI_MODEL_ORDER = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
 
 fs.mkdirSync(DB_DIR, { recursive: true });
 
@@ -80,12 +80,15 @@ function writeFeedbackDB(list) {
   fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(list, null, 2), 'utf8');
 }
 
-export const SATI_SYSTEM_PROMPT = `คุณคือ "สติ" เพื่อนสนิทที่เป็นหมอดูระดับปรมาจารย์ตัวจริง เชี่ยวชาญทั้งโหราศาสตร์ทักษาไทยและไพ่ทาโรต์ Rider-Waite 78 ใบตามหลัก Golden Dawn
-น้ำเสียงและสไตล์การพูด: คงรูปแบบ 3 ย่อหน้าสั้นๆ อ่านจบไวเหมือนเพื่อนสนิทที่รู้จักกันมานาน — อบอุ่น สุภาพ จริงใจ ฉะฉาน อ่านทะลุใจ และพูดตรงประเด็นโดยไม่เกริ่นน้ำท่วมทุ่ง:
-1. ย่อหน้าแรก (อ่านใจ Subtext + ฟันธงตรงคำถาม): จับความรู้สึกหรือปมลึกๆ หลังคำถามทันที (เช่น ถามว่าจะรอดไหม = ลึกๆ เหนื่อยและอยากรู้จุดคอขวด; ถามเรื่องเขา = กำลังเอาคุณค่าไปผูกกับอีกฝ่าย; ถามเลือกทาง A/B = กลัวตัดสินใจพลาดเลยต้องบอก Trade-off; ถามเมื่อไหร่ = ให้ระบุช่วงเวลาโดยประมาณจากธาตุไพ่ ไม้เท้าไว/ดาบปานกลาง/ถ้วยค่อยเป็นค่อยไป/เหรียญใช้เวลาวางฐาน; หากประวัติคุยเพิ่งถามเรื่องเดิมซ้ำให้ทักอย่างรู้ทันแบบเพื่อน) แล้วฟันธงคำตอบตรงประเด็นตั้งแต่ย่อหน้านี้
+export const SATI_SYSTEM_PROMPT = `คุณคือ "สติ" นักอ่านไพ่และที่ปรึกษาชีวิตระดับปรมาจารย์ที่สุภาพ อบอุ่น จริงใจ และพูดตรงประเด็น เชี่ยวชาญทั้งโหราศาสตร์ทักษาไทยและไพ่ทาโรต์ Rider-Waite 78 ใบตามหลัก Golden Dawn
+สรรพนามและน้ำเสียงบังคับ:
+- แทนตัวเองว่า "สติ" หรือ "เรา" เสมอ และเรียกผู้ถามด้วยชื่อเล่น (เช่น "บอม") อย่างสุภาพ เป็นกันเองแบบกัลยาณมิตรที่หวังดี
+- ห้ามใช้คำหยาบ คำสบถ ภาษาห้วนก้าวร้าว หรือสรรพนาม กู มึง แม่ง วะ เว้ย โว้ย ไอ้ อี เอ็ง ข้า เด็ดขาด (ไม่ตอบแบบนักเลงหรือเพื่อนหยาบคาย)
+รูปแบบการตอบ: คงโครงสร้าง 3 ย่อหน้าสั้นๆ อ่านจบไว อ่านทะลุใจ และตรงประเด็นโดยไม่เกริ่นน้ำท่วมทุ่ง:
+1. ย่อหน้าแรก (อ่านใจ Subtext + ฟันธงตรงคำถาม): จับความรู้สึกหรือปมลึกๆ หลังคำถามทันที (เช่น ถามว่าจะรอดไหม = ลึกๆ เหนื่อยและอยากรู้จุดคอขวด; ถามเรื่องเขา = กำลังเอาคุณค่าไปผูกกับอีกฝ่าย; ถามเลือกทาง A/B = กลัวตัดสินใจพลาดเลยต้องบอก Trade-off; ถามเมื่อไหร่ = ให้ระบุช่วงเวลาโดยประมาณจากธาตุไพ่ ไม้เท้าไว/ดาบปานกลาง/ถ้วยค่อยเป็นค่อยไป/เหรียญใช้เวลาวางฐาน; ทักว่าถามซ้ำเฉพาะเมื่อถามคำถามเดิมแทบจะเหมือนกันภายในสำรับเดียวกันโดยไม่ได้กดขยายคำถามเดิมเท่านั้น ห้ามทักว่าถามซ้ำเมื่อขึ้นสำรับใหม่หรือเปลี่ยนประเด็น) แล้วฟันธงคำตอบตรงประเด็นตั้งแต่ย่อหน้านี้
 2. ย่อหน้ากลาง (ผูกหน้าไพ่ + ธาตุทักษา + Golden Dawn Elemental Dignity เป็นภาพชีวิตจริง): ห้ามไล่ชื่อไพ่ทั้ง 10 ใบเรียงข้อเหมือนท่องตำรา ให้คัดเฉพาะไพ่แกนหลัก 3–5 ใบที่ปะทะหรือเสริมแรงกันมากที่สุด ร้อยเรียงเป็นเรื่องเดียวเชื่อมกับธาตุทักษาวันเกิดและกำลังธาตุไพ่ (ไฟ+ลมเสริมแรงไว / น้ำ+ดินปั้นผลมั่นคง / ไฟ+น้ำขัดกันในใจ / ลม+ดินคิดชนข้อจำกัดจริง) พร้อมแปลเป็นพฤติกรรมจริงที่เกิดในชีวิตผู้ถาม เช่น เทียบนิสัยธาตุปะทะไพ่ (Rainbow Ruse), ภาพนอกนิ่งแต่ข้างในแบกหนัก (Jacques Statement) ห้ามพูดประโยคหว่านแหแบบ Barnum ที่ใช้ได้กับทุกคน ห้ามขึ้นบุลเล็ต (• หรือ 1) 2)) และห้ามก๊อปคำซ้ำ
 3. ย่อหน้าท้าย (ผ่าจุดบอดเฉพาะตัว + ทางออกที่ลงมือได้วันนี้): ชี้จุดบอดจากอักษรกาลกิณี/ไพ่เตือนหรือราคาที่ต้องจ่าย (Trade-off) อย่างจริงใจแบบเพื่อนหวังดี และจบด้วย 1 ก้าวแรกที่ลงมือทำได้ทันที
-4. ข้อห้ามเด็ดขาด: ตอบด้วย Target Language เท่านั้น (ไทย / English / 简体中文) ห้ามใส่อีโมจิ ห้ามใช้เครื่องหมายดอกจัน (** หรือ *) หรือ Markdown ห้ามใช้คำว่า AI เอไอ บอท chatbot จอมเวท ไม่อวย สรุปตรงๆ ห้ามใส่หัวข้อแข็งๆ และห้ามปิดท้ายด้วยจำนวนไพ่ที่เหลือในสำรับ เช่น "(เหลือไพ่ในสำรับ XX ใบ)" หรือสอนวิธีใช้งานปุ่มในแอป`;
+4. ข้อห้ามเด็ดขาด: ตอบด้วย Target Language เท่านั้น (ไทย / English / 简体中文) ห้ามใส่อีโมจิ ห้ามใช้เครื่องหมายดอกจัน (** หรือ *) หรือ Markdown ห้ามใช้คำว่า AI เอไอ บอท chatbot จอมเวท ไม่อวย สรุปตรงๆ ห้ามใส่หัวข้อแข็งๆ ห้ามขึ้นต้นหรือลงท้ายซ้ำสำนวนเดิมจากรอบก่อนหน้าเด็ดขาด ห้ามมโนอ้างชื่อไพ่ที่ไม่ได้เปิดอยู่บนโต๊ะตอนนี้ และห้ามปิดท้ายด้วยจำนวนไพ่ที่เหลือในสำรับ เช่น "(เหลือไพ่ในสำรับ XX ใบ)" หรือสอนวิธีใช้งานปุ่มในแอป`;
 
 function sanitizeSatiText(rawText, lang = 'th') {
   if (!rawText) return '';
@@ -96,14 +99,52 @@ function sanitizeSatiText(rawText, lang = 'th') {
     .replace(/^#{1,6}\s*/gm, '')
     .replace(/\b(AI|เอไอ|บอท|Bot|chatbot)\b/gi, selfName)
     .replace(/จอมเวท/gi, 'หมอดู')
+    .replace(/(^|[\s"'(])กู(?=[\s"'.,!?ๆ]|ก็|ว่า|รู้|เห็น|บอก|ขอ|ไม่|อยาก|มอง|$)/g, `$1${selfName}`)
+    .replace(/(^|[\s"'(])มึง(?=[\s"'.,!?ๆ]|ก็|จะ|ต้อง|กำลัง|ควร|ไม่|อยาก|ได้|เลย|น่ะ|ล่ะ|$)/g, '$1คุณ')
+    .replace(/(?:แม่ง|เหี้ย|สัส|เชี่ย)/g, '')
+    .replace(/\s+(?:นะ)?(?:วะ|เว้ย|โว้ย)(?=[\s.,!?]|$)/g, 'นะ')
     .replace(/(สติขอเตือนแบบไม่อวยนะ|ให้แบบไม่อวยเลยนะ|เอาตรงๆ\s*ไม่อวยนะ|พูดตรงๆ\s*ไม่อวยนะ|คำตอบกลางๆ\s*แบบไม่อวยคือ|ขอสรุปตรงๆ\s*แบบเพื่อนเลยนะ|สรุปตรงๆ\s*เลยนะ|สรุปตรงๆ\s*:|สิ่งที่ควรทำตอนนี้\s*:|ก้าวแรกตอนนี้\s*:|What to do now\s*:|First step now\s*:|眼下建议直接这样做：|眼下建议：|眼下第一步：|\(\s*เหลือไพ่(?:ในสำรับ)?\s*\d+\s*ใบ\s*\))/gi, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
+function buildCompressedHistoryDigest(recentHistory = []) {
+  const rows = (Array.isArray(recentHistory) ? recentHistory : []).slice(-6);
+  const recentOpenings = [];
+  const digestLines = rows.map((h) => {
+    const cleanText = String(h?.text || '').replace(/\s+/g, ' ').trim();
+    const isSati = h?.role === 'sati' || ['สติ', 'Sati', '思谛'].includes(h?.speaker);
+    if (isSati) {
+      if (cleanText) recentOpenings.push(cleanText.slice(0, 55));
+      const cardTag = Array.isArray(h?.meta?.cards) && h.meta.cards.length
+        ? ` [ไพ่รอบนั้น: ${h.meta.cards.slice(0, 3).map((c) => c.name).join(', ')}]`
+        : '';
+      return `${h.speaker || 'สติ'}${cardTag}: ${cleanText.slice(0, 120)}${cleanText.length > 120 ? '...' : ''}`;
+    }
+    return `${h.speaker || 'ผู้ถาม'}: ${cleanText.slice(0, 140)}`;
+  }).filter(Boolean);
+  return {
+    digestText: digestLines.join('\n'),
+    recentOpenings: recentOpenings.slice(-2)
+  };
+}
+
 export async function handleSatiReadRequest(body) {
-  const { userProfile, natalCards, activeSpread, remainingCount, elementalDignity, question, recentHistory, isNatal10, celticPositions, lang: rawLang } = body || {};
+  const {
+    userProfile,
+    natalCards,
+    activeSpread,
+    remainingCount,
+    elementalDignity,
+    question,
+    recentHistory,
+    isNatal10,
+    celticPositions,
+    deckNumber = 1,
+    deckCarryoverSummary = '',
+    lang: rawLang
+  } = body || {};
   const lang = rawLang === 'en' || rawLang === 'zh' ? rawLang : 'th';
   const apiKey = resolveApiKey();
 
@@ -139,8 +180,23 @@ export async function handleSatiReadRequest(body) {
         .join(' | ')
     : '';
 
+  const { digestText, recentOpenings } = buildCompressedHistoryDigest(recentHistory);
+  const isExpandFollowUp = /^(ขยายความต่อจากที่ถามไว้ว่า|Please expand further on:|请针对我刚才的问题继续深入讲讲：)/.test(String(question || '').trim());
+  const openingStyles = [
+    'เปิดประโยคแรกด้วยการฟันธงคำตอบตรงประเด็นทันที (ห้ามทักทาย "สวัสดี" และห้ามขึ้นด้วยคำว่า "ลึกๆ แล้ว")',
+    'เปิดประโยคแรกด้วยการสะท้อนความขัดแย้งหรือจุดหักมุมที่เห็นชัดจากหน้าไพ่ชุดนี้ทันที (ห้ามทักทาย "สวัสดี")',
+    'เปิดประโยคแรกด้วยการแตะอารมณ์หรือปมสำคัญหลังคำถามอย่างเป็นธรรมชาติ (ห้ามทักทาย "สวัสดี")',
+    'เปิดประโยคแรกด้วยการเปรียบเทียบจังหวะชีวิตตอนนี้กับไพ่แกนหลักบนโต๊ะทันที (ห้ามทักทาย "สวัสดี")'
+  ];
+  const openingDirective = isNatal10
+    ? 'เป็นรอบเปิดไพ่พื้นดวง 10 ใบแรก ทักทายอย่างอบอุ่นครั้งเดียวได้ แล้วเชื่อมเข้าพื้นดวงและหน้าไพ่ทันที'
+    : openingStyles[((Array.isArray(recentHistory) ? recentHistory.length : 0) + Number(deckNumber || 1)) % openingStyles.length];
+  const deckHeader = Number(deckNumber) > 1
+    ? `สถานะสำรับปัจจุบัน: สำรับที่ ${deckNumber} (เพิ่งรีเซ็ตสำรับใหม่ 78 ใบ — อ่านจากไพ่ใหม่บนโต๊ะควบคู่พื้นดวง 10 ใบเดิมเท่านั้น ห้ามเอาไพ่ที่ลงกองทิ้งจากสำรับก่อนมาปน)${deckCarryoverSummary ? `\nบันทึกสั้นๆ จากสำรับก่อนหน้า: ${deckCarryoverSummary}` : ''}`
+    : '';
   const userContext = [
     `Target Language: ${targetLangDesc}`,
+    deckHeader,
     `ผู้ถาม: ชื่อเล่น "${userProfile?.nickname || 'เพื่อน'}", ชื่อจริง "${userProfile?.fullname || ''}"`,
     `พื้นดวงเกิด: ${userProfile?.dayName || ''}, ธาตุ${userProfile?.elemShort || ''} (${userProfile?.element || ''}), เลขชีวิต ${userProfile?.lifePath || ''}`,
     `ทักษาชื่อ 8 ภูมิ: เด่น ${userProfile?.thaksaStrength || ''} | ${kal}${thaksaRolesSummary ? ` | รายละเอียดภูมิ:${thaksaRolesSummary}` : ''} | ไพ่ประจำตัว: ${userProfile?.birthCard || ''}`,
@@ -148,36 +204,56 @@ export async function handleSatiReadRequest(body) {
     `ไพ่ที่เปิดอยู่บนโต๊ะตอนนี้ (${spreadArr.length} ใบ):\n${formattedSpread || 'ยังไม่มีไพ่เปิดเพิ่มเติม'}`,
     elementalDignity ? `กำลังธาตุไพ่ (Golden Dawn Dignity): ${elementalDignity}` : '',
     `ไพ่คงเหลือในสำรับ: ${remainingCount ?? 68}/78 ใบ`,
-    `ประวัติการคุยล่าสุด:\n${(recentHistory || []).slice(-6).map((h) => `${h.speaker}: ${h.text}`).join('\n')}`,
+    digestText ? `สรุปบทสนทนาล่าสุดในสำรับนี้:\n${digestText}` : '',
+    recentOpenings.length ? `ประโยคเปิดที่ใช้ไปแล้วในตาก่อนหน้า (ห้ามขึ้นต้นซ้ำเด็ดขาด ให้เปลี่ยนมุมเปิดใหม่): ${recentOpenings.join(' | ')}` : '',
+    `คำสั่งสไตล์การเปิดประโยคตานี้: ${openingDirective}`,
+    isExpandFollowUp
+      ? `โหมดจั่วไพ่ขยายคำถามเดิม: ผู้ถามตั้งใจจั่วไพ่ใหม่เพิ่มเพื่อขยายความคำถามก่อนหน้า — อ่านไพ่ใหม่เจาะลึกต่อจากคำถามเดิมทันที ห้ามทักว่าถามเรื่องเดิมซ้ำ`
+      : '',
     `คำถามล่าสุดที่ต้องตอบให้ตรงประเด็น: "${question || 'ช่วยอ่านสถานการณ์และคำแนะนำตรงๆ จากไพ่ชุดนี้'}"`
   ].filter(Boolean).join('\n');
 
-  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 14000 } });
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 20000 } });
   let rawOutput = '';
   let usedModel = PRIMARY_GEMINI_MODEL;
   let lastErr = null;
 
   for (const model of GEMINI_MODEL_ORDER) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: userContext,
-        config: {
-          systemInstruction: SATI_SYSTEM_PROMPT,
-          maxOutputTokens: 900,
-          temperature: 0.75,
-          thinkingConfig: { thinkingBudget: 0 }
+    const config = {
+      systemInstruction: SATI_SYSTEM_PROMPT,
+      maxOutputTokens: 1500,
+      temperature: 0.8
+    };
+    if (!/flash-lite/i.test(model)) {
+      config.thinkingConfig = { thinkingBudget: 0 };
+    }
+
+    const attempts = model === PRIMARY_GEMINI_MODEL ? 2 : 1;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: userContext,
+          config
+        });
+        const text = (response?.text || '').trim();
+        if (text) {
+          rawOutput = text;
+          usedModel = model;
+          break;
         }
-      });
-      const text = (response?.text || '').trim();
-      if (text) {
-        rawOutput = text;
-        usedModel = model;
+      } catch (err) {
+        lastErr = err;
+        const msg = String(err?.message || err || '');
+        const isTransient = /503|504|UNAVAILABLE|DEADLINE_EXCEEDED|ECONNRESET|fetch failed/i.test(msg);
+        if (isTransient && attempt + 1 < attempts) {
+          await new Promise((r) => setTimeout(r, 400));
+          continue;
+        }
         break;
       }
-    } catch (err) {
-      lastErr = err;
     }
+    if (rawOutput) break;
   }
 
   const reply = sanitizeSatiText(rawOutput, lang);
