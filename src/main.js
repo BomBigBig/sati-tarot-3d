@@ -12,7 +12,14 @@ import {
   getLocalizedCardShortName
 } from './data/tarot78I18n.js';
 import { getTextPack, t } from './i18n/translations.js';
-import { computeNatalProfile, requestSatiReading, buildReadingBreakdown, buildDeckCarryoverSummary } from './engine/satiBrain.js';
+import {
+  computeNatalProfile,
+  requestSatiReading,
+  buildReadingBreakdown,
+  buildDeckCarryoverSummary,
+  detectTopicAndIntent,
+  extractUserContextFacts
+} from './engine/satiBrain.js';
 import { loadAccountState, saveAccountState } from './engine/storage.js';
 import { generateReadingShareCardDataURL, formatShareTimestamp } from './engine/shareCardCanvas.js';
 import { createSati3DEngine, CAM_POS } from './scene/satiScene3D.js';
@@ -126,6 +133,10 @@ const state = {
   savedNatalCards: [],
   natalCompleted: false,
   activeSpread: [],
+  activeSpreadTopic: '',
+  pendingDrawTopic: '',
+  pendingDrawIsExpand: false,
+  userContextFacts: [],
   pickTargetCount: 10,
   isPicking: false,
   isAnimatingShuffle: false,
@@ -532,6 +543,7 @@ function moveActiveSpreadToDiscard() {
     }
   });
   state.activeSpread = [];
+  state.activeSpreadTopic = '';
 }
 
 function enterPickingPhase(count, pickMode = 'initial') {
@@ -621,6 +633,7 @@ async function finishPickingPhase() {
   if (!state.natalCompleted && state.pickTargetCount === 10) {
     state.natalCompleted = true;
     state.natalCards = [...state.activeSpread];
+    state.activeSpreadTopic = '';
     state.savedNatalCards = state.natalCards.map((c) => ({ uid: c.uid, name: c.name, th: c.th }));
     setSatiDialogue(t(state.lang, 'loadingNatalDialogue', state.user.fullname), 'moodLoadingNatal', false, true);
     const reply = await requestSatiReading(state, '', state.natalCards, true);
@@ -633,13 +646,19 @@ async function finishPickingPhase() {
     const typedQ = document.getElementById('chat-input').value.trim();
     const lastRealUserQ = getLastAskedUserQuestion();
     const q = state.pendingDrawQuestion || typedQ || (lastRealUserQ ? t(state.lang, 'fallbackExpandQ', lastRealUserQ) : t(state.lang, 'fallbackDefaultQ'));
+    const drawnProfile = detectTopicAndIntent(q, state.lastTopic);
+    state.activeSpreadTopic = state.pendingDrawTopic || (drawnProfile.subDomain && drawnProfile.subDomain !== 'general' ? drawnProfile.subDomain : drawnProfile.topic);
+    const isExpandFlow = Boolean(state.pendingDrawIsExpand);
     state.pendingDrawQuestion = '';
+    state.pendingDrawTopic = '';
+    state.pendingDrawIsExpand = false;
     if (!q) {
       appendHistory(state.user.nickname, t(state.lang, 'drawFollowUpActionLabel', state.pickTargetCount), 'user', { isDrawAction: true });
     }
+    state.userContextFacts = extractUserContextFacts(state.chatHistory, state.userContextFacts);
     document.getElementById('chat-input').value = '';
     setSatiDialogue(t(state.lang, 'loadingCardsDialogue', state.user.nickname), 'moodLoadingCards', false, true);
-    const reply = await requestSatiReading(state, q, state.activeSpread, false);
+    const reply = await requestSatiReading(state, q, state.activeSpread, false, { isExpandFollowUp: isExpandFlow });
     state.isThinking = false;
     setSatiDialogue(reply, 'moodReply', true, false, {
       isNatal10: false,
@@ -683,6 +702,9 @@ function triggerFollowUpDraw(count, freeViaAd = false, expandPrevious = false) {
       return;
     }
     if (!freeViaAd && !spendCoins(count === 10 ? 8 : count)) return;
+    const pExp = detectTopicAndIntent(lastQ, state.activeSpreadTopic || state.lastTopic);
+    state.pendingDrawTopic = pExp.subDomain && pExp.subDomain !== 'general' ? pExp.subDomain : pExp.topic;
+    state.pendingDrawIsExpand = true;
     state.pendingDrawQuestion = t(state.lang, 'fallbackExpandQ', lastQ);
     appendHistory(state.user.nickname, t(state.lang, 'expandPrevActionLogFmt', count, lastQ), 'user', { isExpandAction: true });
   } else {
@@ -694,6 +716,9 @@ function triggerFollowUpDraw(count, freeViaAd = false, expandPrevious = false) {
       return;
     }
     if (!freeViaAd && !spendCoins(count === 10 ? 8 : count)) return;
+    const pNew = detectTopicAndIntent(q, state.lastTopic);
+    state.pendingDrawTopic = pNew.subDomain && pNew.subDomain !== 'general' ? pNew.subDomain : pNew.topic;
+    state.pendingDrawIsExpand = false;
     state.pendingDrawQuestion = q;
     appendHistory(state.user.nickname, q, 'user');
     if (input) input.value = '';
@@ -1065,6 +1090,12 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     state.chatHistory = pendingSavedRecord.chatHistory || [];
     state.sessionArchives = Array.isArray(pendingSavedRecord.sessionArchives) ? pendingSavedRecord.sessionArchives : [];
+    state.activeSpreadTopic = pendingSavedRecord.activeSpreadTopic || '';
+    state.pendingDrawTopic = '';
+    state.pendingDrawIsExpand = false;
+    state.userContextFacts = Array.isArray(pendingSavedRecord.userContextFacts)
+      ? pendingSavedRecord.userContextFacts
+      : extractUserContextFacts(state.chatHistory);
     state.lastTopic = pendingSavedRecord.lastTopic || 'general';
     if (['love', 'work', 'money', 'general'].includes(state.lastTopic)) {
       state.selectedPresetCategory = state.lastTopic;
@@ -1133,6 +1164,10 @@ window.addEventListener('DOMContentLoaded', () => {
     state.savedNatalCards = saved10.map((c) => ({ uid: c.uid, name: c.name, th: c.th }));
     state.natalCompleted = true;
     state.activeSpread = [];
+    state.activeSpreadTopic = '';
+    state.pendingDrawTopic = '';
+    state.pendingDrawIsExpand = false;
+    state.userContextFacts = [];
     state.discardPile = [];
     state.chatHistory = [];
     state.pendingDrawQuestion = '';
@@ -1203,6 +1238,10 @@ window.addEventListener('DOMContentLoaded', () => {
     state.natalCompleted = false;
     state.natalCards = [];
     state.activeSpread = [];
+    state.activeSpreadTopic = '';
+    state.pendingDrawTopic = '';
+    state.pendingDrawIsExpand = false;
+    state.userContextFacts = [];
     state.discardPile = [];
     state.chatHistory = [];
     state.pendingDrawQuestion = '';
@@ -1333,6 +1372,9 @@ window.addEventListener('DOMContentLoaded', () => {
     state.remainingDeck = shuffleArray(buildFullDeck78());
     state.discardPile = [];
     state.activeSpread = [];
+    state.activeSpreadTopic = '';
+    state.pendingDrawTopic = '';
+    state.pendingDrawIsExpand = false;
     state.pendingDrawQuestion = '';
     engine3D.tuckNatalSpreadAway3D();
     engine3D.clearDiscardPile3D?.();
@@ -1406,6 +1448,10 @@ window.addEventListener('DOMContentLoaded', () => {
     state.isPicking = false;
     state.isThinking = false;
     state.activeSpread = [];
+    state.activeSpreadTopic = '';
+    state.pendingDrawTopic = '';
+    state.pendingDrawIsExpand = false;
+    state.userContextFacts = [];
     state.discardPile = [];
     state.pendingDrawQuestion = '';
     state.deckResetAtIndex = 0;
@@ -1453,15 +1499,30 @@ window.addEventListener('DOMContentLoaded', () => {
     input.value = '';
     SoundFX.playPick();
 
-    const refCards = state.activeSpread.length > 0 ? state.activeSpread : state.natalCards;
+    state.userContextFacts = extractUserContextFacts(state.chatHistory, state.userContextFacts);
+    const qProfile = detectTopicAndIntent(q, state.activeSpreadTopic || state.lastTopic);
+    const qDomain = qProfile.subDomain && qProfile.subDomain !== 'general' ? qProfile.subDomain : qProfile.topic;
+    const spreadDomain = state.activeSpreadTopic || '';
+    const isTopicSwitch = Boolean(
+      state.activeSpread.length > 0 &&
+      spreadDomain &&
+      spreadDomain !== 'general' &&
+      qDomain !== 'general' &&
+      !qProfile.isElliptical &&
+      qDomain !== spreadDomain
+    );
+    const refCards = (state.activeSpread.length > 0 && !isTopicSwitch) ? state.activeSpread : state.natalCards;
+    const sourceWasNatal10 = state.activeSpread.length === 0 || isTopicSwitch;
+    const topicSwitchedFrom = isTopicSwitch ? spreadDomain : '';
+
     state.isThinking = true;
     renderSmartPromptChips();
     setSatiDialogue(t(state.lang, 'loadingQuestionDialogue', state.user.nickname), 'moodLoadingThink', false, true);
-    const reply = await requestSatiReading(state, q, refCards, false);
+    const reply = await requestSatiReading(state, q, refCards, false, { topicSwitchedFrom });
     state.isThinking = false;
     setSatiDialogue(reply, 'moodDeep', true, false, {
       isNatal10: false,
-      sourceWasNatal10: state.activeSpread.length === 0,
+      sourceWasNatal10,
       question: q,
       cards: refCards.map((c) => ({ uid: c.uid, name: c.name, th: c.th }))
     });

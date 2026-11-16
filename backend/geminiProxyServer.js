@@ -80,14 +80,31 @@ function writeFeedbackDB(list) {
   fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(list, null, 2), 'utf8');
 }
 
-export const SATI_SYSTEM_PROMPT = `คุณคือ "สติ" นักอ่านไพ่และที่ปรึกษาชีวิตระดับปรมาจารย์ที่สุภาพ อบอุ่น จริงใจ และพูดตรงประเด็น เชี่ยวชาญทั้งโหราศาสตร์ทักษาไทยและไพ่ทาโรต์ Rider-Waite 78 ใบตามหลัก Golden Dawn
+export const SATI_SYSTEM_PROMPT = `คุณคือ "สติ" นักอ่านไพ่และที่ปรึกษาชีวิตระดับปรมาจารย์ที่สุภาพ อบอุ่น จริงใจ และพูดตรงประเด็น เชี่ยวชาญทั้งโหราศาสตร์ทักษาไทย จักรราศี และไพ่ทาโรต์ Rider-Waite 78 ใบตามหลัก Golden Dawn
 สรรพนามและน้ำเสียงบังคับ:
 - แทนตัวเองว่า "สติ" หรือ "เรา" เสมอ และเรียกผู้ถามด้วยชื่อเล่น (เช่น "บอม") อย่างสุภาพ เป็นกันเองแบบกัลยาณมิตรที่หวังดี
+- คงบุคลิกเป็นกลางทางเพศด้วยคำลงท้ายธรรมชาติอย่าง "นะ" หรือ "เลย" (หลีกเลี่ยงการใช้คำลงท้าย "ครับ" หรือ "ค่ะ" สลับเพศผิดกับผู้ถาม เพื่อความสม่ำเสมอสำหรับทุกคน)
 - ห้ามใช้คำหยาบ คำสบถ ภาษาห้วนก้าวร้าว หรือสรรพนาม กู มึง แม่ง วะ เว้ย โว้ย ไอ้ อี เอ็ง ข้า เด็ดขาด (ไม่ตอบแบบนักเลงหรือเพื่อนหยาบคาย)
+- ปรับน้ำเสียงและมุมมองให้สมวัยและเข้ากับบริบทจริงของผู้ถาม (อายุ ช่วงวัย และข้อเท็จจริงชีวิตที่ผู้ถามเล่า) อย่าใช้บทผู้ใหญ่วัยกลางคนคุยกับเด็กมหาลัย หรือกลับกัน
+หลักความแม่นยำตามประเภทคำถาม (Adaptive Precision):
+- ยึดหมวดคำถาม (subDomain) เป็นแกนหลัก:
+  * study (เรียน/สอบ/ทุน): โฟกัสการเตรียมตัว วิธีแบ่งเวลา จุดอ่อนเนื้อหา และแรงกดดันในห้องสอบ
+  * health (สุขภาพ/พักผ่อน): พูดเรื่องพลังงาน การฟื้นตัว พฤติกรรมเสี่ยง และเตือนตรวจสุขภาพกับแพทย์จริงเมื่อมีอาการ ไม่วินิจฉัยโรคแทนหมอ
+  * family (ครอบครัว/พ่อแม่/ญาติ): โฟกัสความห่วงใยและบทบาทในบ้าน ห้ามตีความเป็นเรื่องรักชู้สาวหรือคนคุยเด็ดขาด
+  * property (บ้าน/ที่อยู่/รถ): ดูความคุ้มค่า สัญญา ทำเล ค่าใช้จ่ายแฝง และความพร้อมระยะยาว
+  * work / money / love / self: วิเคราะห์ตรงตามโลกความจริงของเรื่องนั้นๆ
+- ปรับรูปทรงคำตอบตามเจตนาคำถาม (intent):
+  * outcome (ได้ไหม/รอดไหม): ฟันธงแนวโน้มความน่าจะเป็นตั้งแต่ย่อหน้าแรก พร้อมเงื่อนไขที่จะทำให้สำเร็จหรือสะดุด
+  * decision (A หรือ B): ชี้ฝั่งที่ได้เปรียบกว่าพร้อมเทียบ Trade-off ของทั้งสองทางตรงๆ
+  * other_person: แยกให้ออกว่าอีกฝ่ายคือคนรัก เจ้านาย/ลูกค้า หรือคนในบ้าน แล้วอ่านท่าทีอีกฝ่ายควบคู่จุดที่ผู้ถามควรวางตัว
+  * timing: ระบุกรอบเวลาโดยประมาณจากธาตุไพ่ (ไม้เท้า=ไวหลักวันถึงสัปดาห์, ดาบ=ตึง 1-2 เดือน, ถ้วย=ค่อยๆ ก่อตัวตามความรู้สึก, เหรียญ=รอผลจริง 2-4 เดือน+, Major=ขึ้นกับจังหวะตัดสินใจเปลี่ยน) พร้อมจุดสังเกตจริง
+  * คำถามกว้างเกินไป (isBroadOpen=true): ตอบแกนหลักที่เห็นจากไพ่ตรงหน้าให้เกิดประโยชน์ทันที แล้วปิดท้ายย่อหน้า 3 ด้วยคำถามสั้นๆ 1 ข้อเพื่อให้ผู้ถามเจาะประเด็นต่อ
+- ห้ามยัดเยียดสูตรสำเร็จ: ห้ามอ้าง "อักษรกาลกิณีในชื่อ" ในทุกคำถามทั่วไป (อ้างถึงเฉพาะรอบเปิดพื้นดวง 10 ใบแรก หรือเมื่อคำถามและหน้าไพ่ฟ้องปมสื่อสาร/ชื่อเสียง/จุดบอดส่วนตัวจริงๆ) และห้ามยัดประโยค "ภายนอกนิ่งข้างในแบกหนัก" หรือโทนดราม่าหนักเกินจริงให้กับไพ่ Minor ทั่วไป
+- กรณีแจ้งว่าเปลี่ยนประเด็น (topicSwitchedFrom): ให้อธิบายสั้นๆ ว่าไพ่บนโต๊ะรอบก่อนเป็นคนละหัวข้อ ระบบจึงดึงไพ่พื้นดวง 10 ใบมาอ่านให้แทน และชวนกดจั่วเพิ่ม 1-3 ใบหากอยากเจาะเรื่องใหม่นี้ให้ลึกขึ้น
 รูปแบบการตอบ: คงโครงสร้าง 3 ย่อหน้าสั้นๆ อ่านจบไว อ่านทะลุใจ และตรงประเด็นโดยไม่เกริ่นน้ำท่วมทุ่ง:
-1. ย่อหน้าแรก (อ่านใจ Subtext + ฟันธงตรงคำถาม): จับความรู้สึกหรือปมลึกๆ หลังคำถามทันที (เช่น ถามว่าจะรอดไหม = ลึกๆ เหนื่อยและอยากรู้จุดคอขวด; ถามเรื่องเขา = กำลังเอาคุณค่าไปผูกกับอีกฝ่าย; ถามเลือกทาง A/B = กลัวตัดสินใจพลาดเลยต้องบอก Trade-off; ถามเมื่อไหร่ = ให้ระบุช่วงเวลาโดยประมาณจากธาตุไพ่ ไม้เท้าไว/ดาบปานกลาง/ถ้วยค่อยเป็นค่อยไป/เหรียญใช้เวลาวางฐาน; ทักว่าถามซ้ำเฉพาะเมื่อถามคำถามเดิมแทบจะเหมือนกันภายในสำรับเดียวกันโดยไม่ได้กดขยายคำถามเดิมเท่านั้น ห้ามทักว่าถามซ้ำเมื่อขึ้นสำรับใหม่หรือเปลี่ยนประเด็น) แล้วฟันธงคำตอบตรงประเด็นตั้งแต่ย่อหน้านี้
-2. ย่อหน้ากลาง (ผูกหน้าไพ่ + ธาตุทักษา + Golden Dawn Elemental Dignity เป็นภาพชีวิตจริง): ห้ามไล่ชื่อไพ่ทั้ง 10 ใบเรียงข้อเหมือนท่องตำรา ให้คัดเฉพาะไพ่แกนหลัก 3–5 ใบที่ปะทะหรือเสริมแรงกันมากที่สุด ร้อยเรียงเป็นเรื่องเดียวเชื่อมกับธาตุทักษาวันเกิดและกำลังธาตุไพ่ (ไฟ+ลมเสริมแรงไว / น้ำ+ดินปั้นผลมั่นคง / ไฟ+น้ำขัดกันในใจ / ลม+ดินคิดชนข้อจำกัดจริง) พร้อมแปลเป็นพฤติกรรมจริงที่เกิดในชีวิตผู้ถาม เช่น เทียบนิสัยธาตุปะทะไพ่ (Rainbow Ruse), ภาพนอกนิ่งแต่ข้างในแบกหนัก (Jacques Statement) ห้ามพูดประโยคหว่านแหแบบ Barnum ที่ใช้ได้กับทุกคน ห้ามขึ้นบุลเล็ต (• หรือ 1) 2)) และห้ามก๊อปคำซ้ำ
-3. ย่อหน้าท้าย (ผ่าจุดบอดเฉพาะตัว + ทางออกที่ลงมือได้วันนี้): ชี้จุดบอดจากอักษรกาลกิณี/ไพ่เตือนหรือราคาที่ต้องจ่าย (Trade-off) อย่างจริงใจแบบเพื่อนหวังดี และจบด้วย 1 ก้าวแรกที่ลงมือทำได้ทันที
+1. ย่อหน้าแรก (อ่านใจ Subtext + ฟันธงตรงคำถาม): จับความรู้สึกหรือปมลึกๆ หลังคำถามทันที แล้วฟันธงคำตอบตรงรูปคำถามตั้งแต่ย่อหน้านี้ ทักว่าถามซ้ำเฉพาะเมื่อถามคำถามเดิมแทบจะเหมือนกันภายในสำรับเดียวกันโดยไม่ได้กดขยายคำถามเดิมเท่านั้น ห้ามทักว่าถามซ้ำเมื่อขึ้นสำรับใหม่หรือเปลี่ยนประเด็น
+2. ย่อหน้ากลาง (ผูกหน้าไพ่ + พื้นดวง + Golden Dawn Elemental Dignity เป็นภาพชีวิตจริง): ห้ามไล่ชื่อไพ่ทั้ง 10 ใบเรียงข้อเหมือนท่องตำรา ให้คัดเฉพาะไพ่แกนหลัก 2–5 ใบที่ปะทะหรือเสริมแรงกันมากที่สุด ร้อยเรียงเป็นเรื่องเดียวเชื่อมกับธาตุทักษา ช่วงวัย/ข้อเท็จจริงชีวิตจริงที่ผู้ถามเล่า (userFacts) และกำลังธาตุไพ่ (ไฟ+ลมเสริมแรงไว / น้ำ+ดินปั้นผลมั่นคง / ไฟ+น้ำขัดกันในใจ / ลม+ดินคิดชนข้อจำกัดจริง) แปลเป็นพฤติกรรมจริงที่จับต้องได้ ห้ามพูดประโยคหว่านแหแบบ Barnum ที่ใช้ได้กับทุกคน ห้ามขึ้นบุลเล็ต (• หรือ 1) 2)) และห้ามก๊อปคำซ้ำ
+3. ย่อหน้าท้าย (จุดระวังเฉพาะเรื่อง + ก้าวแรกที่ลงมือได้วันนี้): ชี้ราคาที่ต้องจ่าย (Trade-off) หรือจุดระวังที่สอดคล้องกับหน้าไพ่จริงอย่างเพื่อนหวังดี ปิดด้วย 1 ก้าวแรกที่เป็นรูปธรรม (หรือ 1 คำถามชวนเจาะจงหากคำถามกว้างมาก)
 4. ข้อห้ามเด็ดขาด: ตอบด้วย Target Language เท่านั้น (ไทย / English / 简体中文) ห้ามใส่อีโมจิ ห้ามใช้เครื่องหมายดอกจัน (** หรือ *) หรือ Markdown ห้ามใช้คำว่า AI เอไอ บอท chatbot จอมเวท ไม่อวย สรุปตรงๆ ห้ามใส่หัวข้อแข็งๆ ห้ามขึ้นต้นหรือลงท้ายซ้ำสำนวนเดิมจากรอบก่อนหน้าเด็ดขาด ห้ามมโนอ้างชื่อไพ่ที่ไม่ได้เปิดอยู่บนโต๊ะตอนนี้ และห้ามปิดท้ายด้วยจำนวนไพ่ที่เหลือในสำรับ เช่น "(เหลือไพ่ในสำรับ XX ใบ)" หรือสอนวิธีใช้งานปุ่มในแอป`;
 
 function sanitizeSatiText(rawText, lang = 'th') {
@@ -130,6 +147,57 @@ function buildCompressedHistoryDigest(recentHistory = []) {
   };
 }
 
+function resolveExtendedNatalInfo(userProfile = {}) {
+  if (userProfile?.age && userProfile?.zodiacSign?.th && userProfile?.chineseZodiac?.th) {
+    return {
+      age: userProfile.age,
+      lifeStageText: userProfile.lifeStageLabel?.th || userProfile.lifeStage || '',
+      zodiacText: `${userProfile.zodiacSign.th} (${userProfile.zodiacSign.en}, ธาตุ${userProfile.zodiacSign.elem || ''})`,
+      animalText: userProfile.chineseZodiac.th
+    };
+  }
+  const day = parseInt(userProfile?.day, 10);
+  const month = parseInt(userProfile?.month, 10);
+  const rawYear = parseInt(userProfile?.year, 10);
+  if (!day || !month || !rawYear) {
+    return { age: null, lifeStageText: '', zodiacText: '', animalText: '' };
+  }
+  const gYear = rawYear > 2400 ? rawYear - 543 : rawYear;
+  const now = new Date();
+  let age = now.getFullYear() - gYear;
+  if (now.getMonth() + 1 < month || (now.getMonth() + 1 === month && now.getDate() < day)) age -= 1;
+  const lifeStageText = age < 23
+    ? 'วัยเรียน / เริ่มต้นก้าวแรกของชีวิต'
+    : age < 30
+      ? 'วัยเริ่มทำงาน / ค้นหาและสร้างตัว'
+      : age < 40
+        ? 'วัยสร้างฐานะ / ขยับขยายความรับผิดชอบ'
+        : age < 55
+          ? 'วัยกลางคน / วางความมั่นคงระยะยาว'
+          : 'วัยผู้ใหญ่เต็มตัว / ตกผลึกประสบการณ์';
+  const signs = ['ราศีมังกร', 'ราศีกุมภ์', 'ราศีมีน', 'ราศีเมษ', 'ราศีพฤษภ', 'ราศีเมถุน', 'ราศีกรกฎ', 'ราศีสิงห์', 'ราศีกันย์', 'ราศีตุลย์', 'ราศีพิจิก', 'ราศีธนู'];
+  let zIdx = 0;
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) zIdx = 1;
+  else if ((month === 2 && day >= 19) || (month === 3 && day <= 20)) zIdx = 2;
+  else if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) zIdx = 3;
+  else if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) zIdx = 4;
+  else if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) zIdx = 5;
+  else if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) zIdx = 6;
+  else if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) zIdx = 7;
+  else if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) zIdx = 8;
+  else if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) zIdx = 9;
+  else if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) zIdx = 10;
+  else if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) zIdx = 11;
+  const animals = ['ปีวอก', 'ปีระกา', 'ปีจอ', 'ปีกุน', 'ปีชวด', 'ปีฉลู', 'ปีขาล', 'ปีเถาะ', 'ปีมะโรง', 'ปีมะเส็ง', 'ปีมะเมีย', 'ปีมะแม'];
+  const czYear = (month === 1 || (month === 2 && day < 5)) ? gYear - 1 : gYear;
+  return {
+    age: age >= 0 && age <= 120 ? age : null,
+    lifeStageText,
+    zodiacText: signs[zIdx],
+    animalText: animals[((czYear % 12) + 12) % 12]
+  };
+}
+
 export async function handleSatiReadRequest(body) {
   const {
     userProfile,
@@ -143,6 +211,10 @@ export async function handleSatiReadRequest(body) {
     celticPositions,
     deckNumber = 1,
     deckCarryoverSummary = '',
+    questionProfile = null,
+    userFacts = [],
+    topicSwitchedFrom = '',
+    isExpandFollowUp: bodyIsExpand = false,
     lang: rawLang
   } = body || {};
   const lang = rawLang === 'en' || rawLang === 'zh' ? rawLang : 'th';
@@ -164,7 +236,7 @@ export async function handleSatiReadRequest(body) {
   const spreadArr = Array.isArray(activeSpread) ? activeSpread : [];
   const positions3 = ['สถานการณ์ตอนนี้', 'ตัวแปร/จุดที่ต้องระวัง', 'บทสรุป/ทางออก'];
   const formattedSpread = spreadArr.map((c, idx) => {
-    const posLabel = isNatal10 && Array.isArray(celticPositions)
+    const posLabel = (isNatal10 || (Boolean(topicSwitchedFrom) && spreadArr.length === 10)) && Array.isArray(celticPositions)
       ? (celticPositions[idx] || `ตำแหน่งที่ ${idx + 1}`)
       : (spreadArr.length === 1 ? 'คำตอบหลัก' : (positions3[idx] || `ใบที่ ${idx + 1}`));
     const aspects = [c.work && `งาน:${c.work}`, c.money && `เงิน:${c.money}`, c.love && `รัก:${c.love}`, c.advice && `แนะ:${c.advice}`].filter(Boolean).join(' | ');
@@ -181,7 +253,7 @@ export async function handleSatiReadRequest(body) {
     : '';
 
   const { digestText, recentOpenings } = buildCompressedHistoryDigest(recentHistory);
-  const isExpandFollowUp = /^(ขยายความต่อจากที่ถามไว้ว่า|Please expand further on:|请针对我刚才的问题继续深入讲讲：)/.test(String(question || '').trim());
+  const isExpandFollowUp = Boolean(bodyIsExpand) || /^(ขยายความต่อจากที่ถามไว้ว่า|Please expand further on:|请针对我刚才的问题继续深入讲讲：)/.test(String(question || '').trim());
   const openingStyles = [
     'เปิดประโยคแรกด้วยการฟันธงคำตอบตรงประเด็นทันที (ห้ามทักทาย "สวัสดี" และห้ามขึ้นด้วยคำว่า "ลึกๆ แล้ว")',
     'เปิดประโยคแรกด้วยการสะท้อนความขัดแย้งหรือจุดหักมุมที่เห็นชัดจากหน้าไพ่ชุดนี้ทันที (ห้ามทักทาย "สวัสดี")',
@@ -194,12 +266,28 @@ export async function handleSatiReadRequest(body) {
   const deckHeader = Number(deckNumber) > 1
     ? `สถานะสำรับปัจจุบัน: สำรับที่ ${deckNumber} (เพิ่งรีเซ็ตสำรับใหม่ 78 ใบ — อ่านจากไพ่ใหม่บนโต๊ะควบคู่พื้นดวง 10 ใบเดิมเท่านั้น ห้ามเอาไพ่ที่ลงกองทิ้งจากสำรับก่อนมาปน)${deckCarryoverSummary ? `\nบันทึกสั้นๆ จากสำรับก่อนหน้า: ${deckCarryoverSummary}` : ''}`
     : '';
+  const extNatal = resolveExtendedNatalInfo(userProfile);
+  const extNatalLine = extNatal.age
+    ? `ช่วงวัยและจักรราศี: อายุราว ${extNatal.age} ปี (${extNatal.lifeStageText}), ${extNatal.zodiacText}, ${extNatal.animalText}`
+    : (extNatal.zodiacText ? `จักรราศี: ${extNatal.zodiacText}, ${extNatal.animalText}` : '');
+  const factsLine = Array.isArray(userFacts) && userFacts.length > 0
+    ? `บริบทชีวิตจริงที่ผู้ถามเคยเล่าไว้ (ใช้ประกอบคำแนะนำให้ตรงตัวตน): ${userFacts.join(' | ')}`
+    : '';
+  const profileLine = !isNatal10 && questionProfile
+    ? `วิเคราะห์คำถาม: topic=${questionProfile.topic || 'general'}, subDomain=${questionProfile.subDomain || 'general'}, intent=${questionProfile.intent || 'explain'}, isBroadOpen=${Boolean(questionProfile.isBroadOpen)}`
+    : '';
+  const switchLine = topicSwitchedFrom
+    ? `คำสั่งสำคัญเมื่อเปลี่ยนประเด็น: ไพ่ 3 ใบเดิมบนโต๊ะถูกเปิดไว้สำหรับหัวข้อ "${topicSwitchedFrom}" จึงดึงไพ่พื้นดวง 10 ใบมาใช้อ่านให้แทนในรอบนี้ — ให้บอกผู้ถามสั้นๆ อย่างเป็นมิตรว่ากำลังอ่านจากไพ่พื้นดวงหลัก และแนะนำให้กดจั่วไพ่เพิ่ม 1-3 ใบหากอยากเจาะลึกเรื่องใหม่นี้โดยตรง`
+    : '';
+
   const userContext = [
     `Target Language: ${targetLangDesc}`,
     deckHeader,
     `ผู้ถาม: ชื่อเล่น "${userProfile?.nickname || 'เพื่อน'}", ชื่อจริง "${userProfile?.fullname || ''}"`,
     `พื้นดวงเกิด: ${userProfile?.dayName || ''}, ธาตุ${userProfile?.elemShort || ''} (${userProfile?.element || ''}), เลขชีวิต ${userProfile?.lifePath || ''}`,
+    extNatalLine,
     `ทักษาชื่อ 8 ภูมิ: เด่น ${userProfile?.thaksaStrength || ''} | ${kal}${thaksaRolesSummary ? ` | รายละเอียดภูมิ:${thaksaRolesSummary}` : ''} | ไพ่ประจำตัว: ${userProfile?.birthCard || ''}`,
+    factsLine,
     `ไพ่พื้นดวง 10 ใบแรก: ${(natalCards || []).map((c, i) => `${i + 1}.${c.name}(${c.th})`).join(', ')}`,
     `ไพ่ที่เปิดอยู่บนโต๊ะตอนนี้ (${spreadArr.length} ใบ):\n${formattedSpread || 'ยังไม่มีไพ่เปิดเพิ่มเติม'}`,
     elementalDignity ? `กำลังธาตุไพ่ (Golden Dawn Dignity): ${elementalDignity}` : '',
@@ -207,6 +295,8 @@ export async function handleSatiReadRequest(body) {
     digestText ? `สรุปบทสนทนาล่าสุดในสำรับนี้:\n${digestText}` : '',
     recentOpenings.length ? `ประโยคเปิดที่ใช้ไปแล้วในตาก่อนหน้า (ห้ามขึ้นต้นซ้ำเด็ดขาด ให้เปลี่ยนมุมเปิดใหม่): ${recentOpenings.join(' | ')}` : '',
     `คำสั่งสไตล์การเปิดประโยคตานี้: ${openingDirective}`,
+    profileLine,
+    switchLine,
     isExpandFollowUp
       ? `โหมดจั่วไพ่ขยายคำถามเดิม: ผู้ถามตั้งใจจั่วไพ่ใหม่เพิ่มเพื่อขยายความคำถามก่อนหน้า — อ่านไพ่ใหม่เจาะลึกต่อจากคำถามเดิมทันที ห้ามทักว่าถามเรื่องเดิมซ้ำ`
       : '',
@@ -221,11 +311,11 @@ export async function handleSatiReadRequest(body) {
   for (const model of GEMINI_MODEL_ORDER) {
     const config = {
       systemInstruction: SATI_SYSTEM_PROMPT,
-      maxOutputTokens: 1500,
+      maxOutputTokens: 1800,
       temperature: 0.8
     };
     if (!/flash-lite/i.test(model)) {
-      config.thinkingConfig = { thinkingBudget: 0 };
+      config.thinkingConfig = { thinkingBudget: 384 };
     }
 
     const attempts = model === PRIMARY_GEMINI_MODEL ? 2 : 1;

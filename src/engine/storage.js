@@ -23,6 +23,8 @@ export function buildStoragePayload(state) {
     savedNatalCards: state.savedNatalCards || [],
     natalCompleted: state.natalCompleted,
     activeSpread: state.activeSpread,
+    activeSpreadTopic: state.activeSpreadTopic || '',
+    userContextFacts: Array.isArray(state.userContextFacts) ? state.userContextFacts : [],
     chatHistory: state.chatHistory,
     sessionArchives: state.sessionArchives || [],
     lastTopic: state.lastTopic
@@ -102,6 +104,8 @@ export async function clearAccountState(email, preserveMeta = null) {
         natalCompleted: false,
         natalCards: [],
         activeSpread: [],
+        activeSpreadTopic: '',
+        userContextFacts: [],
         discardPile: [],
         chatHistory: [],
         deckResetAtIndex: 0,

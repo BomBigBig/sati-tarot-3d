@@ -7,9 +7,11 @@ import {
   buildDeckCarryoverSummary,
   buildReadingBreakdown,
   computeElementalDignityInsight,
+  computeExtendedNatalContext,
   computeNatalProfile,
   detectTopicAndIntent,
   extractGenuineBinaryChoices,
+  extractUserContextFacts,
   synthesizeDeepReply
 } from '../../../src/engine/satiBrain.js';
 import { buildStoragePayload } from '../../../src/engine/storage.js';
@@ -158,5 +160,79 @@ describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', (
     st.lastTopic = 'general';
     const postResetAns = synthesizeDeepReply(st, 'ในสำรับใหม่นี้ โอกาสใหญ่เรื่องงานจะเริ่มจากทางไหน', deck.slice(0, 3));
     assert.ok(!postResetAns.includes('ถามวนเรื่องเดิมซ้ำ'), 'First question on newly reset Deck #2 must never accuse repeat against Deck #1');
+  });
+
+  it('SC-06-05: Adaptive multi-domain intelligence, extended natal stage/zodiac, user fact memory & broad-open clarification work cleanly', () => {
+    const deck = buildFullDeck78();
+
+    // 1. Extended natal profile computes age, lifeStage, Western Zodiac & Chinese/Thai animal accurately
+    const student = computeNatalProfile({ fullname: 'ณัฐวดี ใจดี', nickname: 'มิ้นท์', day: 15, month: 8, year: 2549 });
+    assert.ok(typeof student.age === 'number' && student.age < 23);
+    assert.equal(student.lifeStage, 'student_young');
+    assert.equal(student.zodiacSign?.en, 'Leo');
+
+    const bom = computeNatalProfile({ fullname: 'ธนภัทร ตัวอย่าง', nickname: 'บอม', day: 25, month: 6, year: 2539 });
+    assert.equal(bom.zodiacSign?.th, 'ราศีกรกฎ');
+    assert.equal(bom.chineseZodiac?.key, 'rat');
+
+    const janBaby = computeExtendedNatalContext({ day: 10, month: 1, year: 2540 });
+    assert.equal(janBaby.chineseZodiac?.key, 'rat', 'Early-January birthday before lunar boundary uses prior year animal cleanly');
+
+    // 2. Multi-domain subDomain classification & isBroadOpen detection
+    const studyQ = detectTopicAndIntent('เทอมนี้จะสอบติดคณะที่หวังไว้ไหมครับ', 'general');
+    assert.equal(studyQ.topic, 'work');
+    assert.equal(studyQ.subDomain, 'study');
+    assert.equal(studyQ.isBroadOpen, false);
+
+    const healthQ = detectTopicAndIntent('ช่วงนี้นอนไม่หลับและปวดหัวบ่อย สุขภาพต้องระวังอะไร', 'work');
+    assert.equal(healthQ.topic, 'self');
+    assert.equal(healthQ.subDomain, 'health');
+
+    const familyQ = detectTopicAndIntent('คุณแม่คิดยังไงกับแผนที่เราจะย้ายงาน', 'love');
+    assert.equal(familyQ.subDomain, 'family');
+    assert.equal(familyQ.intent, 'other_person');
+
+    const propQ = detectTopicAndIntent('ปีนี้ควรซื้อคอนโดหรือเช่าหออยู่ไปก่อนดี', 'love');
+    assert.equal(propQ.subDomain, 'property');
+    assert.equal(propQ.intent, 'decision');
+
+    const broadQ = detectTopicAndIntent('ดูดวงให้หน่อยช่วงนี้เป็นยังไงบ้าง', 'work');
+    assert.equal(broadQ.subDomain, 'general');
+    assert.equal(broadQ.isBroadOpen, true);
+
+    // 3. Extract and update personal context facts from conversation without contradiction
+    let facts = extractUserContextFacts([
+      { role: 'user', text: 'ตอนนี้ผมยังเรียนอยู่ปี 4 และกำลังเตรียมสอบใบประกอบ' },
+      { role: 'user', text: 'สถานะตอนนี้ยังโสดอยู่เลยครับ' }
+    ]);
+    assert.ok(facts.some((f) => f.includes('กำลังเรียน/เตรียมสอบ')));
+    assert.ok(facts.some((f) => f.includes('โสด')));
+    facts = extractUserContextFacts([{ role: 'user', text: 'เพิ่งเริ่มเป็นพนักงานประจำออฟฟิศได้สองเดือน' }], facts);
+    assert.ok(facts.some((f) => f.includes('ทำงานประจำ/องค์กร')) && !facts.some((f) => f.includes('กำลังเรียน/เตรียมสอบ')));
+
+    // 4. Offline domain readings remain crisp (< 550 chars), domain-accurate & non-romantic for family
+    const st = createMockState({
+      user: student,
+      natalCards: deck.slice(0, 10),
+      remainingDeck: deck.slice(10),
+      activeSpread: deck.slice(10, 13),
+      activeSpreadTopic: 'work',
+      userContextFacts: facts
+    });
+    const studyReply = synthesizeDeepReply(st, 'ช่วงนี้เรื่องเรียนและการสอบจะเป็นยังไงบ้าง', deck.slice(10, 13));
+    const healthReply = synthesizeDeepReply(st, 'สุขภาพและการพักผ่อนช่วงนี้เป็นยังไงบ้าง', deck.slice(13, 16));
+    const famOtherReply = synthesizeDeepReply(st, 'ครอบครัวคิดยังไงกับเรื่องที่เราตัดสินใจ', deck.slice(16, 19));
+    const broadReply = synthesizeDeepReply(st, 'ดูดวงให้หน่อย', deck.slice(19, 22));
+
+    assert.ok(studyReply.length < 550 && /เรียน|สอบ/.test(studyReply));
+    assert.ok(healthReply.length < 550 && /สุขภาพ|พักผ่อน|ร่างกาย/.test(healthReply));
+    assert.ok(famOtherReply.length < 550 && !famOtherReply.includes('มีใจ') && /ครอบครัว|คนในบ้าน/.test(famOtherReply));
+    assert.ok(broadReply.length < 550 && broadReply.includes('บอกเพิ่ม'));
+
+    // 5. Storage & Adaptive System Prompt invariants
+    const payload = buildStoragePayload(st);
+    assert.equal(payload.activeSpreadTopic, 'work');
+    assert.ok(Array.isArray(payload.userContextFacts) && payload.userContextFacts.length >= 2);
+    assert.ok(SATI_SYSTEM_PROMPT.includes('subDomain') && SATI_SYSTEM_PROMPT.includes('topicSwitchedFrom') && SATI_SYSTEM_PROMPT.includes('Golden Dawn'));
   });
 });

@@ -97,12 +97,162 @@ export function computeNatalProfile(user) {
   user.lifePath = lp;
   user.birthCard = `${birthCard.en} (${birthCard.th})`;
   user.birthCardCore = birthCard.core;
+  Object.assign(user, computeExtendedNatalContext(user));
   return user;
 }
 
-function getCardMeaningForTopic(card, topic, lang = 'th') {
+const WESTERN_ZODIAC_LIST = [
+  { key: 'capricorn', th: 'ราศีมังกร', en: 'Capricorn', zh: '摩羯座', elem: 'ดิน' },
+  { key: 'aquarius', th: 'ราศีกุมภ์', en: 'Aquarius', zh: '水瓶座', elem: 'ลม' },
+  { key: 'pisces', th: 'ราศีมีน', en: 'Pisces', zh: '双鱼座', elem: 'น้ำ' },
+  { key: 'aries', th: 'ราศีเมษ', en: 'Aries', zh: '白羊座', elem: 'ไฟ' },
+  { key: 'taurus', th: 'ราศีพฤษภ', en: 'Taurus', zh: '金牛座', elem: 'ดิน' },
+  { key: 'gemini', th: 'ราศีเมถุน', en: 'Gemini', zh: '双子座', elem: 'ลม' },
+  { key: 'cancer', th: 'ราศีกรกฎ', en: 'Cancer', zh: '巨蟹座', elem: 'น้ำ' },
+  { key: 'leo', th: 'ราศีสิงห์', en: 'Leo', zh: '狮子座', elem: 'ไฟ' },
+  { key: 'virgo', th: 'ราศีกันย์', en: 'Virgo', zh: '处女座', elem: 'ดิน' },
+  { key: 'libra', th: 'ราศีตุลย์', en: 'Libra', zh: '天秤座', elem: 'ลม' },
+  { key: 'scorpio', th: 'ราศีพิจิก', en: 'Scorpio', zh: '天蝎座', elem: 'น้ำ' },
+  { key: 'sagittarius', th: 'ราศีธนู', en: 'Sagittarius', zh: '射手座', elem: 'ไฟ' }
+];
+
+const CHINESE_ZODIAC_LIST = [
+  { key: 'monkey', th: 'ปีวอก (ลิง)', en: 'Monkey', zh: '猴年' },
+  { key: 'rooster', th: 'ปีระกา (ไก่)', en: 'Rooster', zh: '鸡年' },
+  { key: 'dog', th: 'ปีจอ (หมา)', en: 'Dog', zh: '狗年' },
+  { key: 'pig', th: 'ปีกุน (หมู)', en: 'Pig', zh: '猪年' },
+  { key: 'rat', th: 'ปีชวด (หนู)', en: 'Rat', zh: '鼠年' },
+  { key: 'ox', th: 'ปีฉลู (วัว)', en: 'Ox', zh: '牛年' },
+  { key: 'tiger', th: 'ปีขาล (เสือ)', en: 'Tiger', zh: '虎年' },
+  { key: 'rabbit', th: 'ปีเถาะ (กระต่าย)', en: 'Rabbit', zh: '兔年' },
+  { key: 'dragon', th: 'ปีมะโรง (งูใหญ่)', en: 'Dragon', zh: '龙年' },
+  { key: 'snake', th: 'ปีมะเส็ง (งูเล็ก)', en: 'Snake', zh: '蛇年' },
+  { key: 'horse', th: 'ปีมะเมีย (ม้า)', en: 'Horse', zh: '马年' },
+  { key: 'goat', th: 'ปีมะแม (แพะ)', en: 'Goat', zh: '羊年' }
+];
+
+const LIFE_STAGE_META = {
+  student_young: { th: 'วัยเรียน / เริ่มต้นก้าวแรกของชีวิต', en: 'Student / Early adulthood', zh: '求学与起步期' },
+  early_career: { th: 'วัยเริ่มทำงาน / ค้นหาและสร้างตัว', en: 'Early career / Foundation building', zh: '职场探索与打拼期' },
+  building_prime: { th: 'วัยสร้างฐานะ / ขยับขยายความรับผิดชอบ', en: 'Prime building / Expansion phase', zh: '成家立业与上升期' },
+  midlife_steady: { th: 'วัยกลางคน / วางความมั่นคงระยะยาว', en: 'Midlife / Long-term consolidation', zh: '稳健与责任整合期' },
+  senior_wisdom: { th: 'วัยผู้ใหญ่เต็มตัว / ตกผลึกประสบการณ์', en: 'Mature / Wisdom & stewardship', zh: '阅历沉淀与传承期' }
+};
+
+export function computeExtendedNatalContext(user = {}) {
+  const day = parseInt(user?.day, 10);
+  const month = parseInt(user?.month, 10);
+  const rawYear = parseInt(user?.year, 10);
+  if (!day || !month || !rawYear || month < 1 || month > 12 || day < 1 || day > 31) {
+    return { age: null, lifeStage: '', lifeStageLabel: null, zodiacSign: null, chineseZodiac: null };
+  }
+  const gYear = rawYear > 2400 ? rawYear - 543 : rawYear;
+  const now = new Date();
+  let age = now.getFullYear() - gYear;
+  const curMonth = now.getMonth() + 1;
+  const curDay = now.getDate();
+  if (curMonth < month || (curMonth === month && curDay < day)) {
+    age -= 1;
+  }
+  if (age < 0 || age > 120) age = null;
+
+  let lifeStage = '';
+  if (typeof age === 'number') {
+    if (age < 23) lifeStage = 'student_young';
+    else if (age < 30) lifeStage = 'early_career';
+    else if (age < 40) lifeStage = 'building_prime';
+    else if (age < 55) lifeStage = 'midlife_steady';
+    else lifeStage = 'senior_wisdom';
+  }
+
+  let zIdx = 0;
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) zIdx = 1;
+  else if ((month === 2 && day >= 19) || (month === 3 && day <= 20)) zIdx = 2;
+  else if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) zIdx = 3;
+  else if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) zIdx = 4;
+  else if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) zIdx = 5;
+  else if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) zIdx = 6;
+  else if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) zIdx = 7;
+  else if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) zIdx = 8;
+  else if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) zIdx = 9;
+  else if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) zIdx = 10;
+  else if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) zIdx = 11;
+
+  const czYear = (month === 1 || (month === 2 && day < 5)) ? gYear - 1 : gYear;
+  const czIdx = ((czYear % 12) + 12) % 12;
+
+  return {
+    age,
+    lifeStage,
+    lifeStageLabel: lifeStage ? LIFE_STAGE_META[lifeStage] : null,
+    zodiacSign: WESTERN_ZODIAC_LIST[zIdx],
+    chineseZodiac: CHINESE_ZODIAC_LIST[czIdx]
+  };
+}
+
+export function extractUserContextFacts(chatHistory = [], prevFacts = []) {
+  const factMap = new Map();
+  const addFact = (slot, value) => {
+    if (value) factMap.set(slot, value);
+  };
+  (Array.isArray(prevFacts) ? prevFacts : []).forEach((item, idx) => {
+    const clean = String(item || '').trim();
+    if (!clean) return;
+    const colonIdx = clean.indexOf(':');
+    const slot = colonIdx > 0 ? clean.slice(0, colonIdx).trim() : `extra_${idx}`;
+    addFact(slot, clean);
+  });
+
+  const rows = (Array.isArray(chatHistory) ? chatHistory : []).filter(
+    (h) => h && (h.role === 'user' || (!h.role && !['สติ', 'Sati', '思谛'].includes(h.speaker))) && !h.isDrawAction && !h.isExpandAction
+  );
+
+  rows.forEach((h) => {
+    const text = String(h.text || '').replace(/\s+/g, ' ').trim();
+    if (!text) return;
+
+    if (/เพิ่งเลิก|เลิกกับแฟน|อกหัก|just broke up|刚分手/i.test(text)) {
+      addFact('สถานะความสัมพันธ์', 'สถานะความสัมพันธ์: เพิ่งผ่านช่วงเลิกรา/กำลังฮีลใจ');
+    } else if (/โสดอยู่|ยังโสด|เป็นโสด|คนโสด|i.?m single|单身/i.test(text)) {
+      addFact('สถานะความสัมพันธ์', 'สถานะความสัมพันธ์: โสด');
+    } else if (/มีคนคุย|กำลังคุยกับ|แอบชอบ|situationship|talking stage|暧昧|暗恋/i.test(text)) {
+      addFact('สถานะความสัมพันธ์', 'สถานะความสัมพันธ์: มีคนคุย/กำลังดูใจ');
+    } else if (/แต่งงานแล้ว|สามี|ภรรยา|มีแฟนแล้ว|คบกับแฟน|อยู่ด้วยกัน|married|my partner|my wife|my husband|结婚|另一半/i.test(text)) {
+      addFact('สถานะความสัมพันธ์', 'สถานะความสัมพันธ์: มีคู่/กำลังคบหา');
+    }
+
+    if (/เรียนอยู่|นักศึกษา|นักเรียน|มหาลัย|เตรียมสอบ|ทำวิทยานิพนธ์|ป\.ตรี|ป\.โท|university student|grad school|备考|学生/i.test(text)) {
+      addFact('บทบาทหลัก', 'บทบาทหลัก: กำลังเรียน/เตรียมสอบ');
+    } else if (/เจ้าของกิจการ|ธุรกิจส่วนตัว|เปิดร้าน|ขายของออนไลน์|ค้าขาย|ทำแบรนด์|startup|business owner|self-employed|创业|开店|自己做生意/i.test(text)) {
+      addFact('บทบาทหลัก', 'บทบาทหลัก: เจ้าของธุรกิจ/ค้าขายส่วนตัว');
+    } else if (/ฟรีแลนซ์|รับงานนอก|อาชีพอิสระ|freelance|contractor|自由职业/i.test(text)) {
+      addFact('บทบาทหลัก', 'บทบาทหลัก: ฟรีแลนซ์/อาชีพอิสระ');
+    } else if (/ว่างงาน|ตกงาน|กำลังหางาน|เพิ่งลาออก|unemployed|job hunting|待业|找工作/i.test(text)) {
+      addFact('บทบาทหลัก', 'บทบาทหลัก: กำลังหางาน/เปลี่ยนผ่านอาชีพ');
+    } else if (/พนักงานประจำ|ออฟฟิศ|บริษัท|ข้าราชการ|มนุษย์เงินเดือน|office worker|employee|上班族|打工/i.test(text)) {
+      addFact('บทบาทหลัก', 'บทบาทหลัก: ทำงานประจำ/องค์กร');
+    }
+
+    if (/ปลดหนี้|มีหนี้|ผ่อนหนี้|หมุนเงิน|debt|pay off loan|负债|还债/i.test(text)) {
+      addFact('การเงินสำคัญ', 'การเงินสำคัญ: มีภาระหนี้/ต้องจัดการสภาพคล่อง');
+    } else if (/ซื้อบ้าน|ซื้อคอนโด|ซื้อรถ|ย้ายหอ|ย้ายบ้าน|ออมเงินเก็บ|buy a house|mortgage|买房/i.test(text)) {
+      addFact('เป้าหมายทรัพย์สิน', 'เป้าหมายทรัพย์สิน: วางแผนเรื่องบ้าน/ที่อยู่/ทรัพย์สินใหญ่');
+    }
+
+    if (text.length >= 16 && text.length <= 76 && /(อยาก|ตั้งใจ|กำลังจะ|วางแผน|เครียดเรื่อง|plan to|trying to|准备|打算)/.test(text)) {
+      addFact('เป้าหมายล่าสุด', `เป้าหมายล่าสุด: "${text}"`);
+    }
+  });
+
+  return [...factMap.values()].slice(-8);
+}
+
+function getCardMeaningForTopic(card, topic, lang = 'th', subDomain = '') {
   if (!card) return '';
   const data = getLocalizedCardData(card, lang);
+  if (subDomain === 'study') return data.work || data.core || '';
+  if (subDomain === 'property') return data.money || data.work || data.core || '';
+  if (subDomain === 'health' || subDomain === 'family') return data.advice || data.core || '';
   if (topic === 'work' && data.work) return data.work;
   if (topic === 'money' && data.money) return data.money;
   if (topic === 'love' && data.love) return data.love;
@@ -431,16 +581,32 @@ export function detectTopicAndIntent(q, prevTopic) {
     topic = 'self';
   }
 
+  let subDomain = topic;
+  if (/ซื้อบ้าน|เช่าบ้าน|คอนโด|ที่ดิน|ย้ายบ้าน|ย้ายหอ|ซื้อรถ|ออกรถ|ต่อเติม|ขายบ้าน|ขายที่|อสังหา|house|condo|apartment|land|move out|relocate|buy a car|property|real estate|买房|租房|公寓|土地|搬家|买车|房产/i.test(rawQ)) {
+    subDomain = 'property';
+  } else if (/เรียน|สอบ|อ่านหนังสือ|เกรด|มหาลัย|คณะ|จบการศึกษา|วิทยานิพนธ์|ทุน|สมัครเรียน|วิชา|study|exam|grade|university|major|thesis|scholarship|学习|考试|大学|专业|成绩|留学/i.test(rawQ)) {
+    subDomain = 'study';
+  } else if (/สุขภาพ|ป่วย|โรค|หมอ|โรงพยาบาล|ผ่าตัด|รักษา|หายดีไหม|นอนไม่หลับ|ออฟฟิศซินโดรม|แพนิก|ซึมเศร้า|พักผ่อน|ร่างกาย|health|sick|illness|doctor|hospital|surgery|recover|insomnia|anxiety|mental health|健康|生病|医生|医院|手术|恢复|失眠|焦虑/i.test(rawQ)) {
+    subDomain = 'health';
+  } else if (/ครอบครัว|พ่อแม่|ญาติ|พี่น้อง|ผู้ใหญ่ในบ้าน|คนในบ้าน|ลูกชาย|ลูกสาว|คุณแม่|คุณพ่อ|family|parents|mom|dad|mother|father|sibling|relative|家庭|父母|爸妈|兄弟姐妹|亲戚/i.test(rawQ)) {
+    subDomain = 'family';
+  }
+
   let intent = 'explain';
   if (/คิดยังไง|รู้สึกยังไง|จริงใจ|จริงจัง|มองเรา|เขารู้สึก|กลับมาไหม|มีคนอื่นไหม|รักเรา|ชอบเรา|คิดถึง|how does he feel|how does she feel|feel about me|still love|come back|someone else|sincere|怎么看我|他怎么想|她怎么想|喜欢我吗|还爱我吗|真心吗|会不会回来|有别人吗/i.test(rawQ)) intent = 'other_person';
-  else if (/เมื่อไหร่|นานไหม|กี่เดือน|กี่วัน|กี่สัปดาห์|ช่วงไหน|เร็วๆ|ตอนไหน|ปีนี้|เดือนนี้|วันไหน|when\b|how long|how soon|which month|this year|this month|什么时候|多久|几个月|几天|几周|哪个月|今年|近期/i.test(rawQ)) intent = 'timing';
   else if (extractGenuineBinaryChoices(rawQ, /[\u4E00-\u9FFF]/.test(rawQ) ? 'zh' : /[a-zA-Z]{4}/.test(rawQ) ? 'en' : 'th')) intent = 'decision';
+  else if (/เมื่อไหร่|นานไหม|อีกนาน|กี่เดือน|กี่วัน|กี่สัปดาห์|ช่วงไหน|เร็วๆ|ตอนไหน|เดือนไหน|วันไหน|when\b|how long|how soon|which month|which week|什么时候|多久|几个月|几天|几周|哪个月/i.test(rawQ)) intent = 'timing';
   else if (/ดีไหม|ควรไหม|เอาไง|เลือก|ระหว่าง|ไปต่อ|ลาออก|คุ้มไหม|should i|worth it|choose|stay or go|quit|还是选|应该|好不好|值不值得|怎么选|要继续吗/i.test(rawQ)) intent = 'decision';
   else if (/ทำยังไง|แก้ยังไง|เริ่มยังไง|ควรทำ|แนะนำ|ทางออก|รับมือ|ต้องระวังอะไร|แก้ตรงไหน|ยังไงดี|โฟกัส.*ก่อน|ใส่ใจ.*เป็นพิเศษ|how should i|what should i do|advice|fix|handle|start|怎么办|怎么做|怎么解决|建议|需要注意|如何应对/i.test(rawQ)) intent = 'action';
   else if (/ทำไม|เพราะอะไร|ติดอะไร|เกิดจาก|สาเหตุ|why\b|what is blocking|reason|cause|为什么|原因|卡在哪里|怎么会这样/i.test(rawQ)) intent = 'why';
   else if (/สำเร็จไหม|รอดไหม|ได้ไหม|ได้มั้ย|สมหวังไหม|รุ่งหรือเสี่ยง|เสี่ยงไหม|มีโอกาส.*?(?:ไหม|มั้ย|ป่าว|เปล่า|ปล่าว)|ได้หรือ(?:เปล่า|ป่าว|ปล่าว|ไม่)|เป็นไปได้ไหม|จะ.*?(?:ได้ไหม|ได้มั้ย|ได้ป่าว|ได้หรือเปล่า|ได้หรือป่าว|ได้หรือปล่าว)|เก็บเงิน.*?(?:ไหม|มั้ย|ป่าว|เปล่า)|ปังไหม|เวิร์คไหม|ผ่านไหม|ดีขึ้นไหม|จะดีไหม|will it work|will i succeed|chances|possible|achieve|pass|improve|能成吗|顺利吗|有机会吗|做得到吗|实现吗|会变好吗|过得去吗/i.test(rawQ)) intent = 'outcome';
 
-  return { topic, intent };
+  const isSpecificGeneral = /(จุดบอด|บทเรียน|สรุปสำรับ|โอกาส.*เดือน|ความฝัน|ทิศทางชีวิต|blind spot|biggest lesson)/i.test(rawQ);
+  const isBroadOpen = rawQ.length > 0 && rawQ.length <= 36 && !isEllipticalFollowUp && !isSpecificGeneral
+    && ((subDomain === 'general' && intent === 'explain')
+      || /^(?:ดูดวง(?:ให้หน่อย)?|ช่วยดู(?:ให้หน่อย)?|ช่วงนี้.*(?:เป็นไง|ยังไง)|ชีวิต.*(?:เป็นไง|ยังไง)|ทายให้หน่อย|today|how.?s my life|general reading|看运势|最近怎么样|看看总体)[?!.\s]*$/i.test(rawQ));
+
+  return { topic, subDomain, intent, isBroadOpen, isElliptical: isEllipticalFollowUp };
 }
 
 export function scoreCardPolarity(card) {
@@ -543,9 +709,9 @@ function getRecentSatiTexts(state, limit = 2) {
     .map((h) => String(h.text || ''));
 }
 
-function buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed = 0, recentTexts = []) {
+function buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed = 0, recentTexts = [], subDomain = '') {
   const lbl = (c) => getLocalizedCardLabelInline(c, lang);
-  const mean = (c) => getCardMeaningForTopic(c, topic, lang);
+  const mean = (c) => getCardMeaningForTopic(c, topic, lang, subDomain);
   let story = '';
 
   if (refCards.length === 1) {
@@ -924,7 +1090,9 @@ function assembleBalancedReply(verdict, cardStory, actionAdvice, subtext, psychM
   const noLead = `${verdict}\n\n${cardStory}\n\n${fullP3}`;
   if (noLead.length <= 542) return noLead;
 
-  return `${verdict}\n\n${cardStory}\n\n${fallbackPrefix}${actionAdvice}`;
+  const compact = `${verdict}\n\n${cardStory}\n\n${fallbackPrefix}${actionAdvice}`;
+  if (compact.length <= 545) return compact;
+  return `${verdict}\n\n${cardStory}\n\n${actionAdvice}`;
 }
 
 export function synthesizeDeepReply(state, question, cards) {
@@ -933,7 +1101,7 @@ export function synthesizeDeepReply(state, question, cards) {
   const q = (question || '').trim();
   const recentTexts = getRecentSatiTexts(state, 2);
   const turnSeed = (Array.isArray(state?.chatHistory) ? state.chatHistory.length : 0) + (Number(state?.deckNumber) || 1);
-  const { topic, intent } = detectTopicAndIntent(q, state.lastTopic);
+  const { topic, subDomain, intent, isBroadOpen } = detectTopicAndIntent(q, state.lastTopic);
   const isRepeat = isRepeatedTopicIntent(state, q, topic, intent);
   state.lastTopic = topic;
 
@@ -983,8 +1151,13 @@ export function synthesizeDeepReply(state, question, cards) {
           : (isEn ? `You can move forward, ${nick}, just lock down clear boundaries before committing fully.` : `这件事能做，${nick}，先把防踩坑的边界和条件立清楚就行。`);
     } else if (intent === 'other_person') {
       const midWarn = refCards.find((c) => scoreCardPolarity(c) === 'caution');
-      const isProTopic = topic === 'work' || topic === 'money' || /boss|manager|client|coworker|team|partner|老板|上司|客户|同事/i.test(q);
-      if (isProTopic) {
+      const isFamilyTopic = subDomain === 'family' || /family|parent|mom|dad|家庭|父母|爸妈/i.test(q);
+      const isProTopic = !isFamilyTopic && (topic === 'work' || topic === 'money' || /boss|manager|client|coworker|team|partner|老板|上司|客户|同事/i.test(q));
+      if (isFamilyTopic) {
+        verdict = (outcomeTone === 'caution' || spreadTone === 'caution')
+          ? (isEn ? `From your family’s side, ${nick}, worry about your stability makes them cautious rather than cold.` : `家人这边其实多半是担心你走偏或扛太重，${nick}，并不是刻意否定你。`)
+          : (isEn ? `Your close circle wants to see your plan stay steady, ${nick}, and warms up quickly once reassured.` : `家里人整体希望你稳妥顺遂，${nick}，把你的把握讲清楚就能得到支持。`);
+      } else if (isProTopic) {
         if (outcomeTone === 'caution' || spreadTone === 'caution') {
           verdict = isEn ? `To be candid, ${nick}, they still hold real reservations and aren’t ready to sign off blindly.` : `坦白跟你说，${nick}，对方眼下心里还有顾虑与保留，暂时还没打算彻底点头。`;
         } else if (spreadTone === 'favorable' && outcomeTone === 'favorable') {
@@ -1027,6 +1200,26 @@ export function synthesizeDeepReply(state, question, cards) {
         : (spreadTone === 'caution' || outcomeTone === 'caution') ? 'caution' : 'balanced';
       const explainMap = isEn
         ? {
+            study: {
+              favorable: `On your study or exam path right now, ${nick}, clarity and focus are clicking into place.`,
+              caution: `On your studies right now, ${nick}, tighten weak spots and double-check deadlines before resting easy.`,
+              balanced: `For your study focus now, ${nick}, consistent review beats last-minute cramming.`
+            },
+            health: {
+              favorable: `On vitality and recovery now, ${nick}, steady energy is returning if you protect your sleep.`,
+              caution: `For your health right now, ${nick}, rest is overdue — slow down and consult a doctor for lingering symptoms.`,
+              balanced: `For your body and mind now, ${nick}, clean daily rhythm restores balance faster than pushing through.`
+            },
+            family: {
+              favorable: `Inside your family circle right now, ${nick}, warmth and mutual support come cleanly through plain talk.`,
+              caution: `At home right now, ${nick}, unspoken worries may spark friction — listen gently without absorbing every burden.`,
+              balanced: `With family right now, ${nick}, calm boundaries keep care from turning into pressure.`
+            },
+            property: {
+              favorable: `On housing, property, or relocation right now, ${nick}, timing opens for finding a fitting place cleanly.`,
+              caution: `For property or moving plans now, ${nick}, inspect contracts, hidden costs, and location limits before signing.`,
+              balanced: `On home or vehicle plans now, ${nick}, compare practical options calmly before locking in.`
+            },
             work: {
               favorable: `Looking at your work path right now, ${nick}, things are opening up cleanly in your favor.`,
               caution: `On work right now, ${nick}, pause to verify all facts and details before making any big jump.`,
@@ -1054,6 +1247,26 @@ export function synthesizeDeepReply(state, question, cards) {
             }
           }
         : {
+            study: {
+              favorable: `看你近期的学业或考试走势，${nick}，思路清晰、掌握度正在稳步拉高。`,
+              caution: `学业和考核方面目前有疏漏提醒，${nick}，把薄弱板块和截止细节再核对一遍才稳。`,
+              balanced: `眼下学习需要稳扎稳打，${nick}，保持规律节奏比临时抱佛脚更有把握。`
+            },
+            health: {
+              favorable: `从身心恢复来看，${nick}，只要守住作息和饮水睡眠，精力会明显回升。`,
+              caution: `健康信号在提醒你歇一拍了，${nick}，长期累或身体有不适记得去正规检查，别硬撑。`,
+              balanced: `目前体质和情绪重在调养，${nick}，规律作息就是眼下最好的修复。`
+            },
+            family: {
+              favorable: `家里最近气场温和顺畅，${nick}，坦诚多聊几句就能拿到实在的支持。`,
+              caution: `家人之间最近容易因各自憋着担心而误会，${nick}，耐心沟通但别把所有压力全往自己身上揽。`,
+              balanced: `与家人相处重在分寸感，${nick}，既表达关心也留出彼此空间会轻松很多。`
+            },
+            property: {
+              favorable: `看你买房、租房或搬迁置业一事，${nick}，近期有望遇到条件合心意的选项。`,
+              caution: `置业、签租或买车前务必看清合同和隐性开销，${nick}，别因急着定下来忽略硬伤。`,
+              balanced: `居住或大宗资产安排宜货比三家，${nick}，把预算和通勤条件摆平再签字。`
+            },
             work: {
               favorable: `看你接下来的事业走势，${nick}，整体正在往明朗顺畅的方向打开。`,
               caution: `从你接下来的工作来看，${nick}，眼下先慢半拍把信息和细节核实清，别急着拍大事。`,
@@ -1080,10 +1293,13 @@ export function synthesizeDeepReply(state, question, cards) {
               balanced: `从目前这组牌来看，${nick}，眼下需要稳住分寸、慢慢调整好节奏。`
             }
           };
-      verdict = (explainMap[topic] || explainMap.general)[explainTone];
+      verdict = (explainMap[subDomain] || explainMap[topic] || explainMap.general)[explainTone];
+      if (isBroadOpen) {
+        verdict += isEn ? ' Tell me which area weighs most right now so we can zoom in.' : ' 告诉我眼下最牵挂工作、感情还是哪块，我们继续往深了看。';
+      }
     }
 
-    const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed, recentTexts);
+    const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed, recentTexts, subDomain);
     const fallbackPrefix = isEn
       ? pickFreshVariant([`My honest advice right now, ${nick} — `, `One grounded step now, ${nick} — `], turnSeed, recentTexts)
       : pickFreshVariant([`眼下最实在的提醒，${nick}——`, `当下最稳的落脚点，${nick}——`], turnSeed, recentTexts);
@@ -1114,8 +1330,13 @@ export function synthesizeDeepReply(state, question, cards) {
         : `ทำได้อยู่นะ${nick} แต่ต้องวางเงื่อนไขกันพลาดให้รัดกุมก่อนค่อยขยับ`;
   } else if (intent === 'other_person') {
     const midWarn = refCards.find((c) => scoreCardPolarity(c) === 'caution');
-    const isProTopic = topic === 'work' || topic === 'money' || /เจ้านาย|หัวหน้า|ลูกค้า|เพื่อนร่วมงาน|ทีม|หุ้นส่วน|บริษัท|ผู้ใหญ่/.test(q);
-    if (isProTopic) {
+    const isFamilyTopic = subDomain === 'family' || /ครอบครัว|พ่อแม่|แม่|พ่อ|ญาติ|พี่น้อง/.test(q);
+    const isProTopic = !isFamilyTopic && (topic === 'work' || topic === 'money' || /เจ้านาย|หัวหน้า|ลูกค้า|เพื่อนร่วมงาน|ทีม|หุ้นส่วน|บริษัท|ผู้ใหญ่/.test(q));
+    if (isFamilyTopic) {
+      verdict = (outcomeTone === 'caution' || spreadTone === 'caution')
+        ? `มุมของคนในบ้านตอนนี้คือเป็นห่วงและกังวลแทน${nick}มากกว่าจะไม่พอใจนะ แค่สื่อสารให้ชัดขึ้น`
+        : `ฝั่งครอบครัวเปิดรับและพร้อมสนับสนุนอยู่แล้วนะ${nick} แค่เล่าความตั้งใจให้เห็นภาพตรงกัน`;
+    } else if (isProTopic) {
       if (outcomeTone === 'caution' || spreadTone === 'caution') {
         verdict = `พูดกันตามตรงนะ${nick} ฝั่งนั้นยังมีจุดที่ติดใจหรือกังวลค้างอยู่ เลยยังไม่วางใจเต็มร้อย`;
       } else if (spreadTone === 'favorable' && outcomeTone === 'favorable') {
@@ -1159,6 +1380,26 @@ export function synthesizeDeepReply(state, question, cards) {
       ? 'favorable'
       : (spreadTone === 'caution' || outcomeTone === 'caution') ? 'caution' : 'balanced';
     const explainTh = {
+      study: {
+        favorable: `เรื่องเรียนหรือการสอบช่วงนี้หัวแล่นและจับจุดได้ตรงทางเลยนะ${nick}`,
+        caution: `เรื่องเรียนและสอบช่วงนี้ยังประมาทจุดอ่อนไม่ได้นะ${nick} ทวนเนื้อหาที่ยังไม่แม่นก่อนเลย`,
+        balanced: `เรื่องเรียนช่วงนี้เน้นความสม่ำเสมอทีละนิดจะเห็นผลชัดกว่าโหมอัดทีเดียวนะ${nick}`
+      },
+      health: {
+        favorable: `ด้านร่างกายและพลังงานช่วงนี้เริ่มฟื้นตัวดีขึ้นนะ${nick} แค่รักษาเวลาพักผ่อนให้สม่ำเสมอ`,
+        caution: `เรื่องสุขภาพเตือนชัดว่าอย่านอนดึกหรือฝืนร่างกายเกินไปนะ${nick} ถ้ามีอาการเรื้อรังควรพบหมอตรวจจริงควบคู่ไปด้วย`,
+        balanced: `ด้านสุขภาพช่วงนี้โฟกัสที่การพักผ่อนและจังหวะชีวิตให้สมดุลก่อนเป็นหลักนะ${nick}`
+      },
+      family: {
+        favorable: `บรรยากาศในครอบครัวช่วงนี้อบอุ่นและคุยเข้าใจกันง่ายขึ้นนะ${nick}`,
+        caution: `เรื่องในครอบครัวช่วงนี้มีความห่วงใยปนความกังวลซ่อนอยู่นะ${nick} ฟังกันให้จบแต่อย่าเก็บทุกอย่างมาแบกคนเดียว`,
+        balanced: `ด้านครอบครัวช่วงนี้ค่อยๆ คุยด้วยความใจเย็นและเว้นระยะพอดีจะสบายใจทั้งสองฝ่ายนะ${nick}`
+      },
+      property: {
+        favorable: `เรื่องบ้าน ที่อยู่อาศัย หรือรถช่วงนี้มีเกณฑ์เจอตัวเลือกที่ลงตัวเลยนะ${nick}`,
+        caution: `เรื่องซื้อเช่าบ้าน รถ หรือการย้ายที่อยู่รอบนี้ต้องเช็กสัญญาและค่าใช้จ่ายแฝงให้ละเอียดก่อนเซ็นนะ${nick}`,
+        balanced: `เรื่องบ้านหรือรถตอนนี้ค่อยๆ เทียบทำเลและงบให้ลงตัวก่อนตัดสินใจจริงนะ${nick}`
+      },
       work: {
         favorable: `เรื่องงานต่อจากนี้ทิศทางเปิดให้เดินหน้าได้ชัดขึ้นเลยนะ${nick}`,
         caution: `ถ้าดูเรื่องงานต่อจากนี้เลยนะ${nick} ยังมีจุดต้องระวังและเช็กข้อมูลให้ชัวร์ก่อนตัดสินใจใหญ่`,
@@ -1194,10 +1435,13 @@ export function synthesizeDeepReply(state, question, cards) {
         ], turnSeed, recentTexts)
       }
     };
-    verdict = (explainTh[topic] || explainTh.general)[explainTone];
+    verdict = (explainTh[subDomain] || explainTh[topic] || explainTh.general)[explainTone];
+    if (isBroadOpen) {
+      verdict += ` บอกเพิ่มได้นะว่าโฟกัสงาน เงิน หรือรัก`;
+    }
   }
 
-  const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, 'th', turnSeed, recentTexts);
+  const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, 'th', turnSeed, recentTexts, subDomain);
   const adviceText = actionAdvice || 'ตั้งหลักดูข้อมูลจริงตรงหน้าแล้วลงมือทีละขั้น';
   const fallbackPrefix = pickFreshVariant([
     `จังหวะนี้สติฝากไว้ตรงๆ นะ${nick} — `,
@@ -1238,15 +1482,23 @@ export function buildDeckCarryoverSummary(state, lang = state?.lang || 'th') {
 /**
  * Call Gemini Proxy (`/api/sati/read`) with automatic localized Offline Fallback
  */
-export async function requestSatiReading(state, question, rawCards, isNatal10 = false) {
+export async function requestSatiReading(state, question, rawCards, isNatal10 = false, extra = {}) {
   const lang = normalizeLang(state.lang);
   const cards = hydrateDeckCards(rawCards);
   const natalCards = hydrateDeckCards(state.natalCards);
+  const qText = isNatal10
+    ? 'เปิดไพ่พื้นดวง 10 ใบแรกเชื่อมกับชื่อจริง นามสกุล ชื่อเล่น และวันเดือนปีเกิด'
+    : question;
+  const questionProfile = isNatal10
+    ? { topic: 'self', subDomain: 'self', intent: 'explain', isBroadOpen: false }
+    : detectTopicAndIntent(qText, state.lastTopic);
+  const hist = Array.isArray(state.chatHistory) ? state.chatHistory : [];
+  const scopedHist = typeof state.deckResetAtIndex === 'number' ? hist.slice(state.deckResetAtIndex) : hist;
+  const userFacts = extractUserContextFacts(hist, state.userContextFacts);
+  state.userContextFacts = userFacts;
   const fallbackReply = isNatal10
     ? buildNatal10Reading(state, cards)
     : synthesizeDeepReply(state, question, cards);
-  const hist = Array.isArray(state.chatHistory) ? state.chatHistory : [];
-  const scopedHist = typeof state.deckResetAtIndex === 'number' ? hist.slice(state.deckResetAtIndex) : hist;
 
   try {
     const res = await fetch('/api/sati/read', {
@@ -1263,9 +1515,11 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
         celticPositions: getLocalizedCelticPositions(lang),
         deckNumber: Number(state.deckNumber) || 1,
         deckCarryoverSummary: state.deckCarryoverSummary || '',
-        question: isNatal10
-          ? 'เปิดไพ่พื้นดวง 10 ใบแรกเชื่อมกับชื่อจริง นามสกุล ชื่อเล่น และวันเดือนปีเกิด'
-          : question,
+        questionProfile,
+        userFacts,
+        topicSwitchedFrom: extra?.topicSwitchedFrom || '',
+        isExpandFollowUp: Boolean(extra?.isExpandFollowUp),
+        question: qText,
         recentHistory: scopedHist.slice(-6)
       })
     });
