@@ -80,11 +80,11 @@ function writeFeedbackDB(list) {
   fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(list, null, 2), 'utf8');
 }
 
-export const SATI_SYSTEM_PROMPT = `คุณคือ "สติ" เพื่อนสนิทที่เป็นหมอดูระดับปรมาจารย์ตัวจริง เชี่ยวชาญทั้งโหราศาสตร์ทักษาไทยและไพ่ทาโรต์ Rider-Waite 78 ใบ
-น้ำเสียงและสไตล์การพูด: คุยเหมือนเพื่อนสนิทที่รู้จักกันมานาน — อบอุ่น สุภาพ จริงใจ ฉะฉาน อ่านทะลุใจ และพูดตรงประเด็นโดยไม่เกริ่นน้ำท่วมทุ่ง แบ่งเป็น 3 ย่อหน้าสั้นๆ อ่านจบไวตามจังหวะ 4 ขั้น:
-1. ย่อหน้าแรก (อ่านใจ Subtext + ฟันธงตรงคำถาม): จับความรู้สึกหรือปมลึกๆ หลังคำถามทันที (เช่น ถามว่าจะรอดไหม = ลึกๆ เหนื่อยและอยากรู้จุดคอขวด; ถามเรื่องเขา = กำลังเอาคุณค่าไปผูกกับอีกฝ่าย; ถามเลือกทาง A/B = กลัวตัดสินใจพลาดเลยต้องบอก Trade-off; ถามเมื่อไหร่ = ใจร้อนอยากเห็นผล; หากประวัติคุยเพิ่งถามเรื่องเดิมซ้ำให้ทักอย่างรู้ทันแบบเพื่อนว่าใจยังวางเรื่องนี้ไม่ลง) แล้วฟันธงคำตอบตรงประเด็นตั้งแต่ย่อหน้านี้
-2. ย่อหน้ากลาง (ผูกหน้าไพ่เป็นภาพชีวิตจริงเชื่อมพื้นดวง): ร้อยเรียงชื่อไพ่จริงที่เปิดได้บนโต๊ะให้ต่อเป็นเรื่องเดียว แปลชื่อไพ่เป็นพฤติกรรมจริง พร้อมสะท้อนจิตวิทยาเฉพาะตัวของผู้ถาม เช่น เทียบนิสัยธาตุวันเกิดปะทะสถานการณ์หน้าไพ่ (Rainbow Ruse), ชี้ภาพนอกที่ดูนิ่งเก่งแต่ข้างในแบกหนัก (Jacques Statement) หรือสะท้อนความลังเลสองใจด้วยคำเชื่อม "และ" แทน "แต่" ห้ามพูดประโยคหว่านแหแบบ Barnum ที่ใช้ได้กับทุกคน ห้ามขึ้นบุลเล็ต (• หรือ 1) 2)) และห้ามก๊อปคำซ้ำ
-3. ย่อหน้าท้าย (ผ่าจุดบอดแบบเพื่อนหวังดี + ทางออกที่ทำได้จริง): เตือนจุดบอด นิสัยส่วนตัวที่ต้องระวัง หรือราคาที่ต้องจ่าย (Trade-off) อย่างจริงใจแบบเพื่อนที่หวังดี แล้วจบด้วยก้าวต่อไปที่ลงมือทำได้ทันที
+export const SATI_SYSTEM_PROMPT = `คุณคือ "สติ" เพื่อนสนิทที่เป็นหมอดูระดับปรมาจารย์ตัวจริง เชี่ยวชาญทั้งโหราศาสตร์ทักษาไทยและไพ่ทาโรต์ Rider-Waite 78 ใบตามหลัก Golden Dawn
+น้ำเสียงและสไตล์การพูด: คงรูปแบบ 3 ย่อหน้าสั้นๆ อ่านจบไวเหมือนเพื่อนสนิทที่รู้จักกันมานาน — อบอุ่น สุภาพ จริงใจ ฉะฉาน อ่านทะลุใจ และพูดตรงประเด็นโดยไม่เกริ่นน้ำท่วมทุ่ง:
+1. ย่อหน้าแรก (อ่านใจ Subtext + ฟันธงตรงคำถาม): จับความรู้สึกหรือปมลึกๆ หลังคำถามทันที (เช่น ถามว่าจะรอดไหม = ลึกๆ เหนื่อยและอยากรู้จุดคอขวด; ถามเรื่องเขา = กำลังเอาคุณค่าไปผูกกับอีกฝ่าย; ถามเลือกทาง A/B = กลัวตัดสินใจพลาดเลยต้องบอก Trade-off; ถามเมื่อไหร่ = ให้ระบุช่วงเวลาโดยประมาณจากธาตุไพ่ ไม้เท้าไว/ดาบปานกลาง/ถ้วยค่อยเป็นค่อยไป/เหรียญใช้เวลาวางฐาน; หากประวัติคุยเพิ่งถามเรื่องเดิมซ้ำให้ทักอย่างรู้ทันแบบเพื่อน) แล้วฟันธงคำตอบตรงประเด็นตั้งแต่ย่อหน้านี้
+2. ย่อหน้ากลาง (ผูกหน้าไพ่ + ธาตุทักษา + Golden Dawn Elemental Dignity เป็นภาพชีวิตจริง): ห้ามไล่ชื่อไพ่ทั้ง 10 ใบเรียงข้อเหมือนท่องตำรา ให้คัดเฉพาะไพ่แกนหลัก 3–5 ใบที่ปะทะหรือเสริมแรงกันมากที่สุด ร้อยเรียงเป็นเรื่องเดียวเชื่อมกับธาตุทักษาวันเกิดและกำลังธาตุไพ่ (ไฟ+ลมเสริมแรงไว / น้ำ+ดินปั้นผลมั่นคง / ไฟ+น้ำขัดกันในใจ / ลม+ดินคิดชนข้อจำกัดจริง) พร้อมแปลเป็นพฤติกรรมจริงที่เกิดในชีวิตผู้ถาม เช่น เทียบนิสัยธาตุปะทะไพ่ (Rainbow Ruse), ภาพนอกนิ่งแต่ข้างในแบกหนัก (Jacques Statement) ห้ามพูดประโยคหว่านแหแบบ Barnum ที่ใช้ได้กับทุกคน ห้ามขึ้นบุลเล็ต (• หรือ 1) 2)) และห้ามก๊อปคำซ้ำ
+3. ย่อหน้าท้าย (ผ่าจุดบอดเฉพาะตัว + ทางออกที่ลงมือได้วันนี้): ชี้จุดบอดจากอักษรกาลกิณี/ไพ่เตือนหรือราคาที่ต้องจ่าย (Trade-off) อย่างจริงใจแบบเพื่อนหวังดี และจบด้วย 1 ก้าวแรกที่ลงมือทำได้ทันที
 4. ข้อห้ามเด็ดขาด: ตอบด้วย Target Language เท่านั้น (ไทย / English / 简体中文) ห้ามใส่อีโมจิ ห้ามใช้เครื่องหมายดอกจัน (** หรือ *) หรือ Markdown ห้ามใช้คำว่า AI เอไอ บอท chatbot จอมเวท ไม่อวย สรุปตรงๆ ห้ามใส่หัวข้อแข็งๆ และห้ามปิดท้ายด้วยจำนวนไพ่ที่เหลือในสำรับ เช่น "(เหลือไพ่ในสำรับ XX ใบ)" หรือสอนวิธีใช้งานปุ่มในแอป`;
 
 function sanitizeSatiText(rawText, lang = 'th') {
@@ -103,7 +103,7 @@ function sanitizeSatiText(rawText, lang = 'th') {
 }
 
 export async function handleSatiReadRequest(body) {
-  const { userProfile, natalCards, activeSpread, remainingCount, question, recentHistory, isNatal10, celticPositions, lang: rawLang } = body || {};
+  const { userProfile, natalCards, activeSpread, remainingCount, elementalDignity, question, recentHistory, isNatal10, celticPositions, lang: rawLang } = body || {};
   const lang = rawLang === 'en' || rawLang === 'zh' ? rawLang : 'th';
   const apiKey = resolveApiKey();
 
@@ -127,24 +127,30 @@ export async function handleSatiReadRequest(body) {
       ? (celticPositions[idx] || `ตำแหน่งที่ ${idx + 1}`)
       : (spreadArr.length === 1 ? 'คำตอบหลัก' : (positions3[idx] || `ใบที่ ${idx + 1}`));
     const aspects = [c.work && `งาน:${c.work}`, c.money && `เงิน:${c.money}`, c.love && `รัก:${c.love}`, c.advice && `แนะ:${c.advice}`].filter(Boolean).join(' | ');
-    return `- [${posLabel}] ${c.name} (${c.th}): ${c.core}${aspects ? ` (${aspects})` : ''}`;
+    return `- [${posLabel}] ${c.name} (${c.th}) [ธาตุ:${c.suit || 'Major'}${c.tone ? `, โทน:${c.tone}` : ''}]: ${c.core}${aspects ? ` (${aspects})` : ''}`;
   }).join('\n');
 
   const kal = userProfile?.thaksaDetails?.hasKalakini
     ? `มีอักษรกาลกิณีในชื่อ: ${userProfile.thaksaDetails.kalakiniChars.join(',')}`
     : 'ไม่มีอักษรกาลกิณีในชื่อ';
+  const thaksaRolesSummary = userProfile?.thaksaDetails?.roles
+    ? Object.entries(userProfile.thaksaDetails.roles)
+        .map(([role, chars]) => `${role}:[${(chars || []).join('')}]`)
+        .join(' | ')
+    : '';
 
   const userContext = [
     `Target Language: ${targetLangDesc}`,
     `ผู้ถาม: ชื่อเล่น "${userProfile?.nickname || 'เพื่อน'}", ชื่อจริง "${userProfile?.fullname || ''}"`,
     `พื้นดวงเกิด: ${userProfile?.dayName || ''}, ธาตุ${userProfile?.elemShort || ''} (${userProfile?.element || ''}), เลขชีวิต ${userProfile?.lifePath || ''}`,
-    `ทักษาชื่อ: เด่น ${userProfile?.thaksaStrength || ''} | ${kal} | ไพ่ประจำตัว: ${userProfile?.birthCard || ''}`,
+    `ทักษาชื่อ 8 ภูมิ: เด่น ${userProfile?.thaksaStrength || ''} | ${kal}${thaksaRolesSummary ? ` | รายละเอียดภูมิ:${thaksaRolesSummary}` : ''} | ไพ่ประจำตัว: ${userProfile?.birthCard || ''}`,
     `ไพ่พื้นดวง 10 ใบแรก: ${(natalCards || []).map((c, i) => `${i + 1}.${c.name}(${c.th})`).join(', ')}`,
     `ไพ่ที่เปิดอยู่บนโต๊ะตอนนี้ (${spreadArr.length} ใบ):\n${formattedSpread || 'ยังไม่มีไพ่เปิดเพิ่มเติม'}`,
+    elementalDignity ? `กำลังธาตุไพ่ (Golden Dawn Dignity): ${elementalDignity}` : '',
     `ไพ่คงเหลือในสำรับ: ${remainingCount ?? 68}/78 ใบ`,
     `ประวัติการคุยล่าสุด:\n${(recentHistory || []).slice(-6).map((h) => `${h.speaker}: ${h.text}`).join('\n')}`,
     `คำถามล่าสุดที่ต้องตอบให้ตรงประเด็น: "${question || 'ช่วยอ่านสถานการณ์และคำแนะนำตรงๆ จากไพ่ชุดนี้'}"`
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 14000 } });
   let rawOutput = '';

@@ -191,13 +191,21 @@
     <!-- TOP GROUP (Ordered Single-Row Arcane HUD + Sati Speech Scroll) -->
     <div id="top-ui-group" class="w-full flex flex-col">
       <header id="top-hud" class="hidden w-full px-2.5 pt-2 sm:px-4 sm:pt-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5">
-        <!-- Left Cluster: Deck Counter + Card Gallery + Natal 10 Cards -->
+        <!-- Left Cluster: Deck Counter + Discard Pile + Card Gallery + Natal 10 Cards -->
         <div class="flex items-center gap-1.5 pointer-auto overflow-x-auto scrollbar-thin py-0.5">
           <div class="arcane-plaque chamfer-sm px-2.5 py-1 flex items-center gap-1.5 text-xs shrink-0">
             <span class="w-2 h-2 bg-[#d4af37] rotate-45 inline-block"></span>
             <span data-i18n="hudDeckLabel" class="text-[#b0a999] hidden sm:inline">สำรับ</span>
             <span id="hud-deck-count" class="font-semibold text-[#f3d266]">78 / 78</span>
           </div>
+
+          <button id="btn-discard-pile" type="button" data-i18n-title="titleDiscardPile" class="btn-slate chamfer-sm px-2 sm:px-2.5 py-1 text-xs flex items-center gap-1 shrink-0 cursor-pointer" title="ดูกองไพ่ทิ้งที่ใช้ไปแล้ว">
+            <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="6" y="4" width="12" height="16" rx="1"/>
+              <path d="M4 8h2M18 8h2"/>
+            </svg>
+            <span id="hud-discard-count" class="font-semibold text-[#f4efe6]">กองทิ้ง: 0 ใบ</span>
+          </button>
 
           <button id="btn-deck-gallery" type="button" data-i18n-title="titleGallery" class="btn-slate chamfer-sm px-2.5 py-1 text-xs flex items-center gap-1 shrink-0" title="สมุดภาพไพ่ 78 ใบ">
             <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -218,7 +226,7 @@
           </button>
         </div>
 
-        <!-- Right Cluster: Coins + Camera 1P/2P + Sound + Lang + Hide All UI -->
+        <!-- Right Cluster: Coins + Camera 1P/2P + Hide UI + Guide (?) + Settings Gear -->
         <div class="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-1.5 pointer-auto w-full sm:w-auto sm:ml-auto">
           <button id="btn-shop-open" type="button" class="arcane-plaque chamfer-sm px-2 sm:px-2.5 py-1 flex items-center gap-1 text-[11px] sm:text-xs whitespace-nowrap hover:border-[#f3d266] transition">
             <svg class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -238,39 +246,32 @@
             <span id="hud-cam-label">มุมมอง: สายตา 1P</span>
           </button>
 
-          <button id="btn-mute" type="button" data-i18n-title="titleMute" class="btn-slate chamfer-sm p-1.5 shrink-0" title="เปิด/ปิดเสียง" aria-label="เปิดหรือปิดเสียง">
-            <svg id="icon-sound-on" class="w-3.5 h-3.5 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-              <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
-            </svg>
-            <svg id="icon-sound-off" class="hidden w-3.5 h-3.5 text-[#b0a999]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-              <line x1="22" y1="9" x2="16" y2="15"/>
-              <line x1="16" y1="9" x2="22" y2="15"/>
-            </svg>
-          </button>
-
-          <div class="arcane-plaque chamfer-sm p-0.5 flex items-center gap-0.5 shrink-0" role="group" aria-label="In-game language switcher">
-            <button type="button" data-lang="th" class="lang-btn btn-gold chamfer-sm px-1.5 py-0.5 text-[10px] sm:text-[11px]">ไทย</button>
-            <button type="button" data-lang="en" class="lang-btn btn-slate chamfer-sm px-1.5 py-0.5 text-[10px] sm:text-[11px]">EN</button>
-            <button type="button" data-lang="zh" class="lang-btn btn-slate chamfer-sm px-1.5 py-0.5 text-[10px] sm:text-[11px]">中文</button>
-          </div>
-
-          <button id="btn-feedback-open" type="button" data-i18n="btnFeedbackOpen" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs text-[#f3d266] whitespace-nowrap shrink-0 cursor-pointer">
-            ★ รีวิว / ติชม
-          </button>
-
           <button id="btn-hide-ui" type="button" data-i18n-title="titleHideUi" class="btn-gold chamfer-sm px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs whitespace-nowrap flex items-center gap-1 shrink-0" title="ซ่อนปุ่มทั้งหมดเพื่อดูโต๊ะและไพ่เต็มจอ">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
             </svg>
             <span data-i18n="btnHideUi" class="hidden sm:inline">ดูโต๊ะเต็มจอ</span>
           </button>
+
+          <button id="btn-guide-open" type="button" data-i18n-title="titleGuideBtn" class="btn-slate chamfer-sm p-1.5 shrink-0 cursor-pointer" title="วิธีใช้งานแอปหมอดูสติ" aria-label="วิธีใช้งานแอปหมอดูสติ">
+            <svg class="w-4 h-4 text-[#f3d266]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </button>
+
+          <button id="btn-settings-open" type="button" data-i18n-title="titleSettingsBtn" class="btn-slate chamfer-sm p-1.5 shrink-0 cursor-pointer" title="ตั้งค่า & ออกจากโต๊ะหมอดู" aria-label="ตั้งค่าและออกจากโต๊ะหมอดู">
+            <svg class="w-4 h-4 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
         </div>
       </header>
 
       <!-- TOP FLOATING SPEECH PLAQUE NEAR SATI -->
-      <div id="sati-speech-wrap" class="hidden w-full max-w-md sm:max-w-[430px] sm:w-[37vw] sm:min-w-[260px] mx-auto sm:mx-0 sm:ml-4 sm:mr-auto px-2.5 sm:px-0 mt-1.5 pointer-auto">
+      <div id="sati-speech-wrap" class="hidden w-full max-w-md sm:max-w-[440px] sm:w-[38vw] sm:min-w-[270px] mx-auto sm:mx-0 sm:ml-4 sm:mr-auto px-2.5 sm:px-0 mt-1.5 pointer-auto">
         <div id="dialogue-box" class="arcane-plaque chamfer-sm px-3 py-2 relative">
           <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
             <div class="flex items-center gap-2 min-w-0">
@@ -279,19 +280,27 @@
               <span id="dialogue-preview" data-i18n="dialoguePreview" class="hidden text-xs text-[#b0a999] truncate">แตะเลือกไพ่บนโต๊ะได้เลย...</span>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              <button id="btn-speech-feedback" type="button" data-i18n="btnFeedbackOpen" class="text-[11px] text-[#d6cfc2] hover:text-[#f3d266] hover:underline cursor-pointer">
-                ★ รีวิว / ติชม
-              </button>
-              <button id="btn-chat-history" type="button" class="text-[11px] text-[#f3d266] hover:underline flex items-center gap-1">
+              <button id="btn-chat-history" type="button" class="text-[11px] text-[#f3d266] hover:underline flex items-center gap-1 cursor-pointer">
                 <span data-i18n="btnChatHistory">ดูประวัติการคุย</span>
               </button>
-              <button id="btn-toggle-dialogue" type="button" class="text-[11px] px-2 py-0.5 btn-slate chamfer-sm">
+              <button id="btn-toggle-dialogue" type="button" class="text-[11px] px-2 py-0.5 btn-slate chamfer-sm cursor-pointer">
                 ย่อกล่อง
               </button>
             </div>
           </div>
-          <div id="dialogue-content" class="mt-1.5 text-xs sm:text-sm leading-relaxed text-[#f4efe6] whitespace-pre-line max-h-44 sm:max-h-64 overflow-y-auto scrollbar-thin pr-1">
+          <div id="sati-step-guide" class="mt-1.5 px-2 py-1 bg-[#141933]/85 border-l-2 border-[#d4af37] text-[10.5px] sm:text-[11px] text-[#f3d266] leading-snug">
+            ขั้นที่ 1/3 · สติแนะนำ: หยิบไพ่ 10 ใบแรกเพื่อผูกพื้นดวง อดีต - ปัจจุบัน - อนาคต ของคุณ
+          </div>
+          <div id="dialogue-content" class="mt-1.5 text-xs sm:text-sm leading-relaxed text-[#f4efe6] whitespace-pre-line max-h-40 sm:max-h-60 overflow-y-auto scrollbar-thin pr-1">
             กำลังเตรียมสำรับ...
+          </div>
+          <div id="dialogue-footer-actions" class="hidden mt-2 pt-1.5 border-t border-[#d4af37]/20 flex items-center justify-end gap-2">
+            <button id="btn-live-share-reading" type="button" data-i18n="btnShareReading" class="btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] text-[#f4efe6] hover:border-[#f3d266] cursor-pointer">
+              บันทึกรูป / แชร์
+            </button>
+            <button id="btn-live-more-details" type="button" data-i18n="btnMoreDetails" class="btn-gold chamfer-sm px-2.5 py-0.5 text-[11px] cursor-pointer">
+              รายละเอียดเพิ่มเติม
+            </button>
           </div>
         </div>
       </div>
@@ -335,7 +344,18 @@
           </div>
         </div>
 
-        <!-- Resume Existing Deck Banner (Shown when saved session exists for this Gmail) -->
+        <!-- Returning Natal Memory & Session Archives Box (Shown after exit / repeat visits) -->
+        <div id="returning-natal-box" class="hidden mb-4 p-3 bg-[#141933]/90 border border-[#d4af37]/50 chamfer-sm space-y-2">
+          <p id="returning-natal-info" class="text-xs text-[#f3d266] leading-relaxed"></p>
+          <button id="btn-use-saved-natal" data-i18n="btnUseSavedNatal" type="button" class="w-full btn-gold chamfer-sm py-2 text-xs font-semibold cursor-pointer">
+            ใช้ไพ่พื้นดวง 10 ใบเดิม (เริ่มสำรับ 78 ใบ)
+          </button>
+          <button id="btn-ledger-history" type="button" class="hidden w-full btn-slate chamfer-sm py-1.5 text-xs text-[#f1ede4] cursor-pointer">
+            ดูประวัติที่บันทึกไว้
+          </button>
+        </div>
+
+        <!-- Resume Existing Deck Banner (Shown ONLY when mid-session reload without Exit Table) -->
         <div id="resume-session-box" class="hidden mb-4 p-3 bg-[#141933]/90 border border-[#d4af37]/50 chamfer-sm">
           <p id="resume-deck-info" class="text-xs text-[#f3d266] mb-2"></p>
           <button id="btn-resume-deck" data-i18n="btnResumeDeck" type="button" class="w-full btn-gold chamfer-sm py-2 text-xs">
@@ -386,17 +406,22 @@
       <!-- Contextual Action Dock -->
       <div id="action-dock" class="arcane-plaque chamfer-sm p-2 flex flex-col gap-1.5">
         <!-- Mode A: Picking Cards -->
-        <div id="dock-picking" class="hidden flex items-center justify-between gap-2 px-1">
-          <div class="flex items-center gap-2 min-w-0">
+        <div id="dock-picking" class="hidden flex flex-wrap items-center justify-between gap-2 px-1">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
             <div class="w-2 h-2 bg-[#d4af37] rotate-45 shrink-0"></div>
             <div class="truncate">
               <p id="pick-instruction" class="text-xs sm:text-sm font-medium text-[#f4efe6] truncate">แตะเลือกไพ่จากวงพัดบนโต๊ะ (0 / 10)</p>
               <p id="pick-subtext" data-i18n="pickSubtext" class="text-[10px] text-[#b0a999] hidden sm:block">แตะที่ไพ่ในวงพัดโดยตรง หรือกดปุ่มดูโต๊ะเต็มจอด้านบนเพื่อซ่อนเมนู</p>
             </div>
           </div>
-          <button id="btn-auto-pick" data-i18n="btnAutoPick" type="button" class="btn-gold chamfer-sm px-3 py-1 text-xs shrink-0">
-            สุ่มหยิบให้ครบ
-          </button>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button id="btn-self-shuffle" data-i18n="btnSelfShuffle" type="button" class="btn-slate chamfer-sm px-2.5 py-1 text-xs cursor-pointer">
+              สับไพ่ด้วยมือเรา
+            </button>
+            <button id="btn-auto-pick" data-i18n="btnAutoPick" type="button" class="btn-gold chamfer-sm px-3 py-1 text-xs cursor-pointer">
+              สุ่มหยิบให้ครบ
+            </button>
+          </div>
         </div>
 
         <!-- Mode B: Chat & Draw Loop -->
@@ -410,13 +435,28 @@
               <span data-i18n="btnDraw3">จั่วเพิ่ม 3 ใบ</span>
               <span data-i18n="btnDraw3Cost" class="text-[#f3d266] text-[10px]">(3 เหรียญ)</span>
             </button>
-            <button id="btn-draw-10-opt" type="button" class="hidden btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center leading-tight gap-0.5 sm:gap-1 col-span-2">
+            <button id="btn-draw-10-opt" type="button" class="hidden btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center leading-tight gap-0.5 sm:gap-1">
               <span data-i18n="btnDraw10Opt">เปิดผังใหญ่ 10 ใบ</span>
               <span data-i18n="btnDraw10Cost" class="text-[#f3d266] text-[10px]">(8 เหรียญ)</span>
             </button>
-            <button id="btn-reshuffle" data-i18n="btnReshuffle" type="button" class="hidden btn-gold chamfer-sm px-2.5 py-1 text-[11px] sm:text-xs col-span-2 sm:ml-auto">
-              สับสำรับใหม่ 78 ใบ
+            <button id="btn-self-shuffle-chat" data-i18n="btnSelfShuffle" type="button" class="btn-slate chamfer-sm px-2 py-1 text-[11px] sm:text-xs cursor-pointer">
+              สับไพ่ด้วยมือเรา
             </button>
+            <button id="btn-reshuffle" type="button" disabled class="btn-gold chamfer-sm px-2 py-1 text-[11px] sm:text-xs col-span-2 sm:ml-auto cursor-pointer">
+              รีเซ็ต 78 ใบ (รอเหลือ 0-9 ใบ)
+            </button>
+          </div>
+
+          <p id="table-tap-hint" data-i18n="tableTapCardHint" class="text-[10px] text-[#b0a999] px-0.5">
+            แตะที่ไพ่บนโต๊ะ 3D ได้เลยเพื่อดูความหมายเต็มใบ
+          </p>
+
+          <!-- Preset Category Tabs (Req 6: Love / Work / Money / General) -->
+          <div id="preset-category-bar" class="flex items-center gap-1 overflow-x-auto scrollbar-thin">
+            <button type="button" data-cat="love" data-i18n="presetCatLove" class="preset-cat-btn btn-gold chamfer-sm px-2.5 py-0.5 text-[11px] shrink-0 cursor-pointer">❤️ ความรัก</button>
+            <button type="button" data-cat="work" data-i18n="presetCatWork" class="preset-cat-btn btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] shrink-0 cursor-pointer">💼 การงาน</button>
+            <button type="button" data-cat="money" data-i18n="presetCatMoney" class="preset-cat-btn btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] shrink-0 cursor-pointer">💰 การเงิน</button>
+            <button type="button" data-cat="general" data-i18n="presetCatGeneral" class="preset-cat-btn btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] shrink-0 cursor-pointer">✨ อื่นๆ / ชีวิต</button>
           </div>
 
           <div id="smart-prompt-chips" class="hidden flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-0.5"></div>
@@ -516,16 +556,25 @@
     </div>
   </dialog>
 
-  <!-- NATIVE MODAL 5: CHAT HISTORY -->
+  <!-- NATIVE MODAL 5: CHAT HISTORY & TIMESTAMPED ARCHIVES -->
   <dialog id="modal-history" closedby="any" aria-labelledby="title-modal-history" class="w-full max-w-2xl">
-    <div class="panel-glass chamfer w-full max-h-[82vh] flex flex-col p-5 border border-[#d4af37]/60">
+    <div class="panel-glass chamfer w-full max-h-[85vh] flex flex-col p-5 border border-[#d4af37]/60">
       <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-3">
         <h3 id="title-modal-history" data-i18n="modalHistoryTitle" class="font-display text-base font-bold text-[#f1ede4]">ประวัติการสนทนากับสติ</h3>
         <form method="dialog">
-          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs">ปิด</button>
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs cursor-pointer">ปิด</button>
         </form>
       </div>
+      <div class="flex items-center gap-2 mb-3">
+        <button id="btn-history-tab-current" type="button" data-i18n="historyTabCurrent" class="btn-gold chamfer-sm px-3 py-1.5 text-xs font-semibold cursor-pointer">
+          รอบสนทนาปัจจุบัน
+        </button>
+        <button id="btn-history-tab-archives" type="button" data-i18n="historyTabArchives" class="btn-slate chamfer-sm px-3 py-1.5 text-xs cursor-pointer">
+          ประวัติย้อนหลังตามวัน-เวลา
+        </button>
+      </div>
       <div id="history-list" class="overflow-y-auto scrollbar-thin space-y-3 pr-1 text-sm"></div>
+      <div id="archive-list-view" class="hidden overflow-y-auto scrollbar-thin space-y-3 pr-1 text-sm"></div>
     </div>
   </dialog>
 
@@ -655,6 +704,167 @@
           </button>
         </div>
         <div id="feedback-entries-list" class="overflow-y-auto scrollbar-thin space-y-2 pr-1 max-h-72 text-xs"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 8: WELCOME INTRO POPUP (BEFORE LEDGER) -->
+  <dialog id="modal-welcome-intro" closedby="any" aria-labelledby="title-modal-welcome" class="w-full max-w-lg">
+    <div class="panel-glass chamfer w-full p-5 sm:p-6 border border-[#d4af37]/70 space-y-4">
+      <div class="flex items-start justify-between gap-3 border-b border-[#d4af37]/25 pb-3">
+        <h3 id="title-modal-welcome" data-i18n="modalWelcomeTitle" class="font-display text-base sm:text-lg font-bold text-[#f3d266]">
+          ทำความรู้จักกับหมอดูสติ (SATI) ก่อนเริ่มเปิดไพ่
+        </h3>
+        <form method="dialog">
+          <button value="cancel" data-i18n="btnClose" class="btn-slate chamfer-sm px-2.5 py-1 text-xs cursor-pointer">ปิด</button>
+        </form>
+      </div>
+      <div class="space-y-3 text-xs sm:text-sm text-[#e8e2d4] leading-relaxed">
+        <p data-i18n="welcomeIntroP1"></p>
+        <p data-i18n="welcomeIntroP2"></p>
+        <p data-i18n="welcomeIntroP3" class="text-[#d6cfc2]"></p>
+      </div>
+      <div class="pt-1 flex items-center gap-2">
+        <button id="btn-welcome-confirm" type="button" data-i18n="btnWelcomeConfirm" autofocus class="flex-1 btn-gold chamfer-sm py-2.5 text-sm font-semibold cursor-pointer">
+          รับทราบ และเข้าสู่โต๊ะหมอดู
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 9: SETTINGS GEAR MODAL (SOUND, LANGUAGE, FEEDBACK, EXIT TABLE) -->
+  <dialog id="modal-settings" closedby="any" aria-labelledby="title-modal-settings" class="w-full max-w-md">
+    <div class="panel-glass chamfer w-full p-5 border border-[#d4af37]/65 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3">
+        <h3 id="title-modal-settings" data-i18n="modalSettingsTitle" class="font-display text-base font-bold text-[#f1ede4]">ตั้งค่าและจัดการโต๊ะหมอดู</h3>
+        <form method="dialog">
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs cursor-pointer">ปิด</button>
+        </form>
+      </div>
+
+      <!-- Sound Toggle -->
+      <div class="p-3 bg-[#0e1328]/80 border border-[#d4af37]/25 flex items-center justify-between gap-3">
+        <div>
+          <div data-i18n="settingsSoundLabel" class="text-xs font-semibold text-[#f1ede4]">เสียงประกอบในห้องดูดวง</div>
+          <div id="settings-sound-status" class="text-[11px] text-[#a6a8b8]">เปิดเสียงอยู่</div>
+        </div>
+        <button id="btn-mute" type="button" data-i18n-title="titleMute" class="btn-slate chamfer-sm px-3 py-1.5 flex items-center gap-1.5 text-xs cursor-pointer" title="เปิด/ปิดเสียง" aria-label="เปิดหรือปิดเสียง">
+          <svg id="icon-sound-on" class="w-4 h-4 text-[#d4af37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+          </svg>
+          <svg id="icon-sound-off" class="hidden w-4 h-4 text-[#b0a999]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <line x1="22" y1="9" x2="16" y2="15"/>
+            <line x1="16" y1="9" x2="22" y2="15"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Language Selector -->
+      <div class="p-3 bg-[#0e1328]/80 border border-[#d4af37]/25 flex items-center justify-between gap-3">
+        <span data-i18n="settingsLangLabel" class="text-xs font-semibold text-[#f1ede4]">ภาษาของสติและหน้าไพ่</span>
+        <div class="arcane-plaque chamfer-sm p-0.5 flex items-center gap-1" role="group" aria-label="In-game language switcher">
+          <button type="button" data-lang="th" class="lang-btn btn-gold chamfer-sm px-2 py-1 text-xs cursor-pointer">ไทย</button>
+          <button type="button" data-lang="en" class="lang-btn btn-slate chamfer-sm px-2 py-1 text-xs cursor-pointer">EN</button>
+          <button type="button" data-lang="zh" class="lang-btn btn-slate chamfer-sm px-2 py-1 text-xs cursor-pointer">中文</button>
+        </div>
+      </div>
+
+      <!-- Feedback Button -->
+      <div class="p-3 bg-[#0e1328]/80 border border-[#d4af37]/25 flex items-center justify-between gap-3">
+        <span data-i18n="settingsFeedbackLabel" class="text-xs font-semibold text-[#f1ede4]">ช่วยเราพัฒนาหมอดูสติให้แม่นขึ้น</span>
+        <button id="btn-feedback-open" type="button" data-i18n="settingsFeedbackBtn" class="btn-gold chamfer-sm px-3 py-1.5 text-xs font-semibold cursor-pointer shrink-0">
+          ★ ส่งคำติชม / รีวิว
+        </button>
+      </div>
+
+      <!-- Exit Table & Save Session -->
+      <div class="p-3 bg-[#1c131d]/85 border border-[#fb7185]/40 space-y-2.5">
+        <div data-i18n="settingsExitSectionTitle" class="text-xs font-semibold text-[#fda4af]">จบรอบและออกจากโต๊ะหมอดู</div>
+        <button id="btn-exit-table-open" type="button" data-i18n="btnExitTableOpen" class="w-full btn-slate border-[#fb7185]/50 text-[#fda4af] hover:bg-[#fb7185]/15 chamfer-sm py-2 text-xs font-semibold cursor-pointer">
+          ออกจากโต๊ะหมอดู &amp; เซฟประวัติ
+        </button>
+        <div id="exit-confirm-box" class="hidden space-y-2 pt-2 border-t border-[#fb7185]/25">
+          <p data-i18n="exitConfirmDesc" class="text-[11px] text-[#e8d5d9] leading-relaxed"></p>
+          <div class="flex items-center gap-2">
+            <button id="btn-exit-table-confirm" type="button" data-i18n="btnExitTableConfirm" class="flex-1 bg-[#be123c] hover:bg-[#e11d48] text-white chamfer-sm py-2 text-xs font-semibold cursor-pointer">
+              ยืนยันออกจากโต๊ะ &amp; บันทึกประวัติ
+            </button>
+            <button id="btn-exit-table-cancel" type="button" data-i18n="btnExitTableCancel" class="btn-slate chamfer-sm px-3 py-2 text-xs cursor-pointer">
+              อยู่ต่อที่โต๊ะ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 10: STEP-BY-STEP HOW TO USE GUIDE -->
+  <dialog id="modal-guide" closedby="any" aria-labelledby="title-modal-guide" class="w-full max-w-lg">
+    <div class="panel-glass chamfer w-full max-h-[85vh] flex flex-col p-5 border border-[#d4af37]/65 space-y-3">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3">
+        <h3 id="title-modal-guide" data-i18n="modalGuideTitle" class="font-display text-base font-bold text-[#f3d266]">วิธีดูดวงและใช้งานแอปหมอดูสติ (SATI)</h3>
+        <form method="dialog">
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs cursor-pointer">ปิด</button>
+        </form>
+      </div>
+      <div class="overflow-y-auto scrollbar-thin space-y-2.5 pr-1 text-xs leading-relaxed">
+        <div class="p-3 bg-[#0e1328]/80 border border-[#d4af37]/30 space-y-1">
+          <div data-i18n="guideStep1Title" class="font-semibold text-[#f3d266]"></div>
+          <p data-i18n="guideStep1Desc" class="text-[#d6cfc2]"></p>
+        </div>
+        <div class="p-3 bg-[#0e1328]/80 border border-[#d4af37]/30 space-y-1">
+          <div data-i18n="guideStep2Title" class="font-semibold text-[#f3d266]"></div>
+          <p data-i18n="guideStep2Desc" class="text-[#d6cfc2]"></p>
+        </div>
+        <div class="p-3 bg-[#0e1328]/80 border border-[#d4af37]/30 space-y-1">
+          <div data-i18n="guideStep3Title" class="font-semibold text-[#f3d266]"></div>
+          <p data-i18n="guideStep3Desc" class="text-[#d6cfc2]"></p>
+        </div>
+        <div class="p-3 bg-[#0e1328]/80 border border-[#d4af37]/30 space-y-1">
+          <div data-i18n="guideStep4Title" class="font-semibold text-[#f3d266]"></div>
+          <p data-i18n="guideStep4Desc" class="text-[#d6cfc2]"></p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 11: DISCARD PILE INSPECTOR -->
+  <dialog id="modal-discard" closedby="any" aria-labelledby="title-modal-discard" class="w-full max-w-2xl">
+    <div class="panel-glass chamfer w-full max-h-[84vh] flex flex-col p-5 border border-[#d4af37]/60">
+      <div class="flex items-start justify-between gap-2 border-b border-[#d4af37]/25 pb-3 mb-3">
+        <div>
+          <h3 id="title-modal-discard" data-i18n="modalDiscardTitle" class="font-display text-base font-bold text-[#f1ede4]">กองไพ่ทิ้ง (ไพ่ที่เปิดใช้ไปแล้วในรอบนี้)</h3>
+          <p id="discard-summary-sub" class="text-xs text-[#f3d266] mt-0.5"></p>
+        </div>
+        <form method="dialog">
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs cursor-pointer">ปิด</button>
+        </form>
+      </div>
+      <div id="discard-grid" class="overflow-y-auto scrollbar-thin grid grid-cols-3 sm:grid-cols-5 gap-2.5 pr-1"></div>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 12: SHAREABLE PNG READING CARD PREVIEW -->
+  <dialog id="modal-share-preview" closedby="any" aria-labelledby="title-modal-share" class="w-full max-w-2xl">
+    <div class="panel-glass chamfer w-full max-h-[90vh] flex flex-col p-5 border border-[#d4af37]/70 space-y-3">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3">
+        <h3 id="title-modal-share" data-i18n="modalShareTitle" class="font-display text-base font-bold text-[#f3d266]">การ์ดคำทำนายพร้อมหน้าไพ่สำหรับเก็บและแชร์</h3>
+        <form method="dialog">
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs cursor-pointer">ปิด</button>
+        </form>
+      </div>
+      <div class="overflow-y-auto scrollbar-thin flex-1 flex justify-center bg-[#080a14] p-2 border border-[#d4af37]/25">
+        <img id="share-preview-img" alt="SATI Reading Card" class="max-w-full h-auto rounded-sm shadow-2xl" />
+      </div>
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <button id="btn-download-share-png" type="button" data-i18n="btnDownloadSharePng" class="flex-1 btn-gold chamfer-sm py-2.5 px-4 text-sm font-semibold cursor-pointer">
+          บันทึกรูปลงเครื่อง (.png)
+        </button>
+        <button id="btn-native-share-png" type="button" data-i18n="btnNativeSharePng" class="btn-slate chamfer-sm py-2.5 px-4 text-sm cursor-pointer">
+          แชร์รูปคำทำนาย
+        </button>
       </div>
     </div>
   </dialog>

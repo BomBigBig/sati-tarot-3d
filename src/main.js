@@ -13,7 +13,8 @@ import {
 } from './data/tarot78I18n.js';
 import { getTextPack, t } from './i18n/translations.js';
 import { computeNatalProfile, requestSatiReading, buildReadingBreakdown } from './engine/satiBrain.js';
-import { loadAccountState, saveAccountState, clearAccountState } from './engine/storage.js';
+import { loadAccountState, saveAccountState } from './engine/storage.js';
+import { generateReadingShareCardDataURL, formatShareTimestamp } from './engine/shareCardCanvas.js';
 import { createSati3DEngine, CAM_POS } from './scene/satiScene3D.js';
 
 function readSavedLang() {
@@ -114,21 +115,30 @@ const state = {
   freeChatQuota: 1,
   selectedShopPkg: null,
   deckNumber: 1,
+  sessionActive: false,
   remainingDeck: [],
+  discardPile: [],
   natalCards: [],
+  savedNatalCards: [],
   natalCompleted: false,
   activeSpread: [],
   pickTargetCount: 10,
   isPicking: false,
   isAnimatingShuffle: false,
+  isPlayerShuffling: false,
   isThinking: false,
   isSpeaking: false,
   _speakTimer: null,
   chatHistory: [],
+  sessionArchives: [],
   lastTopic: 'general',
+  selectedPresetCategory: 'love',
   currentMoodKey: 'moodIdle',
   currentPickMode: 'initial',
   currentGalleryFilter: 'ALL',
+  lastLiveShareEntry: null,
+  lastLiveShareQuestion: '',
+  lastShareDataUrl: '',
   dialogueCollapsed: false,
   dockCollapsed: false,
   uiHidden: false,
@@ -181,11 +191,36 @@ function showToast(msg) {
 function appendHistory(roleOrSpeaker, text, explicitRole, extra = {}) {
   const isSati = explicitRole === 'sati' || roleOrSpeaker === 'sati' || ['สติ', 'Sati', '思谛'].includes(roleOrSpeaker);
   const speaker = isSati ? t(state.lang, 'satiSpeaker') : roleOrSpeaker;
-  state.chatHistory.push({ speaker, role: isSati ? 'sati' : 'user', text, ...extra });
+  const entry = { speaker, role: isSati ? 'sati' : 'user', text, createdAt: new Date().toISOString(), ...extra };
+  state.chatHistory.push(entry);
+  return entry;
 }
 
 function isSatiEntry(entry) {
   return entry?.role === 'sati' || ['สติ', 'Sati', '思谛'].includes(entry?.speaker);
+}
+
+function updateStepCoachBar() {
+  const el = document.getElementById('sati-step-guide');
+  if (!el) return;
+  if (state.isPicking) {
+    el.textContent = t(state.lang, state.natalCompleted ? 'stepCoachFollowUp' : 'stepCoachPick10');
+  } else if (state.natalCompleted && state.activeSpread.length === 0) {
+    el.textContent = t(state.lang, 'stepCoachChatSavedNatal');
+  } else {
+    el.textContent = t(state.lang, 'stepCoachChat');
+  }
+}
+
+function updateLiveDialogueActions() {
+  const wrap = document.getElementById('dialogue-footer-actions');
+  if (!wrap) return;
+  const lastEntry = state.lastLiveShareEntry;
+  if (!lastEntry || state.isThinking || state.isPicking) {
+    wrap.classList.add('hidden');
+    return;
+  }
+  wrap.classList.remove('hidden');
 }
 
 function setDialogueCollapsed(collapsed) {
@@ -206,8 +241,18 @@ function setSatiDialogue(text, moodKey = 'moodChat', recordHistory = true, isLoa
   document.getElementById('dialogue-preview').textContent = text.replace(/\s+/g, ' ').trim();
   box.scrollTop = 0;
   if (recordHistory) {
-    appendHistory('sati', text, 'sati', historyMeta ? { meta: historyMeta } : {});
+    const entry = appendHistory('sati', text, 'sati', historyMeta ? { meta: historyMeta } : {});
+    if (historyMeta && Array.isArray(historyMeta.cards) && historyMeta.cards.length > 0) {
+      state.lastLiveShareEntry = entry;
+      state.lastLiveShareQuestion = historyMeta.question || '';
+    } else if (!historyMeta) {
+      state.lastLiveShareEntry = null;
+      state.lastLiveShareQuestion = '';
+    }
+  } else if (isLoading) {
+    state.lastLiveShareEntry = null;
   }
+  updateLiveDialogueActions();
   clearTimeout(state._speakTimer);
   if (!isLoading) {
     state.isSpeaking = true;
@@ -248,7 +293,19 @@ function openShopModal() {
   openModal('modal-shop');
 }
 
+function renderPresetCategoryTabs() {
+  const bar = document.getElementById('preset-category-bar');
+  if (!bar) return;
+  bar.querySelectorAll('.preset-cat-btn').forEach((btn) => {
+    const active = btn.dataset.cat === state.selectedPresetCategory;
+    btn.classList.toggle('btn-gold', active);
+    btn.classList.toggle('btn-slate', !active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
 function renderSmartPromptChips() {
+  renderPresetCategoryTabs();
   const container = document.getElementById('smart-prompt-chips');
   if (!container) return;
   if (state.isPicking || state.isThinking || !state.natalCompleted) {
@@ -257,7 +314,8 @@ function renderSmartPromptChips() {
     return;
   }
   const map = t(state.lang, 'smartPromptsByTopic') || {};
-  const list = map[state.lastTopic] || map.general || [];
+  const cat = state.selectedPresetCategory || 'love';
+  const list = map[cat] || map.general || [];
   container.innerHTML = '';
   if (!Array.isArray(list) || list.length === 0) {
     container.classList.add('hidden');
@@ -286,7 +344,13 @@ function renderSmartPromptChips() {
 function updateHUD() {
   const lang = state.lang;
   const unlimited = hasUnlimitedAccess();
-  document.getElementById('hud-deck-count').textContent = `${state.remainingDeck.length} / 78`;
+  const remCount = state.remainingDeck.length;
+  const usedCount = state.discardPile.length || Math.max(0, 78 - remCount);
+
+  document.getElementById('hud-deck-count').textContent = `${remCount} / 78`;
+  const discardEl = document.getElementById('hud-discard-count');
+  if (discardEl) discardEl.textContent = t(lang, 'hudDiscardLabel', usedCount);
+
   document.getElementById('hud-coins').textContent = unlimited
     ? t(lang, 'hudCoinsUnlimited')
     : t(lang, 'hudCoinsCount', state.coins);
@@ -318,27 +382,41 @@ function updateHUD() {
   document.getElementById('btn-natal-drawer').classList.toggle('hidden', !state.natalCompleted);
   document.getElementById('btn-draw-10-opt').classList.toggle('hidden', state.deckNumber < 2 && !state.natalCompleted);
 
-  const needReshuffle = state.remainingDeck.length < 3;
-  document.getElementById('btn-reshuffle').classList.toggle('hidden', !needReshuffle && state.remainingDeck.length > 0);
+  // Req 12: Deck Reset button enabled ONLY when 0-9 unused cards remain (remainingDeck.length <= 9)
+  const canResetDeck = remCount <= 9 && !state.isPlayerShuffling && !state.isAnimatingShuffle;
+  const reshuffleBtn = document.getElementById('btn-reshuffle');
+  if (reshuffleBtn) {
+    reshuffleBtn.classList.remove('hidden');
+    reshuffleBtn.disabled = !canResetDeck;
+    reshuffleBtn.textContent = t(lang, 'btnResetDeck9', remCount);
+    reshuffleBtn.classList.toggle('btn-gold', canResetDeck);
+    reshuffleBtn.classList.toggle('btn-slate', !canResetDeck);
+  }
+
+  // Req 11: Self-shuffle remaining unopened cards (always available while >= 2 cards left)
+  const canSelfShuffle = remCount > 1 && !state.isPlayerShuffling && !state.isAnimatingShuffle;
+  ['btn-self-shuffle', 'btn-self-shuffle-chat'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !canSelfShuffle;
+  });
+
+  const soundStatus = document.getElementById('settings-sound-status');
+  if (soundStatus) {
+    soundStatus.textContent = t(lang, SoundFX.muted ? 'settingsSoundOff' : 'settingsSoundOn');
+  }
+
+  engine3D?.syncDiscardPile3D?.(state.discardPile);
+  updateStepCoachBar();
+  updateLiveDialogueActions();
 }
 
 function updateActiveStrip() {
+  // Req 8: Remove bottom #1/#2 card strip — users inspect face-up cards directly on the 3D table
   const strip = document.getElementById('active-cards-strip');
-  if (state.activeSpread.length === 0) {
+  if (strip) {
     strip.classList.add('hidden');
     strip.innerHTML = '';
-    return;
   }
-  strip.classList.remove('hidden');
-  strip.innerHTML = '';
-  state.activeSpread.forEach((c, idx) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn-slate chamfer-sm px-2.5 py-1 text-[11px] shrink-0 flex items-center gap-1.5';
-    btn.innerHTML = `<span class="text-[#d4af37]">#${idx + 1}</span><span>${getLocalizedCardShortName(c, state.lang)}</span>`;
-    btn.addEventListener('click', () => openCardModal(c, t(state.lang, 'activeCardLabel', idx)));
-    strip.appendChild(btn);
-  });
 }
 
 function openCardModal(card, posLabel) {
@@ -401,7 +479,8 @@ function enterPickingPhase(count, pickMode = 'initial') {
   document.getElementById('dock-chat').classList.add('hidden');
   renderSmartPromptChips();
   updatePickInstruction();
-  setDialogueCollapsed(true);
+  updateStepCoachBar();
+  setDialogueCollapsed(false);
 }
 
 function startShuffleAndFan(onDone) {
@@ -431,6 +510,9 @@ function handlePickCard(mesh) {
   const cardData = mesh.userData.cardData;
 
   state.remainingDeck = state.remainingDeck.filter((c) => c.uid !== cardData.uid);
+  if (!state.discardPile.some((c) => c.uid === cardData.uid)) {
+    state.discardPile.push(cardData);
+  }
   state.activeSpread.push(cardData);
   const currentCount = state.activeSpread.length;
   const positions = getLocalizedCelticPositions(state.lang);
@@ -474,6 +556,7 @@ async function finishPickingPhase() {
   if (!state.natalCompleted && state.pickTargetCount === 10) {
     state.natalCompleted = true;
     state.natalCards = [...state.activeSpread];
+    state.savedNatalCards = state.natalCards.map((c) => ({ uid: c.uid, name: c.name, th: c.th }));
     setSatiDialogue(t(state.lang, 'loadingNatalDialogue', state.user.fullname), 'moodLoadingNatal', false, true);
     const reply = await requestSatiReading(state, '', state.natalCards, true);
     state.isThinking = false;
@@ -625,6 +708,21 @@ function applyLanguage(newLang) {
   syncBirthdateLanguageLabels();
   updateResumeBannerInfo();
 
+  if (state.screen === 'ledger' && pendingSavedRecord) {
+    const savedNatal = hydrateDeckCards(pendingSavedRecord.savedNatalCards || pendingSavedRecord.natalCards || []);
+    const archives = Array.isArray(pendingSavedRecord.sessionArchives) ? pendingSavedRecord.sessionArchives : [];
+    const infoEl = document.getElementById('returning-natal-info');
+    const ledgerHistBtn = document.getElementById('btn-ledger-history');
+    const submitBtn = document.querySelector('#ledger-form button[type="submit"]');
+    if (infoEl && savedNatal.length === 10 && pendingSavedRecord.user) {
+      const tempUser = { ...pendingSavedRecord.user };
+      computeNatalProfile(tempUser);
+      infoEl.textContent = t(lang, 'returningNatalInfo', pendingSavedRecord.user.nickname || '', tempUser.birthCard, archives.length);
+    }
+    if (ledgerHistBtn) ledgerHistBtn.textContent = t(lang, 'btnLedgerHistory', archives.length);
+    if (submitBtn && savedNatal.length === 10) submitBtn.textContent = t(lang, 'btnDrawNewNatal');
+  }
+
   const toggleDialogueBtn = document.getElementById('btn-toggle-dialogue');
   if (toggleDialogueBtn) {
     toggleDialogueBtn.textContent = t(lang, state.dialogueCollapsed ? 'btnExpandBox' : 'btnCollapseBox');
@@ -665,6 +763,9 @@ function applyLanguage(newLang) {
   if (document.getElementById('modal-natal')?.open) {
     document.getElementById('btn-natal-drawer')?.click();
   }
+  if (document.getElementById('modal-discard')?.open) {
+    document.getElementById('btn-discard-pile')?.click();
+  }
   if (document.getElementById('modal-history')?.open) {
     document.getElementById('btn-chat-history')?.click();
   }
@@ -690,6 +791,8 @@ async function handleSelectEmailAccount(email, defaultFullname, defaultNickname)
   const saved = await loadAccountState(email);
   pendingSavedRecord = saved;
   const resumeBanner = document.getElementById('resume-session-box');
+  const returningBox = document.getElementById('returning-natal-box');
+  const submitBtn = document.querySelector('#ledger-form button[type="submit"]');
 
   if (saved && saved.user) {
     document.getElementById('input-fullname').value = saved.user.fullname || defaultFullname;
@@ -698,12 +801,50 @@ async function handleSelectEmailAccount(email, defaultFullname, defaultNickname)
     if (saved.user.month) document.getElementById('input-month').value = saved.user.month;
     if (saved.user.year) document.getElementById('input-year').value = saved.user.year;
 
-    updateResumeBannerInfo();
-    resumeBanner.classList.remove('hidden');
+    const savedNatal = hydrateDeckCards(saved.savedNatalCards || saved.natalCards || []);
+    const archives = Array.isArray(saved.sessionArchives) ? saved.sessionArchives : [];
+    state.savedNatalCards = savedNatal;
+    state.sessionArchives = archives;
+
+    if (saved.sessionActive && saved.natalCompleted) {
+      updateResumeBannerInfo();
+      resumeBanner.classList.remove('hidden');
+      returningBox?.classList.add('hidden');
+      if (submitBtn) submitBtn.textContent = t(state.lang, 'btnDrawNewNatal');
+    } else if (savedNatal.length === 10 || archives.length > 0) {
+      resumeBanner.classList.add('hidden');
+      returningBox?.classList.remove('hidden');
+      const infoEl = document.getElementById('returning-natal-info');
+      const useSavedBtn = document.getElementById('btn-use-saved-natal');
+      const ledgerHistBtn = document.getElementById('btn-ledger-history');
+
+      if (savedNatal.length === 10) {
+        const tempUser = { ...saved.user };
+        computeNatalProfile(tempUser);
+        if (infoEl) infoEl.textContent = t(state.lang, 'returningNatalInfo', saved.user.nickname || '', tempUser.birthCard, archives.length);
+        useSavedBtn?.classList.remove('hidden');
+        if (submitBtn) submitBtn.textContent = t(state.lang, 'btnDrawNewNatal');
+      } else {
+        if (infoEl) infoEl.textContent = t(state.lang, 'btnLedgerHistory', archives.length);
+        useSavedBtn?.classList.add('hidden');
+        if (submitBtn) submitBtn.textContent = t(state.lang, 'btnSubmitLedger');
+      }
+
+      if (ledgerHistBtn) {
+        ledgerHistBtn.classList.toggle('hidden', archives.length === 0);
+        ledgerHistBtn.textContent = t(state.lang, 'btnLedgerHistory', archives.length);
+      }
+    } else {
+      resumeBanner.classList.add('hidden');
+      returningBox?.classList.add('hidden');
+      if (submitBtn) submitBtn.textContent = t(state.lang, 'btnSubmitLedger');
+    }
   } else {
     document.getElementById('input-fullname').value = defaultFullname;
     document.getElementById('input-nickname').value = defaultNickname;
     resumeBanner.classList.add('hidden');
+    returningBox?.classList.add('hidden');
+    if (submitBtn) submitBtn.textContent = t(state.lang, 'btnSubmitLedger');
   }
 
   closeModal('modal-gmail');
@@ -742,7 +883,7 @@ window.addEventListener('DOMContentLoaded', () => {
       SoundFX.init();
       SoundFX.playCrystal();
       showToast(t(state.lang, 'toastCrystal'));
-      if (!state.isPicking && !state.isThinking && !state.isAnimatingShuffle && state.screen === 'game') {
+      if (!state.isPicking && !state.isThinking && !state.isAnimatingShuffle && !state.isPlayerShuffling && state.screen === 'game') {
         setSatiDialogue(
           t(state.lang, 'crystalDialogue', state.user.nickname),
           'moodCrystal',
@@ -751,12 +892,23 @@ window.addEventListener('DOMContentLoaded', () => {
         );
       }
     },
+    onDiscardInspect: () => {
+      SoundFX.init();
+      openDiscardModal();
+    },
     onModelsLoaded: () => {}
   });
 
-  // Direct No-Email Device Session Entry
+  // Req 3: Show Welcome Intro Popup before entering Ledger
   document.getElementById('btn-gmail-login').addEventListener('click', () => {
     SoundFX.init();
+    SoundFX.playPick();
+    openModal('modal-welcome-intro');
+  });
+
+  document.getElementById('btn-welcome-confirm')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    closeModal('modal-welcome-intro');
     handleSelectEmailAccount(getOrCreateDeviceAccountId(), '', '');
   });
 
@@ -766,7 +918,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Resume existing saved deck session
+  // Resume existing saved deck session (only if mid-session without clicking Exit Table)
   document.getElementById('btn-resume-deck').addEventListener('click', () => {
     if (!pendingSavedRecord) return;
     SoundFX.playSeal();
@@ -781,14 +933,26 @@ window.addEventListener('DOMContentLoaded', () => {
     state.vipExpiresAt = state.hasVipPass ? savedVipExp : null;
     state.freeChatQuota = typeof pendingSavedRecord.freeChatQuota === 'number' ? pendingSavedRecord.freeChatQuota : 1;
     state.deckNumber = pendingSavedRecord.deckNumber || 1;
+    state.sessionActive = true;
     state.remainingDeck = pendingSavedRecord.remainingDeck?.length > 0
       ? hydrateDeckCards(pendingSavedRecord.remainingDeck)
       : shuffleArray(buildFullDeck78());
+    if (Array.isArray(pendingSavedRecord.discardPile)) {
+      state.discardPile = hydrateDeckCards(pendingSavedRecord.discardPile);
+    } else {
+      const remIds = new Set(state.remainingDeck.map((c) => c.uid));
+      state.discardPile = buildFullDeck78().filter((c) => !remIds.has(c.uid));
+    }
     state.natalCards = hydrateDeckCards(pendingSavedRecord.natalCards || []);
+    state.savedNatalCards = hydrateDeckCards(pendingSavedRecord.savedNatalCards || pendingSavedRecord.natalCards || []);
     state.natalCompleted = Boolean(pendingSavedRecord.natalCompleted);
     state.activeSpread = hydrateDeckCards(pendingSavedRecord.activeSpread || []);
     state.chatHistory = pendingSavedRecord.chatHistory || [];
+    state.sessionArchives = Array.isArray(pendingSavedRecord.sessionArchives) ? pendingSavedRecord.sessionArchives : [];
     state.lastTopic = pendingSavedRecord.lastTopic || 'general';
+    if (['love', 'work', 'money', 'general'].includes(state.lastTopic)) {
+      state.selectedPresetCategory = state.lastTopic;
+    }
 
     document.getElementById('pregame-lang-bar')?.classList.add('hidden');
     document.getElementById('screen-ledger').classList.add('hidden');
@@ -803,11 +967,16 @@ window.addEventListener('DOMContentLoaded', () => {
     state.cameraUnlocked = true;
     engine3D.setCameraTarget(CAM_POS.view1P, CAM_POS.view1PLook);
     engine3D.spawn78CardFan();
+    engine3D.syncDiscardPile3D?.(state.discardPile);
     updateHUD();
     updateActiveStrip();
     renderSmartPromptChips();
 
     const lastSatiMsg = [...state.chatHistory].reverse().find((h) => isSatiEntry(h));
+    if (lastSatiMsg?.meta?.cards?.length) {
+      state.lastLiveShareEntry = lastSatiMsg;
+      state.lastLiveShareQuestion = lastSatiMsg.meta.question || '';
+    }
     setSatiDialogue(
       lastSatiMsg
         ? lastSatiMsg.text
@@ -818,7 +987,66 @@ window.addEventListener('DOMContentLoaded', () => {
     );
   });
 
-  // Start Fresh Deck via Natal Ledger Submit
+  // Req 9.1 / 9.2: Returning User Chooses to Reuse Saved 10 Natal Cards with Full Fresh 78 Deck
+  document.getElementById('btn-use-saved-natal')?.addEventListener('click', async () => {
+    const saved = pendingSavedRecord;
+    const saved10 = hydrateDeckCards(saved?.savedNatalCards || saved?.natalCards || state.savedNatalCards || []);
+    if (saved10.length !== 10) return;
+
+    SoundFX.playSeal();
+    const formNick = document.getElementById('input-nickname')?.value.trim();
+    const formFull = document.getElementById('input-fullname')?.value.trim();
+    if (saved?.user) Object.assign(state.user, saved.user);
+    if (formNick) state.user.nickname = formNick;
+    if (formFull) state.user.fullname = formFull;
+    computeNatalProfile(state.user);
+
+    state.coins = saved?.coins ?? state.coins ?? 3;
+    state.hasDeckPass = Boolean(saved?.hasDeckPass);
+    const savedVip = Boolean(saved?.hasVipPass);
+    const savedVipExp = saved?.vipExpiresAt || null;
+    state.hasVipPass = savedVip && (!savedVipExp || savedVipExp > Date.now());
+    state.vipExpiresAt = state.hasVipPass ? savedVipExp : null;
+    state.freeChatQuota = 1;
+    state.deckNumber = 1;
+    state.sessionActive = true;
+    state.natalCards = saved10;
+    state.savedNatalCards = saved10.map((c) => ({ uid: c.uid, name: c.name, th: c.th }));
+    state.natalCompleted = true;
+    state.activeSpread = [];
+    state.discardPile = [];
+    state.chatHistory = [];
+    state.sessionArchives = Array.isArray(saved?.sessionArchives) ? saved.sessionArchives : state.sessionArchives;
+    state.remainingDeck = shuffleArray(buildFullDeck78());
+
+    document.getElementById('pregame-lang-bar')?.classList.add('hidden');
+    document.getElementById('screen-ledger').classList.add('hidden');
+    document.getElementById('top-hud').classList.remove('hidden');
+    document.getElementById('sati-speech-wrap').classList.remove('hidden');
+    document.getElementById('game-footer').classList.remove('hidden');
+    document.getElementById('dock-picking').classList.add('hidden');
+    document.getElementById('dock-chat').classList.remove('hidden');
+
+    state.screen = 'game';
+    state.cameraMode = '1P';
+    engine3D.setCameraTarget(CAM_POS.view1P, CAM_POS.view1PLook);
+    engine3D.clearDiscardPile3D?.();
+    updateHUD();
+    updateActiveStrip();
+
+    startShuffleAndFan(() => {
+      renderSmartPromptChips();
+      setSatiDialogue(
+        t(state.lang, 'welcomeUseSavedNatalDialogue', state.user.nickname),
+        'moodResume',
+        true,
+        false
+      );
+      saveAccountState(state);
+    });
+  });
+
+  // Start Fresh Deck (Draw New 10 Natal Cards with Full 78 Deck while preserving account coins/VIP/archives)
   document.getElementById('ledger-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     SoundFX.playSeal();
@@ -829,17 +1057,34 @@ window.addEventListener('DOMContentLoaded', () => {
     state.user.year = parseInt(document.getElementById('input-year').value, 10);
     computeNatalProfile(state.user);
 
-    await clearAccountState(state.user.email);
-    state.coins = 3;
-    state.hasDeckPass = false;
-    state.hasVipPass = false;
-    state.vipExpiresAt = null;
+    const prevSaved = pendingSavedRecord;
+    if (prevSaved) {
+      state.coins = prevSaved.coins ?? 3;
+      state.hasDeckPass = Boolean(prevSaved.hasDeckPass);
+      const savedVip = Boolean(prevSaved.hasVipPass);
+      const savedVipExp = prevSaved.vipExpiresAt || null;
+      state.hasVipPass = savedVip && (!savedVipExp || savedVipExp > Date.now());
+      state.vipExpiresAt = state.hasVipPass ? savedVipExp : null;
+      state.sessionArchives = Array.isArray(prevSaved.sessionArchives) ? prevSaved.sessionArchives : [];
+      state.savedNatalCards = Array.isArray(prevSaved.savedNatalCards) ? prevSaved.savedNatalCards : [];
+    } else {
+      state.coins = 3;
+      state.hasDeckPass = false;
+      state.hasVipPass = false;
+      state.vipExpiresAt = null;
+      state.sessionArchives = [];
+      state.savedNatalCards = [];
+    }
+
     state.freeChatQuota = 1;
+    state.sessionActive = true;
     state.natalCompleted = false;
     state.natalCards = [];
     state.activeSpread = [];
+    state.discardPile = [];
     state.chatHistory = [];
     state.deckNumber = 1;
+    state.lastLiveShareEntry = null;
 
     document.getElementById('pregame-lang-bar')?.classList.add('hidden');
     document.getElementById('screen-ledger').classList.add('hidden');
@@ -850,6 +1095,7 @@ window.addEventListener('DOMContentLoaded', () => {
     state.screen = 'game';
     state.cameraMode = '1P';
     engine3D.setCameraTarget(CAM_POS.view1P, CAM_POS.view1PLook);
+    engine3D.clearDiscardPile3D?.();
 
     state.remainingDeck = shuffleArray(buildFullDeck78());
     updateHUD();
@@ -862,6 +1108,7 @@ window.addEventListener('DOMContentLoaded', () => {
         true,
         false
       );
+      saveAccountState(state);
     });
   });
 
@@ -879,11 +1126,15 @@ window.addEventListener('DOMContentLoaded', () => {
     updateHUD();
   });
 
-  // Mute Toggle
+  // Mute Toggle (inside Settings Modal)
   document.getElementById('btn-mute').addEventListener('click', () => {
     SoundFX.muted = !SoundFX.muted;
     document.getElementById('icon-sound-on').classList.toggle('hidden', SoundFX.muted);
     document.getElementById('icon-sound-off').classList.toggle('hidden', !SoundFX.muted);
+    const soundStatus = document.getElementById('settings-sound-status');
+    if (soundStatus) {
+      soundStatus.textContent = t(state.lang, SoundFX.muted ? 'settingsSoundOff' : 'settingsSoundOn');
+    }
   });
 
   // Auto-Pick remaining cards in current spread
@@ -898,20 +1149,53 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Req 11: Player Hand Self-Shuffle (shuffles ONLY remaining unopened cards; discard pile stays separate)
+  function triggerPlayerSelfShuffle() {
+    if (state.isPlayerShuffling || state.isAnimatingShuffle || state.isThinking) return;
+    if (state.remainingDeck.length <= 1) return;
+
+    SoundFX.init();
+    SoundFX.playShuffle();
+    state.remainingDeck = shuffleArray(state.remainingDeck);
+    updateHUD();
+    setSatiDialogue(t(state.lang, 'selfShufflingDialogue', state.user.nickname), 'moodShuffle', false, true);
+
+    engine3D.playPlayerHandShuffle3D(() => {
+      updateHUD();
+      saveAccountState(state);
+      showToast(t(state.lang, 'toastSelfShuffled'));
+      setSatiDialogue(
+        t(state.lang, 'selfShuffledDoneDialogue', state.user.nickname, state.remainingDeck.length),
+        state.isPicking ? 'moodWaitPick' : 'moodDeckReady',
+        false,
+        false
+      );
+    });
+  }
+
+  document.getElementById('btn-self-shuffle')?.addEventListener('click', triggerPlayerSelfShuffle);
+  document.getElementById('btn-self-shuffle-chat')?.addEventListener('click', triggerPlayerSelfShuffle);
+
   // Follow-up Draw Buttons
   document.getElementById('btn-draw-1').addEventListener('click', () => triggerFollowUpDraw(1, false));
   document.getElementById('btn-draw-3').addEventListener('click', () => triggerFollowUpDraw(3, false));
   document.getElementById('btn-draw-10-opt').addEventListener('click', () => triggerFollowUpDraw(10, false));
 
-  // Reshuffle New 78-Card Deck
+  // Req 12: Reshuffle Full 78-Card Deck ONLY when 0-9 unused cards remain (remainingDeck.length <= 9)
   document.getElementById('btn-reshuffle').addEventListener('click', () => {
+    if (state.remainingDeck.length > 9) {
+      showToast(t(state.lang, 'toastResetLocked'));
+      return;
+    }
     state.deckNumber += 1;
     if (state.hasDeckPass && !state.hasVipPass) {
       state.hasDeckPass = false;
     }
     state.remainingDeck = shuffleArray(buildFullDeck78());
+    state.discardPile = [];
     state.activeSpread = [];
     engine3D.tuckNatalSpreadAway3D();
+    engine3D.clearDiscardPile3D?.();
     updateActiveStrip();
     updateHUD();
     startShuffleAndFan(() => {
@@ -924,6 +1208,83 @@ window.addEventListener('DOMContentLoaded', () => {
       renderSmartPromptChips();
       saveAccountState(state);
     });
+  });
+
+  // Req 6: Preset Question Category Tabs
+  document.querySelectorAll('#preset-category-bar .preset-cat-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      SoundFX.playPick();
+      state.selectedPresetCategory = btn.dataset.cat || 'love';
+      renderSmartPromptChips();
+    });
+  });
+
+  // Help Guide & Settings Gear Modals + Exit Table Flow (Req 4, 7, 9)
+  document.getElementById('btn-guide-open')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    openModal('modal-guide');
+  });
+
+  document.getElementById('btn-settings-open')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    document.getElementById('exit-confirm-box')?.classList.add('hidden');
+    const soundStatus = document.getElementById('settings-sound-status');
+    if (soundStatus) {
+      soundStatus.textContent = t(state.lang, SoundFX.muted ? 'settingsSoundOff' : 'settingsSoundOn');
+    }
+    openModal('modal-settings');
+  });
+
+  document.getElementById('btn-exit-table-open')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    document.getElementById('exit-confirm-box')?.classList.remove('hidden');
+  });
+
+  document.getElementById('btn-exit-table-cancel')?.addEventListener('click', () => {
+    document.getElementById('exit-confirm-box')?.classList.add('hidden');
+  });
+
+  document.getElementById('btn-exit-table-confirm')?.addEventListener('click', async () => {
+    SoundFX.playSeal();
+    const usedCount = state.discardPile.length || Math.max(0, 78 - state.remainingDeck.length);
+    if (state.chatHistory.length > 0 || state.natalCompleted) {
+      const archiveEntry = {
+        id: `sess_${Date.now().toString(36)}`,
+        endedAt: new Date().toISOString(),
+        user: { ...state.user },
+        natalCards: state.natalCards.map((c) => ({ uid: c.uid, name: c.name, th: c.th })),
+        chatHistory: [...state.chatHistory],
+        usedCount
+      };
+      state.sessionArchives = [archiveEntry, ...(state.sessionArchives || [])];
+    }
+    if (state.natalCards.length === 10) {
+      state.savedNatalCards = state.natalCards.map((c) => ({ uid: c.uid, name: c.name, th: c.th }));
+    }
+
+    state.sessionActive = false;
+    state.isPicking = false;
+    state.isThinking = false;
+    state.activeSpread = [];
+    state.discardPile = [];
+    state.remainingDeck = shuffleArray(buildFullDeck78());
+    state.lastLiveShareEntry = null;
+
+    await saveAccountState(state);
+    closeModal('modal-settings');
+    document.getElementById('exit-confirm-box')?.classList.add('hidden');
+
+    engine3D.clearDiscardPile3D?.();
+    engine3D.clear3DCards?.();
+
+    document.getElementById('top-hud').classList.add('hidden');
+    document.getElementById('sati-speech-wrap').classList.add('hidden');
+    document.getElementById('game-footer').classList.add('hidden');
+    document.getElementById('clean-mode-bar').classList.add('hidden');
+    document.getElementById('pregame-lang-bar')?.classList.remove('hidden');
+
+    showToast(t(state.lang, 'toastSessionSavedExit'));
+    await handleSelectEmailAccount(state.user.email || getOrCreateDeviceAccountId(), state.user.fullname, state.user.nickname);
   });
 
   // Chat Form Submit (Quota / Coin-gated deep follow-up via Backend Proxy + Fallback)
@@ -1206,14 +1567,95 @@ window.addEventListener('DOMContentLoaded', () => {
     container.appendChild(sec3);
   }
 
-  // Chat History Modal
-  document.getElementById('btn-chat-history').addEventListener('click', () => {
-    const list = document.getElementById('history-list');
-    list.innerHTML = '';
+  // Discard Pile Inspector (Req 10)
+  function openDiscardModal() {
+    SoundFX.playPick();
+    const lang = state.lang;
+    const discardCards = hydrateDeckCards(state.discardPile || []);
+    const remCount = state.remainingDeck.length;
+    const subEl = document.getElementById('discard-summary-sub');
+    const grid = document.getElementById('discard-grid');
+    if (subEl) subEl.textContent = t(lang, 'discardSummaryFmt', discardCards.length, remCount);
+    if (grid) {
+      grid.innerHTML = '';
+      if (discardCards.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'col-span-full text-center text-xs text-[#a6a8b8] py-6';
+        empty.textContent = t(lang, 'discardEmpty');
+        grid.appendChild(empty);
+      } else {
+        discardCards.forEach((card, idx) => {
+          const dataUrl = getCardFrontDataURL(card);
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'btn-slate chamfer-sm p-1.5 flex flex-col items-center text-center hover:border-[#d4af37] transition cursor-pointer';
+          const title = getLocalizedCardShortName(card, lang);
+          item.innerHTML = `<img src="${dataUrl}" class="w-full aspect-[2/3] object-contain mb-1 border border-[#d4af37]/40 rounded-[2px]" alt="${card.name}" /><div class="text-[10px] text-[#d4af37]">#${idx + 1}</div><div class="text-[11px] font-medium text-[#f1ede4] truncate w-full">${title}</div>`;
+          item.addEventListener('click', () => openCardModal(card, `#${idx + 1} · ${t(lang, 'modalDiscardTitle')}`));
+          grid.appendChild(item);
+        });
+      }
+    }
+    openModal('modal-discard');
+  }
+
+  document.getElementById('btn-discard-pile')?.addEventListener('click', openDiscardModal);
+
+  // Share Reading PNG Card Preview & Save/Share Actions (Req 2)
+  async function openSharePreview({ entry, question, breakdown, user, timestamp }) {
+    if (!entry) return;
+    SoundFX.playPick();
+    const dataUrl = await generateReadingShareCardDataURL({
+      entry,
+      question,
+      breakdown,
+      user: user || state.user,
+      lang: state.lang,
+      timestamp: timestamp || entry.createdAt || new Date().toISOString()
+    });
+    if (!dataUrl) return;
+    state.lastShareDataUrl = dataUrl;
+    const imgEl = document.getElementById('share-preview-img');
+    if (imgEl) imgEl.src = dataUrl;
+    openModal('modal-share-preview');
+  }
+
+  document.getElementById('btn-download-share-png')?.addEventListener('click', () => {
+    if (!state.lastShareDataUrl) return;
+    const a = document.createElement('a');
+    a.href = state.lastShareDataUrl;
+    a.download = `sati-reading-${new Date().toISOString().slice(0, 10)}.png`;
+    a.click();
+    showToast(t(state.lang, 'toastShareSaved'));
+  });
+
+  document.getElementById('btn-native-share-png')?.addEventListener('click', async () => {
+    if (!state.lastShareDataUrl) return;
+    try {
+      const blobRes = await fetch(state.lastShareDataUrl);
+      const blob = await blobRes.blob();
+      const file = new File([blob], `sati-reading-${new Date().toISOString().slice(0, 10)}.png`, { type: 'image/png' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: t(state.lang, 'pageTitle'),
+          files: [file]
+        });
+        return;
+      }
+    } catch {
+      // fallback to download below
+    }
+    document.getElementById('btn-download-share-png')?.click();
+  });
+
+  // Render Chat History Messages List (works for live session & past timestamped archive sessions)
+  function renderChatEntriesIntoList(listEl, chatEntries, contextState, timestampHint = '') {
+    listEl.innerHTML = '';
     const lang = state.lang;
     let lastUserQuestion = '';
+    const detailToggleButtons = [];
 
-    state.chatHistory.forEach((entry) => {
+    (chatEntries || []).forEach((entry) => {
       const row = document.createElement('div');
       const isSati = isSatiEntry(entry);
       row.className = `p-2.5 border ${isSati ? 'border-[#d4af37]/30 bg-[#141933]/70' : 'border-[#4d5785]/40 bg-[#0b0d19]/80'}`;
@@ -1221,25 +1663,47 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!isSati && !entry.isDrawAction) {
         lastUserQuestion = entry.text || '';
       }
+      const capturedQ = lastUserQuestion;
 
       const spk = document.createElement('div');
-      spk.className = `text-xs font-semibold ${isSati ? 'text-[#d4af37]' : 'text-[#9dd2ff]'} mb-1`;
-      spk.textContent = isSati ? t(lang, 'satiSpeaker') : entry.speaker;
+      spk.className = `flex items-center justify-between gap-2 text-xs font-semibold ${isSati ? 'text-[#d4af37]' : 'text-[#9dd2ff]'} mb-1`;
+      const spkName = document.createElement('span');
+      spkName.textContent = isSati ? t(lang, 'satiSpeaker') : entry.speaker;
+      spk.appendChild(spkName);
+      if (entry.createdAt) {
+        const tsEl = document.createElement('span');
+        tsEl.className = 'text-[10px] font-normal text-[#8d90a3]';
+        tsEl.textContent = formatShareTimestamp(entry.createdAt, lang);
+        spk.appendChild(tsEl);
+      }
       const body = document.createElement('div');
       body.className = 'text-xs text-[#f1ede4] leading-relaxed whitespace-pre-line';
       body.textContent = entry.text;
       row.append(spk, body);
 
       if (isSati) {
-        const breakdown = buildReadingBreakdown(entry, lastUserQuestion, state, all78Cards);
+        const breakdown = buildReadingBreakdown(entry, capturedQ, contextState, all78Cards);
         if (breakdown.isReading) {
           const footer = document.createElement('div');
-          footer.className = 'flex justify-end mt-2';
+          footer.className = 'flex flex-wrap items-center justify-end gap-2 mt-2';
 
+          const shareBtn = document.createElement('button');
+          shareBtn.type = 'button';
+          shareBtn.className = 'btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] text-[#f1ede4] hover:border-[#f3d266] cursor-pointer';
+          shareBtn.textContent = t(lang, 'btnShareReading');
+          shareBtn.addEventListener('click', () => openSharePreview({
+            entry,
+            question: capturedQ || entry?.meta?.question || '',
+            breakdown,
+            user: contextState.user,
+            timestamp: entry.createdAt || timestampHint
+          }));
+
+          // Req 5: Replace "⋯" with "รายละเอียดเพิ่มเติม" while retaining .btn-history-dots hook
           const dotsBtn = document.createElement('button');
           dotsBtn.type = 'button';
-          dotsBtn.className = 'btn-history-dots px-2.5 py-0.5 rounded-sm border border-[#d4af37]/35 bg-[#0b0d19]/80 text-[#d4af37] hover:bg-[#d4af37]/15 hover:border-[#d4af37]/80 transition-colors text-base leading-none tracking-widest cursor-pointer';
-          dotsBtn.textContent = '⋯';
+          dotsBtn.className = 'btn-history-dots chamfer-sm px-2.5 py-0.5 border border-[#d4af37]/50 bg-[#0b0d19]/85 text-[#f3d266] hover:bg-[#d4af37]/20 hover:border-[#d4af37] transition-colors text-[11px] font-medium cursor-pointer';
+          dotsBtn.textContent = t(lang, 'btnMoreDetails');
           dotsBtn.title = t(lang, 'btnCardBreakdownOpen');
           dotsBtn.setAttribute('aria-label', t(lang, 'btnCardBreakdownOpen'));
           dotsBtn.setAttribute('aria-expanded', 'false');
@@ -1248,28 +1712,155 @@ window.addEventListener('DOMContentLoaded', () => {
           panel.className = 'hidden mt-2.5 pt-3 border-t border-[#d4af37]/25 space-y-3 bg-[#090b16]/85 p-3';
 
           let rendered = false;
-          dotsBtn.addEventListener('click', () => {
+          const toggleFn = (forceOpen = null) => {
             if (!rendered) {
               renderBreakdownPanel(panel, breakdown, state.lang);
               rendered = true;
             }
-            const willOpen = panel.classList.contains('hidden');
+            const willOpen = forceOpen !== null ? forceOpen : panel.classList.contains('hidden');
             panel.classList.toggle('hidden', !willOpen);
             dotsBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            dotsBtn.textContent = t(state.lang, willOpen ? 'btnHideDetails' : 'btnMoreDetails');
             const tip = t(state.lang, willOpen ? 'btnCardBreakdownClose' : 'btnCardBreakdownOpen');
             dotsBtn.title = tip;
             dotsBtn.setAttribute('aria-label', tip);
             dotsBtn.classList.toggle('bg-[#d4af37]/20', willOpen);
             dotsBtn.classList.toggle('border-[#d4af37]', willOpen);
-          });
+          };
+          dotsBtn.addEventListener('click', () => toggleFn());
+          detailToggleButtons.push({ entry, toggleFn, row });
 
-          footer.appendChild(dotsBtn);
+          footer.append(shareBtn, dotsBtn);
           row.append(footer, panel);
         }
       }
 
-      list.appendChild(row);
+      listEl.appendChild(row);
     });
+    return detailToggleButtons;
+  }
+
+  function renderArchivesView() {
+    const view = document.getElementById('archive-list-view');
+    if (!view) return;
+    view.innerHTML = '';
+    const lang = state.lang;
+    const archives = state.sessionArchives || [];
+
+    if (archives.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'text-center text-xs text-[#a6a8b8] py-8';
+      empty.textContent = t(lang, 'archiveEmpty');
+      view.appendChild(empty);
+      return;
+    }
+
+    archives.forEach((sess) => {
+      const card = document.createElement('div');
+      card.className = 'p-3 bg-[#0e1328]/85 border border-[#d4af37]/35 space-y-2';
+      const hdr = document.createElement('div');
+      hdr.className = 'flex flex-wrap items-center justify-between gap-2';
+
+      const title = document.createElement('div');
+      title.className = 'text-xs font-semibold text-[#f3d266]';
+      title.textContent = t(
+        lang,
+        'archiveSessionHeaderFmt',
+        formatShareTimestamp(sess.endedAt, lang),
+        sess.user?.nickname || state.user.nickname || '',
+        sess.usedCount ?? 0
+      );
+
+      const openBtn = document.createElement('button');
+      openBtn.type = 'button';
+      openBtn.className = 'btn-gold chamfer-sm px-2.5 py-1 text-[11px] font-semibold cursor-pointer';
+      openBtn.textContent = t(lang, 'btnViewArchiveSession');
+      openBtn.addEventListener('click', () => {
+        view.innerHTML = '';
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'btn-slate chamfer-sm px-3 py-1.5 text-xs mb-2 cursor-pointer';
+        backBtn.textContent = t(lang, 'btnBackArchiveList');
+        backBtn.addEventListener('click', () => renderArchivesView());
+        view.appendChild(backBtn);
+
+        const sessionInner = document.createElement('div');
+        sessionInner.className = 'space-y-3';
+        const archivedCtx = {
+          lang,
+          user: sess.user || state.user,
+          natalCards: hydrateDeckCards(sess.natalCards || [])
+        };
+        renderChatEntriesIntoList(sessionInner, sess.chatHistory || [], archivedCtx, sess.endedAt);
+        view.appendChild(sessionInner);
+      });
+
+      hdr.append(title, openBtn);
+      card.appendChild(hdr);
+
+      const previewSati = [...(sess.chatHistory || [])].reverse().find((h) => isSatiEntry(h));
+      if (previewSati?.text) {
+        const snippet = document.createElement('p');
+        snippet.className = 'text-[11px] text-[#c5c7d4] line-clamp-2';
+        snippet.textContent = previewSati.text;
+        card.appendChild(snippet);
+      }
+      view.appendChild(card);
+    });
+  }
+
+  function switchHistoryModalTab(tab = 'current', expandLatest = false) {
+    const isCurrent = tab === 'current';
+    const listEl = document.getElementById('history-list');
+    const archiveEl = document.getElementById('archive-list-view');
+    const tabCurBtn = document.getElementById('btn-history-tab-current');
+    const tabArcBtn = document.getElementById('btn-history-tab-archives');
+
+    listEl?.classList.toggle('hidden', !isCurrent);
+    archiveEl?.classList.toggle('hidden', isCurrent);
+    tabCurBtn?.classList.toggle('btn-gold', isCurrent);
+    tabCurBtn?.classList.toggle('btn-slate', !isCurrent);
+    tabArcBtn?.classList.toggle('btn-gold', !isCurrent);
+    tabArcBtn?.classList.toggle('btn-slate', isCurrent);
+
+    if (isCurrent && listEl) {
+      const toggles = renderChatEntriesIntoList(listEl, state.chatHistory, state);
+      if (expandLatest && toggles.length > 0) {
+        const latest = toggles[toggles.length - 1];
+        latest.toggleFn(true);
+        latest.row?.scrollIntoView?.({ block: 'nearest' });
+      }
+    } else if (!isCurrent) {
+      renderArchivesView();
+    }
+  }
+
+  document.getElementById('btn-history-tab-current')?.addEventListener('click', () => switchHistoryModalTab('current'));
+  document.getElementById('btn-history-tab-archives')?.addEventListener('click', () => switchHistoryModalTab('archives'));
+
+  document.getElementById('btn-ledger-history')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    switchHistoryModalTab('archives');
+    openModal('modal-history');
+  });
+
+  document.getElementById('btn-live-more-details')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    switchHistoryModalTab('current', true);
+    openModal('modal-history');
+  });
+
+  document.getElementById('btn-live-share-reading')?.addEventListener('click', () => {
+    const targetEntry = state.lastLiveShareEntry || [...state.chatHistory].reverse().find((h) => isSatiEntry(h));
+    if (!targetEntry) return;
+    const q = state.lastLiveShareQuestion || targetEntry?.meta?.question || '';
+    const breakdown = buildReadingBreakdown(targetEntry, q, state, all78Cards);
+    openSharePreview({ entry: targetEntry, question: q, breakdown, user: state.user });
+  });
+
+  // Chat History Modal
+  document.getElementById('btn-chat-history').addEventListener('click', () => {
+    switchHistoryModalTab('current', false);
     openModal('modal-history');
   });
 

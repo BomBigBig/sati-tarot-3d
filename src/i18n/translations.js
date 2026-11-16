@@ -15,6 +15,11 @@ export const UI_TEXT = {
     ledgerTitle: 'ลงชื่อก่อนจับไพ่กับสติ',
     btnResumeDeck: 'เข้าสู่สำรับเดิมที่เปิดค้างไว้ทันที',
     resumeDeckInfo: (nick, rem, coins) => `พบข้อมูลสำรับเดิมของ ${nick} (ไพ่คงเหลือ ${rem}/78 ใบ | เหรียญ ${coins})`,
+    returningNatalInfo: (nick, birthCard, archiveCount) =>
+      `ยินดีต้อนรับกลับมานะ ${nick} — ระบบจำพื้นดวงและไพ่ 10 ใบเดิมไว้ให้แล้ว (ไพ่ประจำตัว: ${birthCard} | บันทึกแล้ว ${archiveCount} รอบ) รอบใหม่นี้สำรับจะเริ่มต้นครบ 78 ใบเต็ม`,
+    btnUseSavedNatal: 'ใช้ไพ่พื้นดวง 10 ใบเดิม (เริ่มสำรับ 78 ใบ)',
+    btnDrawNewNatal: 'เลือกไพ่พื้นดวง 10 ใบใหม่ (เริ่มสำรับ 78 ใบ)',
+    btnLedgerHistory: (count) => `ดูประวัติที่บันทึกไว้ (${count} รอบ)`,
     labelNickname: 'ชื่อเล่น (สติจะใช้เรียกชื่อนี้ตลอดการคุย)',
     placeholderNickname: 'เช่น บอม',
     labelFullname: 'ชื่อจริง - นามสกุล (สำหรับวิเคราะห์พลังทักษา)',
@@ -24,9 +29,17 @@ export const UI_TEXT = {
     months: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'],
     formatYear: (beYear) => `${beYear}`,
 
+    modalWelcomeTitle: 'ทำความรู้จักกับหมอดูสติ (SATI) ก่อนเริ่มเปิดไพ่',
+    welcomeIntroP1: 'หมอดูสติ คือบริการดูดวงไพ่ทาโรต์ 3D ออนไลน์ที่ตอบคำถามของคุณได้ทันที ไม่ต้องจองคิว ไม่ต้องรอหมอดูว่าง จะเป็นเรื่องความรัก การงาน การเงิน หรือเรื่องที่ค้างคาใจอยู่ตอนนี้ แค่พิมพ์คำถามและเล่าสถานการณ์ของคุณ แล้วเลือกไพ่ด้วยตัวเอง คำทำนายจะมาถึงคุณภายในไม่กี่วินาที',
+    welcomeIntroP2: 'คำทำนายของหมอดูสติไม่ใช่ดวงรายวันแบบเหมารวม แต่อ่านจากพื้นดวงชื่อ-วันเกิด ไพ่ที่คุณเลือกด้วยตัวเอง และคำถามที่คุณถามจริงๆ เขียนเป็นภาษาไทยที่อ่านง่าย น้ำเสียงอบอุ่น ตรงไปตรงมา ไม่ตัดสิน ไม่โทษใคร และจบด้วยคำแนะนำที่นำไปใช้ต่อได้จริง เหมือนนั่งคุยกับนักอ่านไพ่ที่ตั้งใจฟังคุณ',
+    welcomeIntroP3: 'เริ่มต้นดูดวงพร้อมสิทธิ์ทดลองถามฟรีทันที หลังจากนั้นเลือกเติมเหรียญรายครั้งหรือแพ็กเกจเหมาสำรับตามที่ถนัด ชำระสะดวกผ่านพร้อมเพย์ คำทำนายทุกครั้งเก็บไว้ในประวัติตามวัน-เวลา กลับมาอ่านซ้ำหรือบันทึกรูปการ์ดคำทำนายเก็บไว้ในเครื่องได้ตลอด',
+    btnWelcomeConfirm: 'รับทราบ และเข้าสู่โต๊ะหมอดู',
+
     cleanPickBadge: 'แตะหยิบไพ่บนกระดานได้เลย',
     btnRestoreUi: 'แสดงเมนู',
     hudDeckLabel: 'สำรับ',
+    hudDiscardLabel: (n) => `กองทิ้ง: ${n} ใบ`,
+    titleDiscardPile: 'ดูกองไพ่ทิ้งที่ใช้ไปแล้ว',
     btnDeckGallery: 'สมุดภาพไพ่ 78 ใบ',
     btnNatalDrawer: 'พื้นดวง 10 ใบ',
     hudCoinsCount: (c) => `${c} เหรียญ`,
@@ -41,6 +54,67 @@ export const UI_TEXT = {
     titleCamToggle: 'สลับมุมมอง 1P / 2P',
     titleMute: 'เปิด/ปิดเสียง',
     titleHideUi: 'ซ่อนปุ่มทั้งหมดเพื่อดูโต๊ะและไพ่เต็มจอ',
+    titleGuideBtn: 'วิธีใช้งานแอปหมอดูสติ',
+    titleSettingsBtn: 'ตั้งค่า & ออกจากโต๊ะหมอดู',
+
+    modalSettingsTitle: 'ตั้งค่าและจัดการโต๊ะหมอดู',
+    settingsSoundLabel: 'เสียงประกอบในห้องดูดวง',
+    settingsSoundOn: 'เปิดเสียงอยู่',
+    settingsSoundOff: 'ปิดเสียงอยู่',
+    settingsLangLabel: 'ภาษาของสติและหน้าไพ่',
+    settingsFeedbackLabel: 'ช่วยเราพัฒนาหมอดูสติให้แม่นขึ้น',
+    settingsFeedbackBtn: '★ ส่งคำติชม / รีวิว',
+    settingsExitSectionTitle: 'จบรอบและออกจากโต๊ะหมอดู',
+    btnExitTableOpen: 'ออกจากโต๊ะหมอดู & เซฟประวัติ',
+    exitConfirmDesc: 'เมื่อกดออกจากโต๊ะแล้ว ระบบจะบันทึกประวัติการสนทนาทั้งหมดของรอบนี้พร้อมวัน-เวลาเก็บไว้ในบัญชีของคุณ แต่จะไม่สามารถกลับมาเล่นไพ่ที่เหลือค้างของรอบนี้ต่อได้ รอบหน้าจะต้องเริ่มสำรับใหม่ครบ 78 ใบเท่านั้น',
+    btnExitTableConfirm: 'ยืนยันออกจากโต๊ะ & บันทึกประวัติ',
+    btnExitTableCancel: 'อยู่ต่อที่โต๊ะ',
+    toastSessionSavedExit: 'บันทึกประวัติการคุยพร้อมวัน-เวลาและออกจากโต๊ะเรียบร้อยแล้ว',
+
+    modalGuideTitle: 'วิธีดูดวงและใช้งานแอปหมอดูสติ (SATI)',
+    guideStep1Title: '1. ผูกพื้นดวงและเลือกไพ่ 10 ใบแรก',
+    guideStep1Desc: 'กรอกชื่อ-นามสกุลจริงและวันเกิดเพื่อให้สติผูกหลักทักษา จากนั้นเลือกไพ่ 10 ใบแรกบนโต๊ะเพื่อเปิดภาพรวม อดีต - ปัจจุบัน - อนาคต ของคุณ',
+    guideStep2Title: '2. กดดูหน้าไพ่บนโต๊ะ 3D และกด "รายละเอียดเพิ่มเติม"',
+    guideStep2Desc: 'แตะที่ไพ่ที่วางหงายอยู่บนโต๊ะ 3D ได้ทุกใบเพื่อขยายดูความหมาย หรือกดปุ่ม "รายละเอียดเพิ่มเติม" เพื่ออ่านที่มา ความเชื่อมโยงของไพ่แต่ละใบกับคำถาม',
+    guideStep3Title: '3. เลือกคำถามพรีเซ็ต / สับไพ่ด้วยมือเรา / รีเซ็ตกองไพ่',
+    guideStep3Desc: 'เลือกหมวดคำถาม (ความรัก การงาน การเงิน อื่นๆ) หรือพิมพ์ถามเองได้ทันที หากอยากสับไพ่ใหม่ด้วยมือตัวเองกดปุ่ม "สับไพ่ด้วยมือเรา" (ไม่ปนกองทิ้ง) และเมื่อไพ่เหลือน้อยกว่าหรือเท่ากับ 9 ใบ (0-9 ใบ) จะปลดล็อกปุ่มรีเซ็ตครบ 78 ใบ',
+    guideStep4Title: '4. บันทึกรูปการ์ดคำทำนาย & ออกจากโต๊ะเมื่อคุยเสร็จ',
+    guideStep4Desc: 'กด "บันทึกรูป / แชร์" เพื่อเซฟการ์ดคำทำนายพร้อมหน้าไพ่สวยๆ ลงเครื่องได้ทุกข้อความ และเมื่อคุยเสร็จให้เปิดเมนูตั้งค่า (ฟันเฟือง) กดออกจากโต๊ะเพื่อบันทึกประวัติรอบนั้นตามวัน-เวลา',
+
+    stepCoachPick10: 'ขั้นที่ 1/3 · สติแนะนำ: หยิบไพ่ 10 ใบแรกเพื่อผูกพื้นดวง อดีต - ปัจจุบัน - อนาคต ของคุณ',
+    stepCoachChat: 'ขั้นที่ 2/3 · แตะหน้าไพ่บนโต๊ะ 3D เพื่อขยายอ่านได้ หรือเลือกหมวดคำถามพรีเซ็ตด้านล่าง',
+    stepCoachChatSavedNatal: 'ขั้นที่ 2/3 · พร้อมถามต่อจากพื้นดวง 10 ใบเดิม — เลือกคำถามพรีเซ็ตหรือจั่วไพ่ 1-3 ใบจากสำรับ 78 ใบได้เลย',
+    stepCoachFollowUp: 'ขั้นที่ 3/3 · หยิบไพ่ขยายความจากกองที่เหลืออยู่ (หรือสับไพ่ด้วยมือตัวเองก่อนเลือกได้)',
+    tableTapCardHint: 'แตะที่ไพ่บนโต๊ะ 3D ได้เลยเพื่อดูความหมายเต็มใบ',
+
+    modalDiscardTitle: 'กองไพ่ทิ้ง (ไพ่ที่เปิดใช้ไปแล้วในรอบนี้)',
+    discardSummaryFmt: (used, rem) => `ใช้ไปแล้ว ${used} ใบ (เหลือไพ่ที่ยังไม่เปิด ${rem} / 78 ใบ)`,
+    discardEmpty: 'ยังไม่มีไพ่ในกองทิ้ง รอบนี้เพิ่งเริ่มต้นครบ 78 ใบ',
+
+    btnMoreDetails: 'รายละเอียดเพิ่มเติม',
+    btnHideDetails: 'ซ่อนรายละเอียด',
+    btnShareReading: 'บันทึกรูป / แชร์',
+    modalShareTitle: 'การ์ดคำทำนายพร้อมหน้าไพ่สำหรับเก็บและแชร์',
+    btnDownloadSharePng: 'บันทึกรูปลงเครื่อง (.png)',
+    btnNativeSharePng: 'แชร์รูปคำทำนาย',
+    toastShareSaved: 'บันทึกรูปการ์ดคำทำนายลงเครื่องเรียบร้อยแล้ว',
+    historyTabCurrent: 'รอบสนทนาปัจจุบัน',
+    historyTabArchives: 'ประวัติย้อนหลังตามวัน-เวลา',
+    archiveSessionHeaderFmt: (dateStr, nick, usedCount) => `${dateStr} · ${nick} (ใช้ไพ่ ${usedCount} ใบ)`,
+    archiveEmpty: 'ยังไม่มีประวัติรอบที่บันทึกไว้ กดออกจากโต๊ะในเมนูฟันเฟืองเมื่อคุยจบเพื่อบันทึกประวัติ',
+    btnViewArchiveSession: 'เปิดอ่าน / เซฟรูปจากรอบนี้',
+    btnBackArchiveList: '← กลับหน้ารวมประวัติตามวัน-เวลา',
+
+    presetCatLove: '❤️ ความรัก',
+    presetCatWork: '💼 การงาน',
+    presetCatMoney: '💰 การเงิน',
+    presetCatGeneral: '✨ อื่นๆ / ชีวิต',
+    btnSelfShuffle: 'สับไพ่ด้วยมือเรา',
+    btnResetDeck9: (rem) => (rem <= 9 ? 'รีเซ็ตกองไพ่ 78 ใบ (พร้อมแล้ว)' : `รีเซ็ต 78 ใบ (รอเหลือ 0-9 ใบ)`),
+    toastResetLocked: 'รีเซ็ตกองไพ่ใหม่ได้ก็ต่อเมื่อเหลือไพ่ที่ยังไม่ใช้งาน 0–9 ใบเท่านั้น',
+    toastSelfShuffled: 'สับไพ่ที่เหลือด้วยมือคุณเรียบร้อย (ไม่รวมกองทิ้ง)',
+    selfShufflingDialogue: (nick) => `สติวางสำรับให้${nick}สับไพ่ที่เหลือด้วยมือตัวเองเลย... ตั้งสมาธิกับคำถามไว้นะ`,
+    selfShuffledDoneDialogue: (nick, rem) => `สับไพ่ที่เหลือ ${rem} ใบด้วยมือของ${nick}เสร็จแล้ว ไพ่เรียงพร้อมบนโต๊ะ เลือกหยิบหรือถามสติต่อได้เลย`,
 
     satiSpeaker: 'สติ',
     userSpeakerFallback: 'ผู้ถาม',
@@ -141,11 +215,13 @@ export const UI_TEXT = {
     pickInitialPrompt: 'เลือกไพ่พื้นดวง 10 ใบแรก',
 
     welcomeFirstDialogue: (nick) =>
-      `สวัสดีนะ${nick} เราชื่อสติ เดี๋ยวรอบแรกนี้หยิบไพ่มา 10 ใบก่อน เราจะได้ผูกเข้ากับชื่อและวันเกิดของ${nick} เพื่อเช็กสถานการณ์อดีตถึงปัจจุบันให้ชัดๆ (กดสลับมุมมองด้านขวาบนได้แล้วนะ)`,
+      `สวัสดีนะ${nick} เราชื่อสติ เดี๋ยวขั้นแรกให้${nick}เลือกไพ่ 10 ใบจากบนโต๊ะก่อนนะ เพื่อผูกเข้ากับชื่อ-วันเกิด ดูพื้นดวง อดีต ปัจจุบัน และอนาคตของ${nick}ให้ชัดๆ พอเปิดครบแล้วสติจะพาไปดูขั้นต่อไปทีละก้าวเอง`,
+    welcomeUseSavedNatalDialogue: (nick) =>
+      `ยินดีต้อนรับกลับมานะ${nick} สติจำพื้นดวงและไพ่ 10 ใบเดิมของ${nick}ไว้ครบแล้ว รอบใหม่นี้จัดสำรับใหม่ครบ 78 ใบวางตรงหน้าเรียบร้อย เลือกหมวดคำถามพรีเซ็ตหรือจั่วไพ่ถามต่อได้เลย`,
     welcomeBackDialogue: (nick, rem) =>
-      `ยินดีต้อนรับกลับมานะ${nick} สำรับเดิมของเรายังวางอยู่บนโต๊ะ (เหลือ ${rem} ใบ) อยากถามเรื่องไหนต่อหรือจั่วไพ่เพิ่มบอกสติได้เลย`,
+      `ยินดีต้อนรับกลับมานะ${nick} สำรับเดิมของเรายังวางอยู่บนโต๊ะ (เหลือ ${rem} ใบ) แตะหน้าไพ่บนโต๊ะดูรายละเอียด หรือเลือกหมวดคำถามด้านล่างได้เลย`,
     reshuffledDialogue: (nick) =>
-      `สับสำรับใหม่ครบ 78 ใบแล้วนะ${nick} รอบนี้ไม่ต้องเปิดพื้นดวง 10 ใบซ้ำแล้ว พิมพ์ถามหรือกดจั่ว 1 ใบ / 3 ใบต่อได้เลย`,
+      `รีเซ็ตสำรับใหม่ครบ 78 ใบแล้วนะ${nick} รอบนี้ไม่ต้องเปิดพื้นดวง 10 ใบซ้ำ พิมพ์ถาม เลือกพรีเซ็ต หรือกดจั่วไพ่ต่อได้เลย`,
     crystalDialogue: (nick) =>
       `คลื่นแสงในลูกแก้วคริสตัลสว่างรับกับสมาธิของ${nick}มากเลย ถ้ามีคำถามค้างใจพิมพ์ถามหรือจั่วไพ่ต่อได้เลยนะ`,
 
@@ -165,27 +241,32 @@ export const UI_TEXT = {
       work: [
         { label: '⚡ จุดเปลี่ยนงานใน 3 เดือนนี้', question: 'จุดเปลี่ยนสำคัญเรื่องงานในอีก 3 เดือนข้างหน้าคืออะไร และฉันควรตัดสินใจยังไงดี', drawCount: 0 },
         { label: '🧭 งานนี้ไปต่อหรือเปลี่ยนทาง?', question: 'งานหรือโปรเจกต์ที่ทำอยู่ตอนนี้ ควรทุ่มไปต่อหรือมองหาทางใหม่ที่คุ้มกว่า', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: เส้นทางงาน & โอกาส (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบเจาะลึกเส้นทางงาน โอกาสเติบโต และสิ่งที่ต้องระวังตรงหน้า', drawCount: 3 }
+        { label: '🤝 หัวหน้า/ทีมมองเราอย่างไร', question: 'ตอนนี้หัวหน้า ทีมงาน หรือผู้ใหญ่รอบตัวมองผลงานของเราอย่างไรและควรปรับจุดไหน', drawCount: 0 },
+        { label: '🔮 เปิดไพ่ 3 ใบ: เส้นทางงาน (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบเจาะลึกเส้นทางงาน โอกาสเติบโต และสิ่งที่ต้องระวังตรงหน้า', drawCount: 3 }
       ],
       money: [
         { label: '💰 จุดรั่วการเงินที่มองไม่เห็น', question: 'ตอนนี้มีจุดรั่วทางการเงินหรือจังหวะเสี่ยงตรงไหนที่สติเห็นว่าต้องรีบอุดบ้าง', drawCount: 0 },
-        { label: '📈 โอกาสเก็บก้อนใหญ่ช่วงนี้', question: 'ช่วงนี้จังหวะรายรับและเงินก้อนจะขยับขึ้นจากทางไหนได้ชัดที่สุด', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: กระแสเงิน & โชคลาภ (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบดูทิศทางกระแสเงิน โอกาสรับทรัพย์ และจุดที่ห้ามประมาท', drawCount: 3 }
+        { label: '📈 โอกาสเก็บเงินก้อนช่วงนี้', question: 'ช่วงนี้จังหวะรายรับและเงินก้อนจะขยับขึ้นจากทางไหนได้ชัดที่สุด', drawCount: 0 },
+        { label: '⚖️ ลงทุนหรือเก็บสำรองก่อนดี', question: 'เรื่องเงินช่วงนี้ควรลุยลงทุนขยับขยาย หรือเก็บเงินสดสำรองไว้ก่อนดีกว่า', drawCount: 0 },
+        { label: '🔮 เปิดไพ่ 3 ใบ: กระแสเงิน (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบดูทิศทางกระแสเงิน โอกาสรับทรัพย์ และจุดที่ห้ามประมาท', drawCount: 3 }
       ],
       love: [
         { label: '❤️ ความคิดลึกๆ ของอีกฝ่าย', question: 'ความรู้สึกและความคิดลึกๆ ของอีกฝ่ายที่มีต่อฉันตอนนี้เป็นยังไงกันแน่', drawCount: 0 },
         { label: '⏳ ควรลุยต่อหรือถอยตั้งหลัก?', question: 'ในความสัมพันธ์นี้ ฉันควรเดินหน้าเปิดใจต่อ หรือควรถอยมาตั้งหลักให้ชัดก่อน', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: ทิศทางใจเราสองคน (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบเจาะลึกความรู้สึกจริง ปมที่ค้างคา และบทสรุปความสัมพันธ์นี้', drawCount: 3 }
+        { label: '🌸 แนวโน้มคนใหม่ / คู่ครอง', question: 'ช่วงนี้มีเกณฑ์เจอคนที่ใช่หรือพัฒนาความสัมพันธ์ให้ชัดเจนขึ้นเมื่อไหร่', drawCount: 0 },
+        { label: '🔮 เปิดไพ่ 3 ใบ: ทิศทางความรัก (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบเจาะลึกความรู้สึกจริง ปมที่ค้างคา และบทสรุปความสัมพันธ์นี้', drawCount: 3 }
       ],
       self: [
         { label: '🎯 ก้าวแรกที่ต้องลงมือทันที', question: 'จากไพ่ตรงหน้า อะไรคือสิ่งแรกที่ฉันควรลงมือเปลี่ยนหรือโฟกัสภายในสัปดาห์นี้', drawCount: 0 },
         { label: '⚠️ อุปสรรคในใจที่ฉุดไว้', question: 'ตอนนี้ความกลัวหรือนิสัยเดิมแบบไหนที่กำลังฉุดไม่ให้ฉันไปข้างหน้า', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: แนวทางปลดล็อกชีวิต (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบดูทางออกชีวิต จุดแข็งที่ต้องใช้ และคำเตือนสำคัญช่วงนี้', drawCount: 3 }
+        { label: '🛡️ สิ่งที่ต้องระวังและสุขภาพ', question: 'ช่วงนี้มีเรื่องสุขภาพ อารมณ์ หรือคนรอบข้างตรงไหนที่ควรระวังเป็นพิเศษบ้าง', drawCount: 0 },
+        { label: '🔮 เปิดไพ่ 3 ใบ: ปลดล็อกชีวิต (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบดูทางออกชีวิต จุดแข็งที่ต้องใช้ และคำเตือนสำคัญช่วงนี้', drawCount: 3 }
       ],
       general: [
         { label: '🔎 เรื่องสำคัญสุดที่ไพ่เตือน', question: 'จากไพ่ทั้งหมดตอนนี้ เรื่องไหนเร่งด่วนและสำคัญที่สุดที่ฉันต้องรีบจัดการ', drawCount: 0 },
         { label: '🚀 สิ่งที่ควรทำภายในสัปดาห์นี้', question: 'ในสัปดาห์นี้ ถ้าต้องเลือกโฟกัสเพียง 1 อย่างให้คุ้มแรงที่สุด ควรทำอะไร', drawCount: 0 },
-        { label: '🔮 เปิดไพ่ 3 ใบ: เจาะลึกสถานการณ์ (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบเจาะลึกสถานการณ์ตรงหน้า แนวโน้ม และวิธีรับมือที่ดีที่สุด', drawCount: 3 }
+        { label: '🌿 พลังกายใจและคนรอบข้าง', question: 'ตอนนี้สมดุลชีวิต พลังงานส่วนตัว และสิ่งแวดล้อมรอบข้างเป็นยังไง มีอะไรต้องรีบปรับ', drawCount: 0 },
+        { label: '🔮 เปิดไพ่ 3 ใบ: เจาะลึกภาพรวม (3 เหรียญ)', question: 'ขอเปิดไพ่ 3 ใบเจาะลึกสถานการณ์ตรงหน้า แนวโน้ม และวิธีรับมือที่ดีที่สุด', drawCount: 3 }
       ]
     },
 
@@ -227,6 +308,11 @@ export const UI_TEXT = {
     ledgerTitle: 'Sign the Ledger Before Drawing Cards',
     btnResumeDeck: 'Resume Saved Deck Session',
     resumeDeckInfo: (nick, rem, coins) => `Saved deck found for ${nick} (${rem}/78 cards remaining | ${coins} Coins)`,
+    returningNatalInfo: (nick, birthCard, archiveCount) =>
+      `Welcome back, ${nick} — your 10 natal cards are saved (${birthCard} | ${archiveCount} saved sessions). Any new round starts with a full 78-card deck.`,
+    btnUseSavedNatal: 'Reuse Saved 10 Natal Cards (Full 78 Deck)',
+    btnDrawNewNatal: 'Draw 10 New Natal Cards (Full 78 Deck)',
+    btnLedgerHistory: (count) => `Saved Reading History (${count} sessions)`,
     labelNickname: 'Nickname (Sati will address you by this name)',
     placeholderNickname: 'e.g., Bom',
     labelFullname: 'Full Name (Used for Thaksa natal analysis)',
@@ -236,9 +322,17 @@ export const UI_TEXT = {
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     formatYear: (beYear) => `${beYear - 543}`,
 
+    modalWelcomeTitle: 'Before You Sit at Master Sati’s Table',
+    welcomeIntroP1: 'SATI is your live 3D Tarot reading space with instant, deeply personal answers — no booking queue, no waiting around. Whether your question is about love, career, money, or anything heavy on your mind, just ask naturally, pick your own cards on the table, and receive clarity in seconds.',
+    welcomeIntroP2: 'Sati never gives generic daily horoscopes. Every reading weaves together your real birth chart, the exact Tarot cards you draw by hand, and your true intent — spoken warmly, honestly, without judgment, and closing with practical steps you can actually act on.',
+    welcomeIntroP3: 'Start immediately with a complimentary free question, then top up coins or passes via PromptPay anytime. Every reading is saved by date and time so you can revisit details or export a designed Reading Card image with all drawn cards to keep or share.',
+    btnWelcomeConfirm: 'Enter the Table with Sati',
+
     cleanPickBadge: 'Tap cards on the table to draw',
     btnRestoreUi: 'Show Menu',
     hudDeckLabel: 'Deck',
+    hudDiscardLabel: (n) => `Discard: ${n}`,
+    titleDiscardPile: 'Inspect Used Discard Pile',
     btnDeckGallery: '78-Card Gallery',
     btnNatalDrawer: 'Natal 10 Cards',
     hudCoinsCount: (c) => `${c} Coins`,
@@ -253,6 +347,67 @@ export const UI_TEXT = {
     titleCamToggle: 'Switch 1P / 2P View',
     titleMute: 'Mute / Unmute Sound',
     titleHideUi: 'Hide UI controls to view table cleanly',
+    titleGuideBtn: 'How to Use SATI',
+    titleSettingsBtn: 'Settings & Leave Table',
+
+    modalSettingsTitle: 'Table Settings & Session Control',
+    settingsSoundLabel: 'Sanctuary Audio',
+    settingsSoundOn: 'Sound On',
+    settingsSoundOff: 'Muted',
+    settingsLangLabel: 'Reading Language',
+    settingsFeedbackLabel: 'Help Us Sharpen Sati',
+    settingsFeedbackBtn: '★ Send Review / Feedback',
+    settingsExitSectionTitle: 'End Session & Leave Table',
+    btnExitTableOpen: 'Leave Table & Save Session',
+    exitConfirmDesc: 'Leaving saves this entire conversation with its timestamp to your profile. Once you leave, you cannot resume the leftover cards in this deck — your next session will start fresh with all 78 cards.',
+    btnExitTableConfirm: 'Confirm Leave & Save Archive',
+    btnExitTableCancel: 'Stay at Table',
+    toastSessionSavedExit: 'Session archived with date & time. Returned safely from table.',
+
+    modalGuideTitle: 'How to Read Cards with Master Sati',
+    guideStep1Title: '1. Seal Your Natal Profile & Pick 10 Cards',
+    guideStep1Desc: 'Enter your name and birth date so Sati aligns Thai Thaksa astrology, then pull 10 cards on the 3D table to map your past, present, and future.',
+    guideStep2Title: '2. Tap 3D Cards on the Table & Check "More Details"',
+    guideStep2Desc: 'Click any open card right on the 3D velvet table to inspect it up close, or tap "More Details" to see how every card connects to your question.',
+    guideStep3Title: '3. Preset Questions, Hand Self-Shuffle & Deck Reset',
+    guideStep3Desc: 'Switch between Love, Work, Money, or General presets, shuffle remaining deck cards yourself with your 3D hands (discarded cards stay separate), and reset the full 78-card deck once 0–9 unused cards remain.',
+    guideStep4Title: '4. Save Reading Image & Leave Table to Archive',
+    guideStep4Desc: 'Export any reading into a designed card image with Tarot artwork, and use Settings (gear icon) -> Leave Table when done to store the timestamped session.',
+
+    stepCoachPick10: 'Step 1/3 · Sati Guides: Pick 10 cards from the fan to map your Past, Present & Future.',
+    stepCoachChat: 'Step 2/3 · Tap any face-up 3D card on the table to inspect it, or choose a question preset below.',
+    stepCoachChatSavedNatal: 'Step 2/3 · Saved 10 natal cards ready — choose a question preset or draw 1–3 cards from the full 78 deck.',
+    stepCoachFollowUp: 'Step 3/3 · Draw follow-up cards from what remains (or self-shuffle first with your own hands).',
+    tableTapCardHint: 'Tap any open card on the 3D table to inspect full meaning',
+
+    modalDiscardTitle: 'Discard Pile (Cards Used This Round)',
+    discardSummaryFmt: (used, rem) => `${used} cards used so far (${rem} / 78 unopened left)`,
+    discardEmpty: 'No cards discarded yet — full 78-card deck intact.',
+
+    btnMoreDetails: 'More Details',
+    btnHideDetails: 'Hide Details',
+    btnShareReading: 'Save / Share Card',
+    modalShareTitle: 'Designed Reading Card with Drawn Tarot Artwork',
+    btnDownloadSharePng: 'Save PNG to Device',
+    btnNativeSharePng: 'Share Card Image',
+    toastShareSaved: 'Saved reading card image to your device.',
+    historyTabCurrent: 'Current Session',
+    historyTabArchives: 'Saved History by Date',
+    archiveSessionHeaderFmt: (dateStr, nick, usedCount) => `${dateStr} · ${nick} (${usedCount} cards used)`,
+    archiveEmpty: 'No saved sessions yet — use Settings -> Leave Table after finishing a session to archive it.',
+    btnViewArchiveSession: 'Open / Save Card Image',
+    btnBackArchiveList: '← Back to All Archived Sessions',
+
+    presetCatLove: '❤️ Love',
+    presetCatWork: '💼 Work',
+    presetCatMoney: '💰 Money',
+    presetCatGeneral: '✨ Life & Other',
+    btnSelfShuffle: 'Self-Shuffle Deck',
+    btnResetDeck9: (rem) => (rem <= 9 ? 'Reset Full 78 Deck (Ready)' : 'Reset 78 Deck (0–9 Left)'),
+    toastResetLocked: 'Deck reset unlocks only when 0 to 9 unused cards remain.',
+    toastSelfShuffled: 'Shuffled remaining cards with your own hands (discard pile excluded).',
+    selfShufflingDialogue: (nick) => `Hold steady, ${nick} — shuffle the remaining cards with your own hands while focusing on your question...`,
+    selfShuffledDoneDialogue: (nick, rem) => `Your own hands finished shuffling the ${rem} remaining cards cleanly, ${nick}. Go ahead and pick or ask away.`,
 
     satiSpeaker: 'Sati',
     userSpeakerFallback: 'You',
@@ -354,6 +509,8 @@ export const UI_TEXT = {
 
     welcomeFirstDialogue: (nick) =>
       `Good to see you, ${nick}. I'm Sati. Let's start by pulling 10 cards so I can tie your name and birth date into the spread and map out your past to present clearly. (You can switch the 1P/2P camera view at top right too.)`,
+    welcomeUseSavedNatalDialogue: (nick) =>
+      `Welcome back, ${nick}. Your natal profile and 10 natal cards are already remembered, and a fresh full 78-card deck is fanned on the table. Pick a question preset or draw more cards anytime.`,
     welcomeBackDialogue: (nick, rem) =>
       `Welcome back, ${nick}. Your previous deck is still right here on the table (${rem} cards left). Ask anything or draw more cards whenever you're ready.`,
     reshuffledDialogue: (nick) =>
@@ -439,6 +596,11 @@ export const UI_TEXT = {
     ledgerTitle: '抽牌前请先落名登记',
     btnResumeDeck: '继续上一次尚未用完的牌组',
     resumeDeckInfo: (nick, rem, coins) => `检测到 ${nick} 的存档牌组（剩余 ${rem}/78 张 | 金币 ${coins}）`,
+    returningNatalInfo: (nick, birthCard, archiveCount) =>
+      `欢迎回来，${nick}——已为你记住最初 10 张本命牌（守护牌：${birthCard} | 已存 ${archiveCount} 场记录）。新开一局将恢复完整 78 张新牌组。`,
+    btnUseSavedNatal: '沿用原 10 张本命牌（78 张全新牌库开局）',
+    btnDrawNewNatal: '重选 10 张新本命牌（78 张全新牌库开局）',
+    btnLedgerHistory: (count) => `查看历史占卜存档（${count} 场）`,
     labelNickname: '常用昵称（思谛在对话中将这样称呼你）',
     placeholderNickname: '例如：阿博 / Bom',
     labelFullname: '真实姓名（用于生辰八字与姓名能量推演）',
@@ -448,9 +610,17 @@ export const UI_TEXT = {
     months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
     formatYear: (beYear) => `${beYear - 543} 年`,
 
+    modalWelcomeTitle: '进入思谛（SATI）占卜室前的小提示',
+    welcomeIntroP1: '思谛（SATI）是一款实时在线 3D 塔罗占卜空间，无需预约排队即可立刻回答你的疑惑。无论是感情、事业、财运还是心头拿不准的抉择，只需写下问题并亲手挑选牌面，几秒内即可收到真诚解答。',
+    welcomeIntroP2: '思谛从不套用千篇一律的星座运势，而是将你的姓名与出生命格、你亲手抽出的每一张真实牌面、以及你当下的提问融为一体——语气温和坦诚、不评判也不指责，只给出能立刻落地的实用建议。',
+    welcomeIntroP3: '开启即可获得免费体验次数，后续按需补充金币或全副通行证。所有占卜均按日期时间自动记录在档，随时可回看详情或生成带牌面的精美解读长图保存与分享。',
+    btnWelcomeConfirm: '了解并进入牌桌',
+
     cleanPickBadge: '直接在牌桌上点击选牌即可',
     btnRestoreUi: '显示菜单',
     hudDeckLabel: '牌库',
+    hudDiscardLabel: (n) => `弃牌堆：${n} 张`,
+    titleDiscardPile: '查看本轮已使用的弃牌堆',
     btnDeckGallery: '78 张牌图鉴',
     btnNatalDrawer: '本命十张牌',
     hudCoinsCount: (c) => `${c} 枚金币`,
@@ -465,6 +635,67 @@ export const UI_TEXT = {
     titleCamToggle: '切换第一人称 / 对坐视角',
     titleMute: '开启或静音',
     titleHideUi: '隐藏按钮以清晰观看牌桌',
+    titleGuideBtn: '查看使用指南',
+    titleSettingsBtn: '设置与离开牌桌',
+
+    modalSettingsTitle: '牌桌设置与存档管理',
+    settingsSoundLabel: '占卜室音效',
+    settingsSoundOn: '音效已开启',
+    settingsSoundOff: '已静音',
+    settingsLangLabel: '显示与解读语言',
+    settingsFeedbackLabel: '帮助我们让思谛更准更好用',
+    settingsFeedbackBtn: '★ 提交评价 / 反馈',
+    settingsExitSectionTitle: '结束本场并离开牌桌',
+    btnExitTableOpen: '离开牌桌并保存历史记录',
+    exitConfirmDesc: '离开后系统将按当前日期与时间完整保存本轮对话记录。离开后无法继续使用本局剩余未抽的牌，下次进入将重新启用完整的 78 张牌。',
+    btnExitTableConfirm: '确认离开并存档',
+    btnExitTableCancel: '留在这里',
+    toastSessionSavedExit: '已按日期时间保存本场完整记录并离开牌桌。',
+
+    modalGuideTitle: '思谛（SATI）3D 占卜使用指南',
+    guideStep1Title: '1. 绑定生辰命盘并先抽 10 张本命牌',
+    guideStep1Desc: '填好姓名与出生日期后，从桌上的牌扇亲手挑出 10 张牌，建立属于你的过去—现在—未来基准盘。',
+    guideStep2Title: '2. 直接点击桌上 3D 牌面，或点击“更多详情”',
+    guideStep2Desc: '点击牌桌上展开的每一张立体牌即可放大查看详情；或在对话中点击“更多详情”，看清每张牌与问题的深层联系。',
+    guideStep3Title: '3. 分类预设提问 / 亲手洗牌 / 残局重洗 78 张',
+    guideStep3Desc: '按感情、事业、财运与生活分类一键挑选问题，也可点击“亲手洗牌”用自己的 3D 双手洗匀剩余未开之牌（绝不混入弃牌堆）。当未用牌剩下 0–9 张时可重置全副 78 张。',
+    guideStep4Title: '4. 保存带牌面的解读图，聊完从设置离开牌桌',
+    guideStep4Desc: '每条解读皆可生成带完整塔罗牌图的卡片存手机或分享；结束后点右上角齿轮离开牌桌，系统会自动按日历时间存档。',
+
+    stepCoachPick10: '步骤 1/3 · 思谛指引：请先从桌上抽取 10 张本命牌，查看过去、现在与未来走向',
+    stepCoachChat: '步骤 2/3 · 点击桌上展开的 3D 牌面可随时看牌意，或选下方预设分类提问',
+    stepCoachChatSavedNatal: '步骤 2/3 · 已保留原 10 张本命牌——可直接选下方分类提问，或从完整 78 张牌中加抽 1-3 张',
+    stepCoachFollowUp: '步骤 3/3 · 从余下牌扇抽取加抽牌（也可用“亲手洗牌”先洗一下再抽）',
+    tableTapCardHint: '可直接点击桌面摊开的 3D 牌面查看完整含义',
+
+    modalDiscardTitle: '本轮已使用弃牌堆',
+    discardSummaryFmt: (used, rem) => `本轮已用 ${used} 张（尚余未开牌 ${rem} / 78 张）`,
+    discardEmpty: '目前弃牌堆为空，完整 78 张牌尚未动用。',
+
+    btnMoreDetails: '更多详情',
+    btnHideDetails: '收起详情',
+    btnShareReading: '保存图片 / 分享',
+    modalShareTitle: '含牌面图案的思谛专属解读卡',
+    btnDownloadSharePng: '保存到本地 (.png)',
+    btnNativeSharePng: '立即分享图片',
+    toastShareSaved: '解读卡图片已保存到本机。',
+    historyTabCurrent: '本轮对话',
+    historyTabArchives: '按时间保存的往期记录',
+    archiveSessionHeaderFmt: (dateStr, nick, usedCount) => `${dateStr} · ${nick}（已用 ${usedCount} 张牌）`,
+    archiveEmpty: '暂无往期存档记录，结束占卜后从右上角齿轮离开牌桌即可按时间保存。',
+    btnViewArchiveSession: '打开查看 / 生成保存图',
+    btnBackArchiveList: '← 返回时间存档列表',
+
+    presetCatLove: '❤️ 感情',
+    presetCatWork: '💼 事业',
+    presetCatMoney: '💰 财运',
+    presetCatGeneral: '✨ 生活 / 其他',
+    btnSelfShuffle: '亲手洗牌',
+    btnResetDeck9: (rem) => (rem <= 9 ? '重置 78 张新牌（已就绪）' : '重置 78 张（剩 0–9 张解锁）'),
+    toastResetLocked: '仅当未使用的牌剩下 0 至 9 张时才可重置整副 78 张牌。',
+    toastSelfShuffled: '已用你的双手重新洗匀剩余未开之牌（不含弃牌堆）。',
+    selfShufflingDialogue: (nick) => `${nick}请集中念头，亲自用双手把剩余的牌重新洗匀...`,
+    selfShuffledDoneDialogue: (nick, rem) => `${nick}已亲手洗好剩下的 ${rem} 张牌并重新摊开在桌上，请挑牌或直接提问吧。`,
 
     satiSpeaker: '思谛',
     userSpeakerFallback: '你',
@@ -566,6 +797,8 @@ export const UI_TEXT = {
 
     welcomeFirstDialogue: (nick) =>
       `你好，${nick}，我是思谛。我们先抽 10 张牌，把你的名字、生辰和当下处境连起来看一遍，从过去到现在一次看清。（右上角也可以自由切换第一人称和对坐视角。）`,
+    welcomeUseSavedNatalDialogue: (nick) =>
+      `欢迎回来，${nick}。我已记下你的生辰与最初 10 张本命牌，桌前已为你重整好全副 78 张新牌，随时选分类提问或加抽牌吧。`,
     welcomeBackDialogue: (nick, rem) =>
       `欢迎回来，${nick}。上次这副牌还摆在桌上（还剩 ${rem} 张），想继续问哪件事或加抽几张都可以直接告诉我。`,
     reshuffledDialogue: (nick) =>

@@ -40,6 +40,7 @@ export function createSati3DEngine({
   onCardPicked,
   onSpreadCardInspect,
   onCrystalInspect,
+  onDiscardInspect,
   onModelsLoaded
 }) {
   const scene = new THREE.Scene();
@@ -203,7 +204,11 @@ export function createSati3DEngine({
   }
   let fanCardMeshes = [];
   let spreadCardMeshes = [];
+  let discardCardMeshes = [];
   let hoveredCardMesh = null;
+  let playerShuffleGatherUntil = 0;
+  let playerShuffleUntil = 0;
+  const activeTimers = new Set();
 
   // Warm Fortune-Teller Tent Lighting + Soft Shadow Key Light + Crystal Rim Lights
   const hemiLight = new THREE.HemisphereLight('#ffd8b0', '#1a0816', 0.58);
@@ -606,6 +611,13 @@ export function createSati3DEngine({
     }
   }
 
+  function clearFanCardsOnly() {
+    const disposedGeos = new Set();
+    const disposedMats = new Set();
+    fanCardMeshes.forEach((m) => disposeCardMesh(m, disposedGeos, disposedMats));
+    fanCardMeshes = [];
+  }
+
   function clear3DCards() {
     const disposedGeos = new Set();
     const disposedMats = new Set();
@@ -615,8 +627,57 @@ export function createSati3DEngine({
     spreadCardMeshes = [];
   }
 
-  function spawn78CardFan() {
-    clear3DCards();
+  function clearDiscardPile3D() {
+    const disposedGeos = new Set();
+    const disposedMats = new Set();
+    discardCardMeshes.forEach((m) => disposeCardMesh(m, disposedGeos, disposedMats));
+    discardCardMeshes = [];
+  }
+
+  function syncDiscardPile3D(discardList = state.discardPile) {
+    clearDiscardPile3D();
+    const totalUsed = Array.isArray(discardList)
+      ? discardList.length
+      : Math.max(0, 78 - (state.remainingDeck?.length ?? 78));
+    if (totalUsed <= 0) return;
+
+    const layers = Math.min(totalUsed, 24);
+    const geo = new THREE.BoxGeometry(0.22, 0.012, 0.34);
+    const edgeMat = new THREE.MeshStandardMaterial({
+      color: '#b88e28',
+      roughness: 0.42,
+      metalness: 0.4,
+      flatShading: true
+    });
+    const backMat = new THREE.MeshStandardMaterial({
+      map: cardBackTex,
+      roughness: 0.72,
+      metalness: 0.06,
+      flatShading: true
+    });
+    const mats = [edgeMat, edgeMat, backMat, backMat, edgeMat, edgeMat];
+
+    for (let i = 0; i < layers; i++) {
+      const mesh = new THREE.Mesh(geo, mats);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      const jitterX = Math.sin(i * 1.7) * 0.012;
+      const jitterZ = Math.cos(i * 2.1) * 0.012;
+      mesh.position.set(-1.30 + jitterX, 1.015 + i * 0.0125, -0.58 + jitterZ);
+      mesh.rotation.y = 0.24 + Math.sin(i * 1.4) * 0.06;
+      mesh.userData = {
+        isDiscardPile: true,
+        layerIndex: i,
+        discardCount: totalUsed
+      };
+      scene.add(mesh);
+      discardCardMeshes.push(mesh);
+    }
+  }
+
+  function spawn78CardFan(preserveSpread = false) {
+    if (preserveSpread) clearFanCardsOnly();
+    else clear3DCards();
     const total = state.remainingDeck.length;
     if (total === 0) return;
 
@@ -661,7 +722,10 @@ export function createSati3DEngine({
       mesh.userData = {
         cardData,
         slotIndex: idx,
+        baseX: x,
         baseY: 1.02 + idx * 0.0008,
+        baseZ: z,
+        baseRotY: -angle + Math.PI / 2,
         isFanCard: true
       };
       scene.add(mesh);
@@ -724,6 +788,34 @@ export function createSati3DEngine({
     spreadCardMeshes.push(mesh);
   }
 
+  function playPlayerHandShuffle3D(onDone) {
+    state.isPlayerShuffling = true;
+    playerShuffleGatherUntil = elapsedTime + 0.86;
+    playerShuffleUntil = elapsedTime + 1.55;
+
+    const midTimer = setTimeout(() => {
+      activeTimers.delete(midTimer);
+      if (isDisposed) return;
+      spawn78CardFan(true);
+      // Start fresh fan slightly centered so animate3D glides cards smoothly into the neat arc
+      fanCardMeshes.forEach((m, idx) => {
+        m.position.set(idx % 2 === 0 ? -0.10 : 0.10, m.userData.baseY + 0.05, 1.30);
+        m.rotation.y = 0;
+      });
+      syncDiscardPile3D(state.discardPile);
+    }, 880);
+    activeTimers.add(midTimer);
+
+    const endTimer = setTimeout(() => {
+      activeTimers.delete(endTimer);
+      state.isPlayerShuffling = false;
+      playerShuffleGatherUntil = 0;
+      playerShuffleUntil = 0;
+      if (!isDisposed && onDone) onDone();
+    }, 1580);
+    activeTimers.add(endTimer);
+  }
+
   function tuckNatalSpreadAway3D() {
     const disposedGeos = new Set();
     const disposedMats = new Set();
@@ -745,16 +837,21 @@ export function createSati3DEngine({
     hoveredCardMesh = hits.length > 0 ? hits[0].object : null;
 
     let hoveringCrystal = false;
+    let hoveringDiscard = false;
     if (!hoveredCardMesh && tabletopCrystalMeshes.length > 0) {
       const crystalHits = raycaster.intersectObjects(tabletopCrystalMeshes, false);
       hoveringCrystal = crystalHits.length > 0;
     }
+    if (!hoveredCardMesh && !hoveringCrystal && discardCardMeshes.length > 0) {
+      const discardHits = raycaster.intersectObjects(discardCardMeshes, false);
+      hoveringDiscard = discardHits.length > 0;
+    }
     state.isHoveringCrystal = hoveringCrystal;
-    document.body.style.cursor = (hoveredCardMesh || hoveringCrystal) ? 'pointer' : 'default';
+    document.body.style.cursor = (hoveredCardMesh || hoveringCrystal || hoveringDiscard) ? 'pointer' : 'default';
   }
 
   function onPointerDown(e) {
-    if (state.screen !== 'game' || state.isAnimatingShuffle) return;
+    if (state.screen !== 'game' || state.isAnimatingShuffle || state.isPlayerShuffling) return;
     if (e.target.closest('.pointer-auto') || e.target.closest('dialog')) return;
 
     pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -772,6 +869,14 @@ export function createSati3DEngine({
       if (hits.length > 0 && onSpreadCardInspect) {
         const mesh = hits[0].object;
         onSpreadCardInspect(mesh.userData.cardData, mesh.userData.posLabel || 'หน้าไพ่บนโต๊ะ');
+        return;
+      }
+    }
+
+    if (discardCardMeshes.length > 0) {
+      const discardHits = raycaster.intersectObjects(discardCardMeshes, false);
+      if (discardHits.length > 0 && onDiscardInspect) {
+        onDiscardInspect();
         return;
       }
     }
@@ -974,16 +1079,32 @@ export function createSati3DEngine({
       }
     }
 
-    // Fan cards hover lift & mobile portrait scale ergonomics
+    // Fan cards hover lift & mobile portrait scale ergonomics (plus player riffle gather when self-shuffling)
     const cardDamp = 1 - Math.exp(-11.0 * dt);
     const spreadDamp = 1 - Math.exp(-8.5 * dt);
     const fanPortraitScale = currentAspect < 0.75
       ? 1.0 + Math.min(1, Math.max(0, (0.75 - currentAspect) / 0.30)) * 0.14
       : 1.0;
-    fanCardMeshes.forEach((m) => {
+    const isPlayerShufflingNow = Boolean(state.isPlayerShuffling && t < playerShuffleUntil);
+    const isGatheringShuffle = Boolean(state.isPlayerShuffling && t < playerShuffleGatherUntil);
+    fanCardMeshes.forEach((m, idx) => {
       m.scale.setScalar(fanPortraitScale);
-      const targetY = m === hoveredCardMesh && state.isPicking ? m.userData.baseY + 0.14 : m.userData.baseY;
-      m.position.y += (targetY - m.position.y) * cardDamp;
+      if (isGatheringShuffle) {
+        const gatherSide = idx % 2 === 0 ? -0.14 : 0.14;
+        const weaveWave = Math.sin(t * 22 + idx * 0.5) * 0.05;
+        m.position.x += (gatherSide - m.position.x) * cardDamp;
+        m.position.z += (1.28 - m.position.z) * cardDamp;
+        m.position.y += (1.08 + Math.abs(weaveWave) + (idx % 6) * 0.004 - m.position.y) * cardDamp;
+        m.rotation.y += ((gatherSide * 0.8) - m.rotation.y) * cardDamp;
+      } else {
+        if (m.userData.baseX !== undefined) {
+          m.position.x += (m.userData.baseX - m.position.x) * cardDamp;
+          m.position.z += (m.userData.baseZ - m.position.z) * cardDamp;
+          m.rotation.y += (m.userData.baseRotY - m.rotation.y) * cardDamp;
+        }
+        const targetY = m === hoveredCardMesh && state.isPicking ? m.userData.baseY + 0.14 : m.userData.baseY;
+        m.position.y += (targetY - m.position.y) * cardDamp;
+      }
     });
 
     // Spread cards flip & glide animation
@@ -1034,7 +1155,25 @@ export function createSati3DEngine({
         let targetSplaysR = [0, -0.02, 0, 0.02, 0.04];
 
         const grabActive = !is2P && state.handGrab && t - state.handGrab.startTime < 0.38;
-        if (grabActive) {
+        if (isPlayerShufflingNow && !is2P) {
+          // Two-handed player card weave / riffle shuffle in the foreground
+          const weave = Math.sin(t * 16.0);
+          const liftL = Math.max(0, weave) * 0.08;
+          const liftR = Math.max(0, -weave) * 0.08;
+          const shufX = 0.28 * (isPortrait ? 0.82 : mobileXScale);
+          _targetLeftPos.set(-shufX + Math.sin(t * 10) * 0.04, 1.24 + liftL, isPortrait ? 1.56 : 1.38);
+          _targetRightPos.set(shufX - Math.sin(t * 10) * 0.04, 1.24 + liftR, isPortrait ? 1.56 : 1.38);
+          targetRotLX = 0.16 + liftL * 0.6;
+          targetRotLY = -0.34;
+          targetRotLZ = -0.18;
+          targetRotRX = 0.16 + liftR * 0.6;
+          targetRotRY = 0.34;
+          targetRotRZ = 0.18;
+          targetCurlsL = [0.46 + liftL, 0.52, 0.48, 0.48, 0.44];
+          targetCurlsR = [0.46 + liftR, 0.52, 0.48, 0.48, 0.44];
+          playerLeftHand.position.lerp(_targetLeftPos, hDampFast);
+          playerRightHand.position.lerp(_targetRightPos, hDampFast);
+        } else if (grabActive) {
           // 3-phase draw: reach (0..0.42) -> pinch & lift (0.42..0.75) -> glide home (0.75..1.0)
           const u = Math.max(0, Math.min(1, (t - state.handGrab.startTime) / 0.38));
           const reachLift = Math.sin(u * Math.PI);
@@ -1164,6 +1303,10 @@ export function createSati3DEngine({
     if (isDisposed) return;
     isDisposed = true;
 
+    activeTimers.forEach((tid) => clearTimeout(tid));
+    activeTimers.clear();
+    if (state) state.isPlayerShuffling = false;
+
     if (animFrameId !== null) {
       cancelAnimationFrame(animFrameId);
       animFrameId = null;
@@ -1181,6 +1324,7 @@ export function createSati3DEngine({
     }
 
     clear3DCards();
+    clearDiscardPile3D();
 
     if (tabletopCrystalLight) {
       scene.remove(tabletopCrystalLight);
@@ -1220,10 +1364,15 @@ export function createSati3DEngine({
   return {
     getElapsedTime: () => elapsedTime,
     getFanCardMeshes: () => fanCardMeshes,
+    getDiscardCardMeshes: () => discardCardMeshes,
     setCameraTarget,
     spawn78CardFan,
     placeSpreadCardIn3D,
     tuckNatalSpreadAway3D,
+    clear3DCards,
+    syncDiscardPile3D,
+    clearDiscardPile3D,
+    playPlayerHandShuffle3D,
     dispose
   };
 }

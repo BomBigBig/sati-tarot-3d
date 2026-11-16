@@ -14,13 +14,27 @@ export function buildStoragePayload(state) {
     vipExpiresAt: state.vipExpiresAt || null,
     freeChatQuota: typeof state.freeChatQuota === 'number' ? state.freeChatQuota : 1,
     deckNumber: state.deckNumber,
+    sessionActive: Boolean(state.sessionActive),
     remainingDeck: state.remainingDeck,
+    discardPile: state.discardPile || [],
     natalCards: state.natalCards,
+    savedNatalCards: state.savedNatalCards || [],
     natalCompleted: state.natalCompleted,
     activeSpread: state.activeSpread,
     chatHistory: state.chatHistory,
+    sessionArchives: state.sessionArchives || [],
     lastTopic: state.lastTopic
   };
+}
+
+function hasUsableRecord(rec) {
+  return Boolean(
+    rec &&
+      (rec.sessionActive ||
+        rec.natalCompleted ||
+        (Array.isArray(rec.savedNatalCards) && rec.savedNatalCards.length === 10) ||
+        (Array.isArray(rec.sessionArchives) && rec.sessionArchives.length > 0))
+  );
 }
 
 export async function loadAccountState(email) {
@@ -32,7 +46,7 @@ export async function loadAccountState(email) {
     const res = await fetch(`/api/sati/state?email=${encodeURIComponent(cleanEmail)}`);
     if (res.ok) {
       const data = await res.json();
-      if (data?.record && data.record.natalCompleted) {
+      if (hasUsableRecord(data?.record)) {
         localStorage.setItem(STORAGE_PREFIX + cleanEmail, JSON.stringify(data.record));
         return data.record;
       }
@@ -46,7 +60,7 @@ export async function loadAccountState(email) {
     const raw = localStorage.getItem(STORAGE_PREFIX + cleanEmail);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.natalCompleted) return parsed;
+      if (hasUsableRecord(parsed)) return parsed;
     }
   } catch {
     // ignore
@@ -76,15 +90,35 @@ export async function saveAccountState(state) {
   }
 }
 
-export async function clearAccountState(email) {
+export async function clearAccountState(email, preserveMeta = null) {
   const cleanEmail = String(email || '').trim().toLowerCase();
   if (!cleanEmail) return;
-  localStorage.removeItem(STORAGE_PREFIX + cleanEmail);
+  const clearedRecord = preserveMeta
+    ? {
+        ...preserveMeta,
+        sessionActive: false,
+        natalCompleted: false,
+        natalCards: [],
+        activeSpread: [],
+        discardPile: [],
+        chatHistory: []
+      }
+    : { natalCompleted: false, sessionActive: false };
+
+  if (!preserveMeta) {
+    localStorage.removeItem(STORAGE_PREFIX + cleanEmail);
+  } else {
+    try {
+      localStorage.setItem(STORAGE_PREFIX + cleanEmail, JSON.stringify(clearedRecord));
+    } catch {
+      // ignore quota error
+    }
+  }
   try {
     await fetch('/api/sati/state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: cleanEmail, record: { natalCompleted: false } })
+      body: JSON.stringify({ email: cleanEmail, record: clearedRecord })
     });
   } catch {
     // ignore

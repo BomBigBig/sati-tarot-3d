@@ -268,6 +268,93 @@ export function analyzeCardElementalSynergy(cards, lang = 'th') {
   return '';
 }
 
+export function computeElementalDignityInsight(cards = [], lang = 'th') {
+  const target = normalizeLang(lang);
+  const list = hydrateDeckCards(cards);
+  if (!list.length) return '';
+
+  const counts = { Major: 0, Wands: 0, Cups: 0, Swords: 0, Pentacles: 0 };
+  let early = 0;
+  let mid = 0;
+  let late = 0;
+  let courts = 0;
+
+  list.forEach((c) => {
+    counts[c.suit] = (counts[c.suit] || 0) + 1;
+    const first = (c.name || '').split(' ')[0];
+    if (['Ace', 'Two', 'Three'].includes(first)) early += 1;
+    else if (['Four', 'Five', 'Six'].includes(first)) mid += 1;
+    else if (['Seven', 'Eight', 'Nine', 'Ten'].includes(first)) late += 1;
+    else if (['Page', 'Knight', 'Queen', 'King'].includes(first)) courts += 1;
+  });
+
+  const hasFire = counts.Wands > 0;
+  const hasAir = counts.Swords > 0;
+  const hasWater = counts.Cups > 0;
+  const hasEarth = counts.Pentacles > 0;
+
+  let pairLine = '';
+  let cycleLine = '';
+
+  if (target === 'en') {
+    if (hasFire && hasAir && !hasWater && !hasEarth) {
+      pairLine = 'Elemental Dignity (Fire + Air Active Support): sharp clarity feeds bold speed, though impatience can gloss over fine details.';
+    } else if (hasWater && hasEarth && !hasFire && !hasAir) {
+      pairLine = 'Elemental Dignity (Water + Earth Grounded Support): steady emotional commitment builds into real, lasting material stability.';
+    } else if (hasFire && hasWater) {
+      pairLine = 'Elemental Dignity (Fire vs Water Friction): outer urgency and quiet inner hesitation are pulling against each other until feelings settle.';
+    } else if (hasAir && hasEarth) {
+      pairLine = 'Elemental Dignity (Air vs Earth Friction): over-analyzing scenarios collides with practical constraints — verify hard numbers directly.';
+    } else if (counts.Major >= 2) {
+      pairLine = `Elemental Dignity (${counts.Major} Major Arcana Anchor): weighty turning-point cards signal choices now carry longer-term karma and direction.`;
+    } else {
+      pairLine = 'Elemental Dignity (Balanced Temperament): contrasting elements show outcomes bend directly with the deliberate pacing you choose next.';
+    }
+    if (courts >= 2) cycleLine = 'Strong Court card presence shows real people or decisive personal stance steer this chapter.';
+    else if (late > early && late >= 1) cycleLine = 'High numbered ranks (7–10) mark a culmination phase where finishing loose ends unlocks the next cycle.';
+    else if (early > late && early >= 1) cycleLine = 'Early ranks (Ace–3) point to a fresh opening stage where framing clean boundaries early pays off most.';
+    return [pairLine, cycleLine].filter(Boolean).join(' ');
+  }
+
+  if (target === 'zh') {
+    if (hasFire && hasAir && !hasWater && !hasEarth) {
+      pairLine = '元素生克（火风相生）：思路与行动力同频加速，但要防着求快而漏掉落地细节。';
+    } else if (hasWater && hasEarth && !hasFire && !hasAir) {
+      pairLine = '元素生克（水土相融）：沉稳的心念正一点点沉淀成真实可感的安全感与收益。';
+    } else if (hasFire && hasWater) {
+      pairLine = '元素生克（火水相冲）：心里既想冲又放不下顾虑，先理顺内在感受再定节奏才不会内耗。';
+    } else if (hasAir && hasEarth) {
+      pairLine = '元素生克（风土相制）：想得太细易撞上现实条件限制，直接核对实际数字比空想有效。';
+    } else if (counts.Major >= 2) {
+      pairLine = `元素生克（${counts.Major} 张大阿卡纳压阵）：大牌密度高，代表眼下抉择带有长线转折分量。`;
+    } else {
+      pairLine = '元素生克（格局均衡）：牌组能量彼此牵制平衡，最终走向看你接下来如何稳住执行。';
+    }
+    if (courts >= 2) cycleLine = '宫廷牌偏多，关键变量落在具体当事人态度与你自身的处事姿态。';
+    else if (late > early && late >= 1) cycleLine = '高数字牌（7–10）占比偏重，说明此事已走到收官或清理旧结的阶段。';
+    else if (early > late && early >= 1) cycleLine = '初阶牌（1–3）起势，重点在于尽早立下清晰规则与起点框架。';
+    return [pairLine, cycleLine].filter(Boolean).join(' ');
+  }
+
+  if (hasFire && hasAir && !hasWater && !hasEarth) {
+    pairLine = 'กำลังธาตุไพ่ (ไฟ+ลมเสริมแรงเต็มที่): ความคิดชัดบวกแรงลุยทำให้ขยับไว แต่ต้องเช็กรายละเอียดไม่ให้ใจร้อนเกินจังหวะ';
+  } else if (hasWater && hasEarth && !hasFire && !hasAir) {
+    pairLine = 'กำลังธาตุไพ่ (น้ำ+ดินหนุนมั่นคง): ความจริงใจและความสม่ำเสมอกำลังปั้นผลลัพธ์เป็นชิ้นเป็นอันจับต้องได้';
+  } else if (hasFire && hasWater) {
+    pairLine = 'กำลังธาตุไพ่ (ไฟปะทะน้ำ): แรงอยากเดินหน้ากับความรู้สึกค้างใจกำลังดึงกันอยู่ ต้องเคลียร์ใจให้นิ่งก่อนลงมือ';
+  } else if (hasAir && hasEarth) {
+    pairLine = 'กำลังธาตุไพ่ (ลมปะทะดิน): ความคิดหลายตลบกำลังชนกับข้อจำกัดหรือตัวเลขจริง ให้ยึดหลักฐานตรงหน้ามากกว่าคาดเดา';
+  } else if (counts.Major >= 2) {
+    pairLine = `กำลังธาตุไพ่ (ไพ่ใหญ่ ${counts.Major} ใบคุมเกม): จังหวะนี้เป็นจุดเปลี่ยนระดับวางทิศทางระยะยาว ไม่ใช่เรื่องชั่วคราว`;
+  } else {
+    pairLine = 'กำลังธาตุไพ่ (ธาตุสมดุล): พลังในหน้าไพ่ไม่เทไปทางสุดโต่ง ผลลัพธ์ขึ้นกับวินัยและการวางหมากของเราโดยตรง';
+  }
+  if (courts >= 2) cycleLine = 'มีไพ่บุคคล (Court Cards) เด่นชัด ชี้ว่าตัวแปรสำคัญอยู่ที่ท่าทีของคนจริงหรือบทบาทที่เราต้องคุมเอง';
+  else if (late > early && late >= 1) cycleLine = 'เลขไพ่ช่วงปลาย (7–10) เด่น สะท้อนว่าเรื่องนี้อยู่ในช่วงสะสางปิดจบรอบเพื่อขึ้นรอบใหม่';
+  else if (early > late && early >= 1) cycleLine = 'เลขไพ่ช่วงต้น (1–3) เด่น บอกว่าเพิ่งเปิดประตูเริ่มต้น เหมาะกับการวางกรอบตั้งแต่ก้าวแรก';
+  return [pairLine, cycleLine].filter(Boolean).join(' ');
+}
+
 export function detectTopicAndIntent(q, prevTopic) {
   let topic = prevTopic || 'general';
   if (/ความรัก|แฟน|คนคุย|จีบ|นอกใจ|ง้อ|เลิกกัน|ขอคืนดี|คบกัน|แต่งงาน|มีใจ|คิดถึง|รักเรา|จริงใจ|เนื้อคู่|คู่รัก|โสด|อกหัก|แอบชอบ|เขารู้สึก|เขาคิด|เธอรู|เค้าคิด|เค้ายัง|เขายัง|มีคนอื่น|love|romance|relationship|partner|crush|dating|marriage|feelings|his heart|her heart|ex\b|感情|爱情|恋爱|对象|另一半|暗恋|前任|分手|复合|喜欢我|在乎|婚姻/i.test(q)) {
@@ -905,6 +992,7 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
         natalCards,
         activeSpread: cards,
         remainingCount: state.remainingDeck.length,
+        elementalDignity: computeElementalDignityInsight(cards, lang),
         isNatal10,
         celticPositions: getLocalizedCelticPositions(lang),
         question: isNatal10
@@ -1104,6 +1192,7 @@ function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, i
   const subtextNote = !isNatal10 ? buildSubtextHook(intent, topic, false, nick, lang).deepSubtext : '';
   const psychNote = buildPsychMirrorClause(user, refCards, spreadTone, nick, lang).deep;
   const synergyNote = analyzeCardElementalSynergy(refCards, lang);
+  const dignityNote = computeElementalDignityInsight(refCards, lang);
   const qEcho = question
     ? (lang === 'en'
         ? `Tied back to your question "${question}": `
@@ -1111,7 +1200,7 @@ function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, i
           ? `回到你问的“${question}”：`
           : `เชื่อมเข้าคำถาม "${question}": `)
     : '';
-  return [qEcho + storyLine, subtextNote, psychNote, synergyNote].filter(Boolean).join('\n\n');
+  return [qEcho + storyLine, subtextNote, psychNote, synergyNote, dignityNote].filter(Boolean).join('\n\n');
 }
 
 /**
