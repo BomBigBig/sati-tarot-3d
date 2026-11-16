@@ -19,8 +19,12 @@ import {
 import { buildStoragePayload } from '../../../src/engine/storage.js';
 import {
   SATI_SYSTEM_PROMPT,
+  buildModelGenerateConfig,
   checkReadRateLimit,
   createSatiExpressApp,
+  isModelOnCooldown,
+  markModelQuotaCooldown,
+  resetModelCooldownForTest,
   resetReadRateLimitForTest,
   sendFeedbackNotificationEmail
 } from '../../../backend/geminiProxyServer.js';
@@ -372,6 +376,40 @@ describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', (
       });
     } finally {
       resetReadRateLimitForTest();
+    }
+  });
+
+  it('SC-06-08: Gemini 4 Hydrogen config + 3-tier flash cascade & 429 cooldown logic behave accurately', () => {
+    resetModelCooldownForTest();
+    try {
+      const h4 = buildModelGenerateConfig('gemini-4-hydrogen');
+      assert.equal(h4.maxOutputTokens, 2600);
+      assert.deepEqual(h4.thinkingConfig, { thinkingLevel: 'low' });
+      assert.equal(h4.temperature, undefined, 'Gemini 4 must omit deprecated temperature');
+
+      const g36 = buildModelGenerateConfig('gemini-3.6-flash');
+      assert.deepEqual(g36.thinkingConfig, { thinkingBudget: 384 });
+      assert.equal(g36.temperature, undefined, 'Gemini 3.6+ must omit deprecated temperature');
+
+      const g25 = buildModelGenerateConfig('gemini-2.5-flash');
+      assert.deepEqual(g25.thinkingConfig, { thinkingBudget: 384 });
+      assert.equal(g25.temperature, 0.8);
+
+      const gLite = buildModelGenerateConfig('gemini-3.5-flash-lite');
+      assert.equal(gLite.thinkingConfig, undefined, 'Flash-Lite rejects thinkingConfig and must omit it');
+      assert.equal(gLite.temperature, 0.8);
+
+      const t0 = 1_700_000_000_000;
+      assert.equal(isModelOnCooldown('gemini-4-hydrogen', t0), false);
+      markModelQuotaCooldown('gemini-4-hydrogen', '429 RESOURCE_EXHAUSTED PerMinute', t0);
+      assert.equal(isModelOnCooldown('gemini-4-hydrogen', t0 + 10_000), true);
+      assert.equal(isModelOnCooldown('gemini-4-hydrogen', t0 + 61_000), false);
+
+      markModelQuotaCooldown('gemini-4-hydrogen', '429 RESOURCE_EXHAUSTED PerDay limit', t0);
+      assert.equal(isModelOnCooldown('gemini-4-hydrogen', t0 + 10 * 60_000), true);
+      assert.equal(isModelOnCooldown('gemini-4-hydrogen', t0 + 16 * 60_000), false);
+    } finally {
+      resetModelCooldownForTest();
     }
   });
 });

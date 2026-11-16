@@ -18,8 +18,50 @@ const DB_FILE = path.join(DB_DIR, 'users_db.json');
 const FEEDBACK_FILE = path.join(DB_DIR, 'feedback_db.json');
 const DIST_DIR = path.join(__dirname, '..', 'dist');
 const ENV_FILE = path.join(__dirname, '..', '.env');
-const PRIMARY_GEMINI_MODEL = 'gemini-3.6-flash';
-const GEMINI_MODEL_ORDER = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
+const PRIMARY_GEMINI_MODEL = 'gemini-4-hydrogen';
+const GEMINI_MODEL_ORDER = [
+  'gemini-4-hydrogen',
+  'gemini-3.6-flash',
+  'gemini-2.5-flash',
+  'gemini-3.5-flash-lite'
+];
+const modelCooldownUntil = new Map();
+
+export function buildModelGenerateConfig(model, systemInstruction = SATI_SYSTEM_PROMPT) {
+  const m = String(model || '');
+  const config = { systemInstruction };
+  if (/^gemini-4/i.test(m)) {
+    config.maxOutputTokens = 2600;
+    config.thinkingConfig = { thinkingLevel: 'low' };
+  } else {
+    config.maxOutputTokens = 1800;
+    if (!/^gemini-3\.[6-9]/i.test(m)) {
+      config.temperature = 0.8;
+    }
+    if (!/flash-lite/i.test(m)) {
+      config.thinkingConfig = { thinkingBudget: 384 };
+    }
+  }
+  return config;
+}
+
+export function isModelOnCooldown(model, now = Date.now()) {
+  const until = modelCooldownUntil.get(model) || 0;
+  if (until > now) return true;
+  if (until > 0) modelCooldownUntil.delete(model);
+  return false;
+}
+
+export function markModelQuotaCooldown(model, errMsg = '', now = Date.now()) {
+  const isDaily = /perday|daily|rpd/i.test(String(errMsg || ''));
+  const ttlMs = isDaily ? 15 * 60_000 : 60_000;
+  modelCooldownUntil.set(model, now + ttlMs);
+  return now + ttlMs;
+}
+
+export function resetModelCooldownForTest() {
+  modelCooldownUntil.clear();
+}
 const READ_RATE_LIMIT_WINDOW_MS = 60_000;
 const READ_RATE_LIMIT_MAX = 20;
 const readRateBuckets = new Map();
@@ -414,47 +456,35 @@ export async function handleSatiReadRequest(body) {
     `คำถามล่าสุดที่ต้องตอบให้ตรงประเด็น: "${question || 'ช่วยอ่านสถานการณ์และคำแนะนำตรงๆ จากไพ่ชุดนี้'}"`
   ].filter(Boolean).join('\n');
 
-  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 20000 } });
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 22000 } });
   let rawOutput = '';
   let usedModel = PRIMARY_GEMINI_MODEL;
   let lastErr = null;
 
-  for (const model of GEMINI_MODEL_ORDER) {
-    const config = {
-      systemInstruction: SATI_SYSTEM_PROMPT,
-      maxOutputTokens: 1800,
-      temperature: 0.8
-    };
-    if (!/flash-lite/i.test(model)) {
-      config.thinkingConfig = { thinkingBudget: 384 };
-    }
+  const activeOrder = GEMINI_MODEL_ORDER.filter((m) => !isModelOnCooldown(m));
+  const candidateModels = activeOrder.length > 0 ? activeOrder : GEMINI_MODEL_ORDER;
 
-    const attempts = model === PRIMARY_GEMINI_MODEL ? 2 : 1;
-    for (let attempt = 0; attempt < attempts; attempt += 1) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: userContext,
-          config
-        });
-        const text = (response?.text || '').trim();
-        if (text) {
-          rawOutput = text;
-          usedModel = model;
-          break;
-        }
-      } catch (err) {
-        lastErr = err;
-        const msg = String(err?.message || err || '');
-        const isTransient = /503|504|UNAVAILABLE|DEADLINE_EXCEEDED|ECONNRESET|fetch failed/i.test(msg);
-        if (isTransient && attempt + 1 < attempts) {
-          await new Promise((r) => setTimeout(r, 400));
-          continue;
-        }
+  for (const model of candidateModels) {
+    const config = buildModelGenerateConfig(model, SATI_SYSTEM_PROMPT);
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: userContext,
+        config
+      });
+      const text = (response?.text || '').trim();
+      if (text) {
+        rawOutput = text;
+        usedModel = model;
         break;
       }
+    } catch (err) {
+      lastErr = err;
+      const msg = String(err?.message || err || '');
+      if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg)) {
+        markModelQuotaCooldown(model, msg);
+      }
     }
-    if (rawOutput) break;
   }
 
   const reply = sanitizeSatiText(rawOutput, lang);
