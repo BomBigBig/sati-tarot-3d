@@ -20,6 +20,32 @@ const DIST_DIR = path.join(__dirname, '..', 'dist');
 const ENV_FILE = path.join(__dirname, '..', '.env');
 const PRIMARY_GEMINI_MODEL = 'gemini-3.6-flash';
 const GEMINI_MODEL_ORDER = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
+const READ_RATE_LIMIT_WINDOW_MS = 60_000;
+const READ_RATE_LIMIT_MAX = 20;
+const readRateBuckets = new Map();
+
+export function checkReadRateLimit(ipKey, now = Date.now(), limit = READ_RATE_LIMIT_MAX, windowMs = READ_RATE_LIMIT_WINDOW_MS) {
+  const key = String(ipKey || 'unknown').trim() || 'unknown';
+  if (readRateBuckets.size > 500) {
+    for (const [k, stamps] of readRateBuckets.entries()) {
+      const fresh = stamps.filter((t) => now - t < windowMs);
+      if (fresh.length === 0) readRateBuckets.delete(k);
+      else readRateBuckets.set(k, fresh);
+    }
+  }
+  const existing = (readRateBuckets.get(key) || []).filter((t) => now - t < windowMs);
+  if (existing.length >= limit) {
+    readRateBuckets.set(key, existing);
+    return { allowed: false, remaining: 0 };
+  }
+  existing.push(now);
+  readRateBuckets.set(key, existing);
+  return { allowed: true, remaining: Math.max(0, limit - existing.length) };
+}
+
+export function resetReadRateLimitForTest() {
+  readRateBuckets.clear();
+}
 
 fs.mkdirSync(DB_DIR, { recursive: true });
 
@@ -478,6 +504,16 @@ export function createSatiExpressApp() {
   });
 
   app.post('/api/sati/read', async (req, res) => {
+    const fwd = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim();
+    const clientIp = fwd || req.ip || req.socket?.remoteAddress || 'unknown';
+    const rl = checkReadRateLimit(clientIp);
+    if (!rl.allowed) {
+      return res.status(429).json({
+        fallback: true,
+        rateLimited: true,
+        reason: 'RATE_LIMITED'
+      });
+    }
     try {
       const result = await handleSatiReadRequest(req.body);
       return res.json(result);

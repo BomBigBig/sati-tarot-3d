@@ -8,11 +8,6 @@ const STORAGE_PREFIX = 'sati_account_v1_';
 export function buildStoragePayload(state) {
   return {
     user: state.user,
-    coins: state.coins,
-    hasDeckPass: Boolean(state.hasDeckPass),
-    hasVipPass: Boolean(state.hasVipPass),
-    vipExpiresAt: state.vipExpiresAt || null,
-    freeChatQuota: typeof state.freeChatQuota === 'number' ? state.freeChatQuota : 1,
     deckNumber: state.deckNumber,
     deckResetAtIndex: typeof state.deckResetAtIndex === 'number' ? state.deckResetAtIndex : 0,
     deckCarryoverSummary: state.deckCarryoverSummary || '',

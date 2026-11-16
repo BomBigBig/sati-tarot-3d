@@ -229,15 +229,17 @@
           </button>
         </div>
 
-        <!-- Right Cluster: Coins + Camera 1P/2P + Hide UI + Guide (?) + Settings Gear -->
+        <!-- Right Cluster: Voluntary Support + Camera 1P/2P + Hide UI + Guide (?) + Settings Gear -->
         <div class="flex items-center justify-end gap-1 sm:gap-1.5 pointer-auto shrink-0 ml-auto">
-          <button id="btn-shop-open" type="button" class="arcane-plaque chamfer-sm h-7 sm:h-8 px-2 sm:px-2.5 flex items-center gap-1 text-[11px] sm:text-xs whitespace-nowrap hover:border-[#f3d266] transition cursor-pointer">
-            <svg class="w-3.5 h-3.5 text-[#d4af37] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <polygon points="12 2 19 7 19 17 12 22 5 17 5 7"/>
-              <circle cx="12" cy="12" r="3"/>
+          <button id="btn-support-open" type="button" class="arcane-plaque chamfer-sm h-7 sm:h-8 px-2 sm:px-2.5 flex items-center gap-1.5 text-[11px] sm:text-xs whitespace-nowrap hover:border-[#f3d266] transition cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-[#f3d266] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+              <line x1="6" y1="1" x2="6" y2="4"/>
+              <line x1="10" y1="1" x2="10" y2="4"/>
+              <line x1="14" y1="1" x2="14" y2="4"/>
             </svg>
-            <span id="hud-coins" class="font-semibold text-[#f4efe6]">3 เหรียญ</span>
-            <span id="hud-pass-badge" data-i18n="hudPassBadge" class="hidden px-1 py-0.5 text-[10px] bg-[#d4af37] text-[#0b0d19] font-semibold">เหมาสำรับ</span>
+            <span data-i18n="hudSupportBtn" class="font-semibold text-[#f3d266]">สนับสนุน</span>
           </button>
 
           <button id="btn-camera-toggle" type="button" disabled data-i18n-title="titleCamToggle" title="สลับมุมมอง 1P / 2P"
@@ -431,17 +433,14 @@
         <!-- Mode B: Chat & Draw Loop -->
         <div id="dock-chat" class="hidden flex flex-col gap-1.5">
           <div id="draw-actions-row" class="grid grid-cols-2 gap-1.5">
-            <button id="btn-draw-1" type="button" disabled class="btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-0.5 sm:gap-1 whitespace-nowrap cursor-pointer">
+            <button id="btn-draw-1" type="button" disabled class="btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer">
               <span data-i18n="btnDraw1">จั่วเพิ่ม 1 ใบ</span>
-              <span data-i18n="btnDraw1Cost" class="text-[#f3d266] text-[9.5px] sm:text-[10px]">(1 เหรียญ)</span>
             </button>
-            <button id="btn-draw-3" type="button" disabled class="btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-0.5 sm:gap-1 whitespace-nowrap cursor-pointer">
+            <button id="btn-draw-3" type="button" disabled class="btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer">
               <span data-i18n="btnDraw3">จั่วเพิ่ม 3 ใบ</span>
-              <span data-i18n="btnDraw3Cost" class="text-[#f3d266] text-[9.5px] sm:text-[10px]">(3 เหรียญ)</span>
             </button>
-            <button id="btn-draw-10-opt" type="button" disabled class="hidden btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-0.5 sm:gap-1 whitespace-nowrap cursor-pointer">
+            <button id="btn-draw-10-opt" type="button" disabled class="hidden btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer">
               <span data-i18n="btnDraw10Opt">เปิดผังใหญ่ 10 ใบ</span>
-              <span data-i18n="btnDraw10Cost" class="text-[#f3d266] text-[9.5px] sm:text-[10px]">(8 เหรียญ)</span>
             </button>
           </div>
 
@@ -454,10 +453,10 @@
             <div id="expand-prev-text" class="text-[11px] text-[#f3d266] truncate flex-1"></div>
             <div class="flex items-center gap-1.5 shrink-0">
               <button id="btn-expand-prev-1" type="button" data-i18n="btnExpandPrev1" class="btn-slate chamfer-sm h-7 px-2.5 text-[11px] text-[#f4efe6] hover:border-[#f3d266] cursor-pointer whitespace-nowrap">
-                ขยาย 1 ใบ (1 เหรียญ)
+                ขยาย 1 ใบ
               </button>
               <button id="btn-expand-prev-3" type="button" data-i18n="btnExpandPrev3" class="btn-gold chamfer-sm h-7 px-2.5 text-[11px] font-semibold cursor-pointer whitespace-nowrap">
-                ขยาย 3 ใบ (3 เหรียญ)
+                ขยาย 3 ใบ
               </button>
             </div>
           </div>
@@ -602,75 +601,38 @@
     </div>
   </dialog>
 
-  <!-- NATIVE MODAL 6: COIN, DECK PASS & VIP SHOP WITH PROMPTPAY QR CHECKOUT -->
-  <dialog id="modal-shop" closedby="any" aria-labelledby="title-modal-shop" class="w-full max-w-md">
-    <div class="panel-glass chamfer w-full p-5 border border-[#d4af37]/60">
-      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-3">
-        <h3 id="title-modal-shop" data-i18n="modalShopTitle" class="font-display text-base font-bold text-[#f1ede4]">คลังพลังงาน &amp; สิทธิ์ดูดวงพิเศษ</h3>
+  <!-- NATIVE MODAL 6: VOLUNTARY DEVELOPER SUPPORT & REAL PROMPTPAY QR -->
+  <dialog id="modal-support" closedby="any" aria-labelledby="title-modal-support" class="w-full max-w-md">
+    <div class="panel-glass chamfer w-full max-h-[90vh] overflow-y-auto scrollbar-thin p-5 border border-[#d4af37]/65 space-y-3.5">
+      <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3">
+        <h3 id="title-modal-support" data-i18n="modalSupportTitle" class="font-display text-base font-bold text-[#f3d266]">เลี้ยงกาแฟ / สนับสนุนผู้พัฒนา</h3>
         <form method="dialog">
-          <button value="close" data-i18n="btnClose" autofocus class="text-xs text-[#a6a8b8] hover:text-[#f1ede4] cursor-pointer">ปิด</button>
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs cursor-pointer">ปิด</button>
         </form>
       </div>
 
-      <!-- STEP 1: 3-TIER AUSPICIOUS PRICING LADDER (99 / 299 / 999) -->
-      <div id="shop-tier-list" class="space-y-2.5 mb-4">
-        <button id="btn-buy-coins" type="button" class="w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between gap-2 hover:border-[#d4af37] transition cursor-pointer">
-          <div class="min-w-0">
-            <div data-i18n="shopBuyCoinsTitle" class="text-sm font-medium text-[#f1ede4]">เติม 19 เหรียญเปิดดวง</div>
-            <div data-i18n="shopBuyCoinsSub" class="text-xs text-[#a6a8b8]">ถามขยี้ต่อหรือจั่วไพ่เพิ่ม 1-3 ใบได้ตามต้องการ</div>
-          </div>
-          <span data-i18n="shopBuyCoinsPrice" class="text-xs font-bold text-[#f3d266] shrink-0">99 บาท</span>
-        </button>
+      <div class="p-3 bg-[#0e1328]/85 border border-[#d4af37]/30 space-y-1.5 text-xs leading-relaxed text-[#d6cfc2]">
+        <div data-i18n="supportHonestTitle" class="font-semibold text-[#f1ede4] text-sm">SATI เปิดให้ดูดวงฟรีเต็มระบบ 100%</div>
+        <p data-i18n="supportHonestBody">หมอดูสติใช้ปัญญาประดิษฐ์ผสานโหราศาสตร์ทักษาและไพ่ 78 ใบ ไม่มีค่าใช้จ่ายหรือการล็อกเหรียญใดๆ หากหน้าเว็บหรือคำแนะนำวันนี้ช่วยให้คุณสบายใจขึ้น สามารถสแกนโดเนทช่วยค่ากาแฟและค่า API เซิร์ฟเวอร์ได้ตามศรัทธาเลยครับ</p>
+      </div>
 
-        <button id="btn-buy-pass" type="button" class="w-full btn-gold chamfer-sm p-3 text-left flex items-center justify-between gap-2 cursor-pointer">
-          <div class="min-w-0">
-            <div data-i18n="shopBuyPassTitle" class="text-sm font-semibold">ตั๋วเหมาสำรับ 78 ใบ (คุ้มสุดต่อรอบ)</div>
-            <div data-i18n="shopBuyPassSub" class="text-xs opacity-85">จั่วไพ่ + ถามขยี้ต่อไม่อั้นจนกว่าไพ่สำรับนี้จะหมดกอง</div>
-          </div>
-          <span data-i18n="shopBuyPassPrice" class="text-xs font-bold shrink-0">299 บาท</span>
-        </button>
+      <div class="flex flex-col items-center justify-center space-y-2.5 text-center">
+        <div id="donate-qr-frame" class="hidden w-64 sm:w-72 bg-white p-1.5 border-2 border-[#d4af37] rounded-sm shadow-2xl flex flex-col items-center gap-1.5">
+          <img id="donate-qr-img" src="/images/donate-qr.jpg" alt="PromptPay Support QR Code" class="w-full max-h-[44vh] object-contain" />
+          <div data-i18n="supportQrCaption" class="text-[10.5px] font-semibold text-[#113f67] pb-0.5">สแกนหรือบันทึกรูปเพื่อสนับสนุนตามอัธยาศัย</div>
+        </div>
 
-        <button id="btn-buy-vip" type="button" class="w-full btn-slate chamfer-sm p-3 text-left flex items-center justify-between gap-2 border border-[#f3d266]/70 bg-gradient-to-r from-[#1b2244] to-[#281e3f] hover:border-[#f3d266] transition cursor-pointer">
-          <div class="min-w-0">
-            <div data-i18n="shopBuyVipTitle" class="text-sm font-semibold text-[#f3d266]">Sati VIP รายเดือน (30 วัน)</div>
-            <div data-i18n="shopBuyVipSub" class="text-xs text-[#d6cfc2]">ดูดวงไม่อั้นทุกสำรับ สับไพ่ใหม่และถามเจาะลึกได้ไม่จำกัดตลอด 30 วัน</div>
-          </div>
-          <span data-i18n="shopBuyVipPrice" class="text-xs font-bold text-[#f3d266] shrink-0">999 บาท</span>
+        <div id="donate-qr-placeholder" class="w-full p-4 bg-[#0b0d19]/90 border border-dashed border-[#d4af37]/45 text-center space-y-1.5">
+          <div class="text-xs font-semibold text-[#f3d266]" data-i18n="supportQrPendingTitle">พื้นที่สำหรับ QR Code พร้อมเพย์ของผู้พัฒนา</div>
+          <p class="text-[11px] text-[#a6a8b8] leading-relaxed" data-i18n="supportQrPendingHint">ผู้พัฒนากำลังเพิ่มรูป QR Code จริงในเร็วๆ นี้ — เพียงแค่แวะมาเล่นและส่งฟีดแบ็กก็เป็นกำลังใจให้มากแล้วครับ</p>
+        </div>
+
+        <button id="btn-download-donate-qr" type="button" data-i18n="btnSaveSupportQr" class="hidden btn-gold chamfer-sm px-4 py-2 text-xs font-semibold cursor-pointer">
+          บันทึกรูป QR ไว้สแกนในแอปธนาคาร
         </button>
       </div>
 
-      <!-- STEP 2: PROMPTPAY QR CHECKOUT VIEW -->
-      <div id="shop-qr-checkout" class="hidden space-y-3 mb-4 text-center">
-        <div class="text-xs font-semibold text-[#d4af37] uppercase tracking-wider" data-i18n="shopQrHeader">สแกน QR PromptPay เพื่อชำระเงิน</div>
-        <div class="p-3 bg-[#0e1328]/90 border border-[#d4af37]/35 space-y-1">
-          <div id="shop-qr-pkg-title" class="text-sm font-semibold text-[#f1ede4]"></div>
-          <div id="shop-qr-pkg-amount" class="text-base font-bold text-[#f3d266]"></div>
-        </div>
-
-        <div class="mx-auto w-44 h-44 bg-[#f8f5ee] p-2.5 border-2 border-[#d4af37] flex flex-col items-center justify-between">
-          <div class="w-full bg-[#113f67] text-white text-[9px] font-bold tracking-widest py-0.5 uppercase">Thai QR PromptPay</div>
-          <svg viewBox="0 0 100 100" class="w-32 h-32 text-[#0b0d19]" role="img" aria-label="PromptPay QR Code">
-            <rect width="100" height="100" fill="#f8f5ee"/>
-            <rect x="6" y="6" width="26" height="26" fill="none" stroke="currentColor" stroke-width="5"/>
-            <rect x="13" y="13" width="12" height="12" fill="currentColor"/>
-            <rect x="68" y="6" width="26" height="26" fill="none" stroke="currentColor" stroke-width="5"/>
-            <rect x="75" y="13" width="12" height="12" fill="currentColor"/>
-            <rect x="6" y="68" width="26" height="26" fill="none" stroke="currentColor" stroke-width="5"/>
-            <rect x="13" y="75" width="12" height="12" fill="currentColor"/>
-            <path d="M40 8h8v8h-8zM52 10h6v12h-6zM40 24h10v6H40zM8 40h10v8H8zM24 42h12v6H24zM42 40h16v16H42zM64 40h8v10h-8zM78 40h14v8H78zM40 64h10v8H40zM56 62h12v10H56zM74 62h18v8H74zM42 78h14v14H42zM64 78h10v14H64zM80 78h12v14H80z" fill="currentColor"/>
-          </svg>
-          <div class="text-[9px] font-semibold text-[#113f67]">SATI SANCTUARY PAY</div>
-        </div>
-
-        <button id="btn-confirm-payment" type="button" data-i18n="btnConfirmPayment" class="w-full btn-gold chamfer-sm py-2.5 text-sm font-semibold cursor-pointer">
-          ยืนยันการชำระเงินสำเร็จ
-        </button>
-        <button id="btn-back-to-tiers" type="button" data-i18n="btnBackToTiers" class="w-full btn-slate chamfer-sm py-1.5 text-xs text-[#c5c7d4] cursor-pointer">
-          ← เลือกแพ็กเกจอื่น
-        </button>
-      </div>
-
-      <p data-i18n="shopNotice" class="text-[11px] text-[#8d90a3] text-center">ระบบจำลองการสแกนจ่าย PromptPay (กดยืนยันเพื่อรับสิทธิ์ได้ทันที)</p>
+      <p data-i18n="supportFooterNote" class="text-[11px] text-[#a6a8b8] text-center">ดูดวงต่อได้ฟรีไม่อั้น ไม่ต้องโดเนทก็ใช้งานได้ครบทุกฟีเจอร์ครับ</p>
     </div>
   </dialog>
 
@@ -708,6 +670,11 @@
         <button id="btn-submit-feedback" type="submit" data-i18n="btnSubmitFeedback" class="w-full btn-gold chamfer-sm py-2.5 text-sm font-semibold cursor-pointer">
           ส่งฟีดแบ็กให้ผู้พัฒนา
         </button>
+        <div class="pt-1 text-center">
+          <button id="btn-feedback-support-open" type="button" data-i18n="supportGentleLink" class="text-[11px] text-[#f3d266]/90 hover:text-[#f3d266] underline underline-offset-4 cursor-pointer">
+            ☕ เลี้ยงกาแฟ / สนับสนุนค่าเซิร์ฟเวอร์ผู้พัฒนา (ตามอัธยาศัย)
+          </button>
+        </div>
       </form>
     </div>
   </dialog>
@@ -791,6 +758,9 @@
         </button>
         <div id="exit-confirm-box" class="hidden space-y-2 pt-2 border-t border-[#fb7185]/25">
           <p data-i18n="exitConfirmDesc" class="text-[11px] text-[#e8d5d9] leading-relaxed"></p>
+          <button id="btn-exit-support-open" type="button" data-i18n="supportExitGentleCta" class="w-full btn-slate border-[#d4af37]/45 text-[#f3d266] hover:border-[#f3d266] chamfer-sm py-1.5 text-[11px] cursor-pointer">
+            ☕ ชอบคำทำนายวันนี้ไหม? สนับสนุนผู้พัฒนา (ไม่บังคับ)
+          </button>
           <div class="flex items-center gap-2">
             <button id="btn-exit-table-confirm" type="button" data-i18n="btnExitTableConfirm" class="flex-1 bg-[#be123c] hover:bg-[#e11d48] text-white chamfer-sm py-2 text-xs font-semibold cursor-pointer">
               ยืนยันออกจากโต๊ะ &amp; บันทึกประวัติ

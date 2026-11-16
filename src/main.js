@@ -115,12 +115,6 @@ const state = {
   },
   cameraMode: '1P',
   cameraUnlocked: false,
-  coins: 3,
-  hasDeckPass: false,
-  hasVipPass: false,
-  vipExpiresAt: null,
-  freeChatQuota: 1,
-  selectedShopPkg: null,
   deckNumber: 1,
   deckResetAtIndex: 0,
   deckCarryoverSummary: '',
@@ -286,32 +280,22 @@ function setSatiDialogue(text, moodKey = 'moodChat', recordHistory = true, isLoa
   }
 }
 
-const SHOP_PACKAGES = {
-  coins: { id: 'coins', price: 99, titleKey: 'shopBuyCoinsTitle', toastKey: 'toastAddCoins' },
-  pass: { id: 'pass', price: 299, titleKey: 'shopBuyPassTitle', toastKey: 'toastUnlockPass' },
-  vip: { id: 'vip', price: 999, titleKey: 'shopBuyVipTitle', toastKey: 'toastUnlockVip' }
-};
-
-function hasUnlimitedAccess() {
-  const vipActive = Boolean(state.hasVipPass && (!state.vipExpiresAt || state.vipExpiresAt > Date.now()));
-  return vipActive || Boolean(state.hasDeckPass);
+function syncDonateQrPreviewState() {
+  const img = document.getElementById('donate-qr-img');
+  const frame = document.getElementById('donate-qr-frame');
+  const placeholder = document.getElementById('donate-qr-placeholder');
+  const dlBtn = document.getElementById('btn-download-donate-qr');
+  if (!img) return;
+  const loaded = img.complete && img.naturalWidth > 0;
+  frame?.classList.toggle('hidden', !loaded);
+  dlBtn?.classList.toggle('hidden', !loaded);
+  placeholder?.classList.toggle('hidden', loaded);
 }
 
-function openShopQrCheckout(pkgId) {
-  const pkg = SHOP_PACKAGES[pkgId];
-  if (!pkg) return;
-  state.selectedShopPkg = pkgId;
-  document.getElementById('shop-qr-pkg-title').textContent = t(state.lang, pkg.titleKey);
-  document.getElementById('shop-qr-pkg-amount').textContent = t(state.lang, 'shopQrAmountFmt', pkg.price);
-  document.getElementById('shop-tier-list')?.classList.add('hidden');
-  document.getElementById('shop-qr-checkout')?.classList.remove('hidden');
-}
-
-function openShopModal() {
-  state.selectedShopPkg = null;
-  document.getElementById('shop-tier-list')?.classList.remove('hidden');
-  document.getElementById('shop-qr-checkout')?.classList.add('hidden');
-  openModal('modal-shop');
+function openSupportModal() {
+  SoundFX.playPick();
+  syncDonateQrPreviewState();
+  openModal('modal-support');
 }
 
 function renderPresetCategoryTabs() {
@@ -403,7 +387,6 @@ function renderSmartPromptChips() {
 
 function updateHUD() {
   const lang = state.lang;
-  const unlimited = hasUnlimitedAccess();
   const remCount = state.remainingDeck.length;
   // Req 2: Discard count reflects ONLY replaced/discarded cards sitting in the discard pile
   const usedCount = state.discardPile.length;
@@ -412,25 +395,9 @@ function updateHUD() {
   const discardEl = document.getElementById('hud-discard-count');
   if (discardEl) discardEl.textContent = t(lang, 'hudDiscardLabel', usedCount);
 
-  document.getElementById('hud-coins').textContent = unlimited
-    ? t(lang, 'hudCoinsUnlimited')
-    : t(lang, 'hudCoinsCount', state.coins);
-
-  const badge = document.getElementById('hud-pass-badge');
-  badge.classList.toggle('hidden', !unlimited);
-  if (unlimited) {
-    badge.textContent = t(lang, state.hasVipPass ? 'hudVipBadge' : 'hudPassBadge');
-  }
-
   const chatSubmitBtn = document.getElementById('btn-chat-submit');
   if (chatSubmitBtn) {
-    if (unlimited) {
-      chatSubmitBtn.textContent = t(lang, 'btnChatSubmit');
-    } else if (state.freeChatQuota > 0) {
-      chatSubmitBtn.textContent = t(lang, 'btnChatSubmitFree', state.freeChatQuota);
-    } else {
-      chatSubmitBtn.textContent = t(lang, 'btnChatSubmitCoin');
-    }
+    chatSubmitBtn.textContent = t(lang, 'btnChatSubmit');
   }
 
   const camBtn = document.getElementById('btn-camera-toggle');
@@ -527,8 +494,7 @@ function updateResumeBannerInfo() {
     state.lang,
     'resumeDeckInfo',
     pendingSavedRecord.user.nickname,
-    remCount,
-    pendingSavedRecord.coins ?? 3
+    remCount
   );
 }
 
@@ -666,28 +632,12 @@ async function finishPickingPhase() {
       cards: toCardMeta(state.activeSpread)
     });
   }
-  state.freeChatQuota = 1;
   updateHUD();
   renderSmartPromptChips();
   await saveAccountState(state);
 }
 
-function spendCoins(amount) {
-  if (hasUnlimitedAccess()) return true;
-  if (state.coins < amount) {
-    const nick = state.user.nickname || t(state.lang, 'userSpeakerFallback');
-    setSatiDialogue(t(state.lang, 'satiPaywallDialogue', nick, amount), 'moodChat', false, false);
-    showToast(t(state.lang, 'toastNoCoins'));
-    openShopModal();
-    return false;
-  }
-  state.coins -= amount;
-  updateHUD();
-  saveAccountState(state);
-  return true;
-}
-
-function triggerFollowUpDraw(count, freeViaAd = false, expandPrevious = false) {
+function triggerFollowUpDraw(count, _freeViaAd = false, expandPrevious = false) {
   if (state.remainingDeck.length < count) {
     showToast(t(state.lang, 'toastLowDeck'));
     document.getElementById('btn-reshuffle').classList.remove('hidden');
@@ -701,7 +651,6 @@ function triggerFollowUpDraw(count, freeViaAd = false, expandPrevious = false) {
       document.getElementById('chat-input')?.focus();
       return;
     }
-    if (!freeViaAd && !spendCoins(count === 10 ? 8 : count)) return;
     const pExp = detectTopicAndIntent(lastQ, state.activeSpreadTopic || state.lastTopic);
     state.pendingDrawTopic = pExp.subDomain && pExp.subDomain !== 'general' ? pExp.subDomain : pExp.topic;
     state.pendingDrawIsExpand = true;
@@ -715,7 +664,6 @@ function triggerFollowUpDraw(count, freeViaAd = false, expandPrevious = false) {
       input?.focus();
       return;
     }
-    if (!freeViaAd && !spendCoins(count === 10 ? 8 : count)) return;
     const pNew = detectTopicAndIntent(q, state.lastTopic);
     state.pendingDrawTopic = pNew.subDomain && pNew.subDomain !== 'general' ? pNew.subDomain : pNew.topic;
     state.pendingDrawIsExpand = false;
@@ -883,10 +831,6 @@ function applyLanguage(newLang) {
     if (dlgContent && dlgContent.textContent.trim().length < 30) {
       dlgContent.textContent = t(lang, 'dialogueInitial');
     }
-  }
-
-  if (document.getElementById('modal-shop')?.open && state.selectedShopPkg) {
-    openShopQrCheckout(state.selectedShopPkg);
   }
 
   if (document.getElementById('modal-gallery')?.open) {
@@ -1063,13 +1007,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     Object.assign(state.user, pendingSavedRecord.user);
     computeNatalProfile(state.user);
-    state.coins = pendingSavedRecord.coins ?? 3;
-    state.hasDeckPass = Boolean(pendingSavedRecord.hasDeckPass);
-    const savedVip = Boolean(pendingSavedRecord.hasVipPass);
-    const savedVipExp = pendingSavedRecord.vipExpiresAt || null;
-    state.hasVipPass = savedVip && (!savedVipExp || savedVipExp > Date.now());
-    state.vipExpiresAt = state.hasVipPass ? savedVipExp : null;
-    state.freeChatQuota = typeof pendingSavedRecord.freeChatQuota === 'number' ? pendingSavedRecord.freeChatQuota : 1;
     state.deckNumber = pendingSavedRecord.deckNumber || 1;
     state.deckResetAtIndex = typeof pendingSavedRecord.deckResetAtIndex === 'number' ? pendingSavedRecord.deckResetAtIndex : 0;
     state.deckCarryoverSummary = pendingSavedRecord.deckCarryoverSummary || '';
@@ -1148,13 +1085,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (formFull) state.user.fullname = formFull;
     computeNatalProfile(state.user);
 
-    state.coins = saved?.coins ?? state.coins ?? 3;
-    state.hasDeckPass = Boolean(saved?.hasDeckPass);
-    const savedVip = Boolean(saved?.hasVipPass);
-    const savedVipExp = saved?.vipExpiresAt || null;
-    state.hasVipPass = savedVip && (!savedVipExp || savedVipExp > Date.now());
-    state.vipExpiresAt = state.hasVipPass ? savedVipExp : null;
-    state.freeChatQuota = 1;
     state.deckNumber = 1;
     state.deckResetAtIndex = 0;
     state.deckCarryoverSummary = '';
@@ -1216,24 +1146,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const prevSaved = pendingSavedRecord;
     if (prevSaved) {
-      state.coins = prevSaved.coins ?? 3;
-      state.hasDeckPass = Boolean(prevSaved.hasDeckPass);
-      const savedVip = Boolean(prevSaved.hasVipPass);
-      const savedVipExp = prevSaved.vipExpiresAt || null;
-      state.hasVipPass = savedVip && (!savedVipExp || savedVipExp > Date.now());
-      state.vipExpiresAt = state.hasVipPass ? savedVipExp : null;
       state.sessionArchives = Array.isArray(prevSaved.sessionArchives) ? prevSaved.sessionArchives : [];
       state.savedNatalCards = Array.isArray(prevSaved.savedNatalCards) ? prevSaved.savedNatalCards : [];
     } else {
-      state.coins = 3;
-      state.hasDeckPass = false;
-      state.hasVipPass = false;
-      state.vipExpiresAt = null;
       state.sessionArchives = [];
       state.savedNatalCards = [];
     }
 
-    state.freeChatQuota = 1;
     state.sessionActive = true;
     state.natalCompleted = false;
     state.natalCards = [];
@@ -1366,9 +1285,6 @@ window.addEventListener('DOMContentLoaded', () => {
     state.lastTopic = 'general';
     state.lastReadingOffline = false;
     state.deckNumber += 1;
-    if (state.hasDeckPass && !state.hasVipPass) {
-      state.hasDeckPass = false;
-    }
     state.remainingDeck = shuffleArray(buildFullDeck78());
     state.discardPile = [];
     state.activeSpread = [];
@@ -1479,21 +1395,12 @@ window.addEventListener('DOMContentLoaded', () => {
     await handleSelectEmailAccount(state.user.email || getOrCreateDeviceAccountId(), state.user.fullname, state.user.nickname);
   });
 
-  // Chat Form Submit (Quota / Coin-gated deep follow-up via Backend Proxy + Fallback)
+  // Chat Form Submit (Free unlimited reading via Backend Proxy + Thaksa Fallback)
   document.getElementById('chat-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = document.getElementById('chat-input');
     const q = input.value.trim();
     if (!q || state.isThinking) return;
-
-    if (!hasUnlimitedAccess()) {
-      if (state.freeChatQuota > 0) {
-        state.freeChatQuota -= 1;
-        updateHUD();
-      } else if (!spendCoins(1)) {
-        return;
-      }
-    }
 
     appendHistory(state.user.nickname, q, 'user');
     input.value = '';
@@ -2071,43 +1978,26 @@ window.addEventListener('DOMContentLoaded', () => {
     openModal('modal-history');
   });
 
-  // Shop Modal & PromptPay QR Checkout
-  document.getElementById('btn-shop-open').addEventListener('click', () => {
-    openShopModal();
+  // Voluntary Developer Support Modal & Real PromptPay QR Viewer
+  const donateQrImg = document.getElementById('donate-qr-img');
+  donateQrImg?.addEventListener('load', syncDonateQrPreviewState);
+  donateQrImg?.addEventListener('error', syncDonateQrPreviewState);
+  document.getElementById('btn-support-open')?.addEventListener('click', openSupportModal);
+  document.getElementById('btn-feedback-support-open')?.addEventListener('click', () => {
+    closeModal('modal-feedback');
+    openSupportModal();
   });
-  document.getElementById('btn-buy-coins').addEventListener('click', () => openShopQrCheckout('coins'));
-  document.getElementById('btn-buy-pass').addEventListener('click', () => openShopQrCheckout('pass'));
-  document.getElementById('btn-buy-vip').addEventListener('click', () => openShopQrCheckout('vip'));
-  document.getElementById('btn-back-to-tiers').addEventListener('click', () => {
-    state.selectedShopPkg = null;
-    document.getElementById('shop-qr-checkout')?.classList.add('hidden');
-    document.getElementById('shop-tier-list')?.classList.remove('hidden');
+  document.getElementById('btn-exit-support-open')?.addEventListener('click', () => {
+    closeModal('modal-settings');
+    openSupportModal();
   });
-  document.getElementById('btn-confirm-payment').addEventListener('click', () => {
-    const pkgId = state.selectedShopPkg;
-    const pkg = SHOP_PACKAGES[pkgId];
-    if (!pkg) return;
-
-    if (pkgId === 'coins') {
-      state.coins += 19;
-    } else if (pkgId === 'pass') {
-      state.hasDeckPass = true;
-    } else if (pkgId === 'vip') {
-      state.hasVipPass = true;
-      state.vipExpiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
-    }
-
-    SoundFX.playSeal();
-    state.selectedShopPkg = null;
-    updateHUD();
-    saveAccountState(state);
-    closeModal('modal-shop');
-    showToast(t(state.lang, pkg.toastKey));
-
-    if (state.screen === 'game') {
-      const nick = state.user.nickname || t(state.lang, 'userSpeakerFallback');
-      setSatiDialogue(t(state.lang, 'satiThankYouPurchase', nick, t(state.lang, pkg.titleKey)), 'moodChat', false, false);
-    }
+  document.getElementById('btn-download-donate-qr')?.addEventListener('click', () => {
+    const img = document.getElementById('donate-qr-img');
+    if (!img || !img.complete || img.naturalWidth === 0) return;
+    const a = document.createElement('a');
+    a.href = img.src;
+    a.download = 'sati-promptpay-qr.jpg';
+    a.click();
   });
 
   // In-App Private Feedback Modal (Direct to Developer Email)

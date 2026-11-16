@@ -19,9 +19,12 @@ import {
 import { buildStoragePayload } from '../../../src/engine/storage.js';
 import {
   SATI_SYSTEM_PROMPT,
+  checkReadRateLimit,
   createSatiExpressApp,
+  resetReadRateLimitForTest,
   sendFeedbackNotificationEmail
 } from '../../../backend/geminiProxyServer.js';
+import { t } from '../../../src/i18n/translations.js';
 
 describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', () => {
   it('SC-06-01: Elemental Dignity synthesis enriches breakdowns without altering Sati voice rules', () => {
@@ -335,6 +338,40 @@ describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', (
       if (prevAdmin === undefined) delete process.env.FEEDBACK_ADMIN_KEY;
       else process.env.FEEDBACK_ADMIN_KEY = prevAdmin;
       if (prevFbRaw !== null) fs.writeFileSync(fbFile, prevFbRaw, 'utf8');
+    }
+  });
+
+  it('SC-06-07: Free 100% gameplay removes coin/paywall UI, exposes voluntary QR support modal, and enforces gentle rate limiting', async () => {
+    resetReadRateLimitForTest();
+    try {
+      const now = 1_700_000_000_000;
+      for (let i = 0; i < 20; i += 1) {
+        const res = checkReadRateLimit('198.51.100.7', now + i * 100);
+        assert.equal(res.allowed, true);
+      }
+      const blocked = checkReadRateLimit('198.51.100.7', now + 5000);
+      assert.equal(blocked.allowed, false);
+      assert.equal(blocked.remaining, 0);
+
+      // Different IP remains unaffected, and window reset restores cleanly after 60s
+      assert.equal(checkReadRateLimit('203.0.113.9', now + 5000).allowed, true);
+      assert.equal(checkReadRateLimit('198.51.100.7', now + 61_000).allowed, true);
+
+      const indexHtml = fs.readFileSync(path.resolve('index.html'), 'utf8');
+      assert.ok(!indexHtml.includes('modal-shop') && !indexHtml.includes('btn-shop-open'));
+      assert.ok(!indexHtml.includes('(1 เหรียญ)') && !indexHtml.includes('(3 เหรียญ)') && !indexHtml.includes('(8 เหรียญ)'));
+      assert.ok(indexHtml.includes('modal-support') && indexHtml.includes('btn-support-open'));
+      assert.ok(indexHtml.includes('btn-exit-support-open') && indexHtml.includes('btn-feedback-support-open'));
+      assert.ok(indexHtml.includes('/images/donate-qr.jpg'));
+      assert.ok(fs.existsSync(path.resolve('public/images/donate-qr.jpg')));
+
+      ['th', 'en', 'zh'].forEach((lng) => {
+        assert.ok(t(lng, 'hudSupportBtn'));
+        assert.ok(t(lng, 'modalSupportTitle'));
+        assert.ok(!t(lng, 'resumeDeckInfo', 'Tester', 68).includes('Coins') && !t(lng, 'resumeDeckInfo', 'Tester', 68).includes('เหรียญ'));
+      });
+    } finally {
+      resetReadRateLimitForTest();
     }
   });
 });
