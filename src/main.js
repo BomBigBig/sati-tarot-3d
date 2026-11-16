@@ -2110,10 +2110,9 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // In-App Feedback & Tester Summary Modal
+  // In-App Private Feedback Modal (Direct to Developer Email)
   let feedbackRating = 5;
   const feedbackTagsSelected = new Set();
-  let cachedFeedbackData = { count: 0, avgRating: 0, items: [] };
 
   function renderFeedbackStars() {
     document.querySelectorAll('.feedback-star').forEach((btn) => {
@@ -2144,93 +2143,15 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function renderFeedbackList() {
-    const statsEl = document.getElementById('feedback-summary-stats');
-    const listEl = document.getElementById('feedback-entries-list');
-    if (!statsEl || !listEl) return;
-
-    const { count, avgRating, items } = cachedFeedbackData;
-    statsEl.textContent = t(state.lang, 'feedbackStatsFmt', count, count > 0 ? avgRating.toFixed(1) : '0.0');
-    listEl.innerHTML = '';
-
-    if (!items || items.length === 0) {
-      const empty = document.createElement('p');
-      empty.className = 'text-center text-[#a6a8b8] py-4';
-      empty.textContent = t(state.lang, 'feedbackEmpty');
-      listEl.appendChild(empty);
-      return;
-    }
-
-    items.forEach((item) => {
-      const card = document.createElement('div');
-      card.className = 'p-2.5 bg-[#0e1328]/85 border border-[#d4af37]/25 space-y-1';
-
-      const hdr = document.createElement('div');
-      hdr.className = 'flex items-center justify-between gap-2';
-      const who = document.createElement('span');
-      who.className = 'font-semibold text-[#f1ede4]';
-      who.textContent = `${item.nickname || 'Tester'} · ${'★'.repeat(Math.max(1, Math.min(5, item.rating || 5)))}`;
-      const dateEl = document.createElement('span');
-      dateEl.className = 'text-[10px] text-[#8d90a3]';
-      dateEl.textContent = item.createdAt ? new Date(item.createdAt).toLocaleString() : '';
-      hdr.append(who, dateEl);
-      card.appendChild(hdr);
-
-      if (Array.isArray(item.tags) && item.tags.length > 0) {
-        const tagLine = document.createElement('div');
-        tagLine.className = 'text-[11px] text-[#f3d266]';
-        tagLine.textContent = item.tags.map((tg) => `#${tg}`).join(' ');
-        card.appendChild(tagLine);
-      }
-
-      if (item.comment) {
-        const msg = document.createElement('p');
-        msg.className = 'text-[#d6cfc2] whitespace-pre-line leading-relaxed';
-        msg.textContent = item.comment;
-        card.appendChild(msg);
-      }
-
-      listEl.appendChild(card);
-    });
-  }
-
-  async function switchFeedbackTab(tab) {
-    const isForm = tab === 'form';
-    document.getElementById('feedback-form-view')?.classList.toggle('hidden', !isForm);
-    document.getElementById('feedback-list-view')?.classList.toggle('hidden', isForm);
-
-    const tabFormBtn = document.getElementById('btn-feedback-tab-form');
-    const tabListBtn = document.getElementById('btn-feedback-tab-list');
-    tabFormBtn?.classList.toggle('btn-gold', isForm);
-    tabFormBtn?.classList.toggle('btn-slate', !isForm);
-    tabListBtn?.classList.toggle('btn-gold', !isForm);
-    tabListBtn?.classList.toggle('btn-slate', isForm);
-
-    if (!isForm) {
-      try {
-        const res = await fetch('/api/sati/feedback');
-        if (res.ok) {
-          cachedFeedbackData = await res.json();
-        }
-      } catch {
-        // retain local cache if offline
-      }
-      renderFeedbackList();
-    }
-  }
-
-  function openFeedbackModal(defaultTab = 'form') {
+  function openFeedbackModal() {
     SoundFX.playPick();
     renderFeedbackStars();
     renderFeedbackTags();
-    switchFeedbackTab(defaultTab);
     openModal('modal-feedback');
   }
 
-  document.getElementById('btn-feedback-open')?.addEventListener('click', () => openFeedbackModal('form'));
-  document.getElementById('btn-speech-feedback')?.addEventListener('click', () => openFeedbackModal('form'));
-  document.getElementById('btn-feedback-tab-form')?.addEventListener('click', () => switchFeedbackTab('form'));
-  document.getElementById('btn-feedback-tab-list')?.addEventListener('click', () => switchFeedbackTab('list'));
+  document.getElementById('btn-feedback-open')?.addEventListener('click', () => openFeedbackModal());
+  document.getElementById('btn-speech-feedback')?.addEventListener('click', () => openFeedbackModal());
 
   document.querySelectorAll('.feedback-star').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -2242,6 +2163,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('feedback-form-view')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const commentEl = document.getElementById('feedback-comment');
+    const submitBtn = document.getElementById('btn-submit-feedback');
     const comment = commentEl?.value.trim() || '';
     const tags = [...feedbackTagsSelected];
     if (!comment && tags.length === 0 && !feedbackRating) {
@@ -2257,21 +2179,24 @@ window.addEventListener('DOMContentLoaded', () => {
       lang: state.lang
     };
 
+    if (submitBtn) submitBtn.disabled = true;
+    let savedOk = false;
     try {
       const res = await fetch('/api/sati/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.entry) {
-          cachedFeedbackData.items = [data.entry, ...(cachedFeedbackData.items || [])];
-          cachedFeedbackData.count = cachedFeedbackData.items.length;
-        }
-      }
+      savedOk = res.ok;
     } catch {
-      // ignore offline save error
+      savedOk = false;
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+
+    if (!savedOk) {
+      showToast(t(state.lang, 'toastFeedbackError'));
+      return;
     }
 
     if (commentEl) commentEl.value = '';
@@ -2279,37 +2204,11 @@ window.addEventListener('DOMContentLoaded', () => {
     feedbackRating = 5;
     renderFeedbackStars();
     renderFeedbackTags();
+    closeModal('modal-feedback');
     showToast(t(state.lang, 'toastFeedbackSaved'));
-    await switchFeedbackTab('list');
-  });
-
-  document.getElementById('btn-export-feedback-csv')?.addEventListener('click', () => {
-    const items = cachedFeedbackData.items || [];
-    const esc = (v) => `"${String(v ?? '').replaceAll('"', '""')}"`;
-    const rows = [
-      ['CreatedAt', 'Nickname', 'Rating', 'Tags', 'Comment', 'Lang'].join(','),
-      ...items.map((it) => [
-        esc(it.createdAt),
-        esc(it.nickname),
-        esc(it.rating),
-        esc((it.tags || []).join(' | ')),
-        esc(it.comment),
-        esc(it.lang)
-      ].join(','))
-    ];
-    const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sati-feedback-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   });
 
   window.addEventListener('sati:rerender-feedback', () => {
     renderFeedbackTags();
-    if (!document.getElementById('feedback-list-view')?.classList.contains('hidden')) {
-      renderFeedbackList();
-    }
   });
 });

@@ -11,3 +11,7 @@ services:
         value: production
       - key: GEMINI_API_KEY
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: FEEDBACK_NOTIFY_EMAIL
+        sync: false

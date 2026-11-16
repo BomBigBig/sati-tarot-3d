@@ -80,6 +80,91 @@ function writeFeedbackDB(list) {
   fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(list, null, 2), 'utf8');
 }
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+export function resolveFeedbackEmailConfig() {
+  const apiKey = String(process.env.RESEND_API_KEY || '').trim();
+  const to = String(process.env.FEEDBACK_NOTIFY_EMAIL || '').trim();
+  const from = String(process.env.RESEND_FROM_EMAIL || 'SATI Tarot <onboarding@resend.dev>').trim();
+  const adminKey = String(process.env.FEEDBACK_ADMIN_KEY || '').trim();
+  return { apiKey, to, from, adminKey };
+}
+
+export async function sendFeedbackNotificationEmail(entry, fetchImpl = fetch) {
+  const { apiKey, to, from } = resolveFeedbackEmailConfig();
+  if (!apiKey || !to) {
+    return { sent: false, reason: 'EMAIL_NOT_CONFIGURED' };
+  }
+
+  const stars = '★'.repeat(entry.rating) + '☆'.repeat(5 - entry.rating);
+  const bkkTime = new Date(entry.createdAt || Date.now()).toLocaleString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+  const tagsText = entry.tags?.length ? entry.tags.join(', ') : '-';
+  const subject = `[SATI Feedback ${stars} ${entry.rating}/5] จาก "${entry.nickname}"`;
+  const text = [
+    `มีฟีดแบ็กใหม่จากเว็บ SATI — สำรับแห่งสติ`,
+    `ผู้ส่ง: ${entry.nickname} (${entry.lang})`,
+    `คะแนน: ${stars} (${entry.rating}/5)`,
+    `หัวข้อ/แท็ก: ${tagsText}`,
+    `เวลา: ${bkkTime}`,
+    '',
+    `ข้อความ:`,
+    entry.comment || '(ไม่ได้พิมพ์ข้อความเพิ่มเติม)'
+  ].join('\n');
+
+  const tagsHtml = entry.tags?.length
+    ? entry.tags.map((tg) => `<span style="display:inline-block;padding:4px 10px;margin:2px 4px 2px 0;border-radius:4px;background:#fef3c7;color:#92400e;font-size:12px;">#${escapeHtml(tg)}</span>`).join('')
+    : '<span style="color:#6b7280;font-size:12px;">ไม่ได้เลือกแท็ก</span>';
+
+  const html = `
+    <div style="font-family:'Segoe UI',Tahoma,sans-serif;max-width:560px;margin:0 auto;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;color:#0f172a;">
+      <div style="border-bottom:2px solid #d4af37;padding-bottom:12px;margin-bottom:16px;">
+        <h2 style="margin:0;font-size:18px;color:#1e293b;">SATI — ฟีดแบ็กใหม่จากผู้ใช้งาน</h2>
+        <div style="font-size:12px;color:#64748b;margin-top:4px;">${escapeHtml(bkkTime)} (เวลาไทย)</div>
+      </div>
+      <p style="margin:0 0 8px;"><strong>ผู้ส่ง:</strong> ${escapeHtml(entry.nickname)} <span style="color:#64748b;font-size:12px;">(${escapeHtml(entry.lang)})</span></p>
+      <p style="margin:0 0 12px;"><strong>คะแนน:</strong> <span style="color:#b45309;font-size:16px;letter-spacing:1px;">${stars}</span> (${entry.rating}/5)</p>
+      <div style="margin:0 0 14px;"><strong>หมวดที่เลือก:</strong><div style="margin-top:6px;">${tagsHtml}</div></div>
+      <div style="padding:14px;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;white-space:pre-line;line-height:1.6;">${escapeHtml(entry.comment || '(ไม่ได้พิมพ์ข้อความเพิ่มเติม)')}</div>
+      <p style="margin:16px 0 0;font-size:11px;color:#94a3b8;">ส่งอัตโนมัติจากระบบ SATI Feedback Notification</p>
+    </div>
+  `.trim();
+
+  try {
+    const res = await fetchImpl('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject,
+        html,
+        text
+      })
+    });
+    const resBody = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { sent: false, reason: resBody?.message || `HTTP_${res.status}` };
+    }
+    return { sent: true, id: resBody?.id || '' };
+  } catch (err) {
+    return { sent: false, reason: err?.message || 'EMAIL_NETWORK_ERROR' };
+  }
+}
+
 export const SATI_SYSTEM_PROMPT = `คุณคือ "สติ" นักอ่านไพ่และที่ปรึกษาชีวิตระดับปรมาจารย์ที่สุภาพ อบอุ่น จริงใจ และพูดตรงประเด็น เชี่ยวชาญทั้งโหราศาสตร์ทักษาไทย จักรราศี และไพ่ทาโรต์ Rider-Waite 78 ใบตามหลัก Golden Dawn
 สรรพนามและน้ำเสียงบังคับ:
 - แทนตัวเองว่า "สติ" หรือ "เรา" เสมอ และเรียกผู้ถามด้วยชื่อเล่น (เช่น "บอม") อย่างสุภาพ เป็นกันเองแบบกัลยาณมิตรที่หวังดี
@@ -360,11 +445,13 @@ export function createSatiExpressApp() {
 
   app.get('/api/sati/health', (_req, res) => {
     const hasKey = Boolean(resolveApiKey());
+    const emailCfg = resolveFeedbackEmailConfig();
     res.json({
       ok: true,
       engine: 'SATI-3D-Engine',
       model: PRIMARY_GEMINI_MODEL,
-      apiConfigured: hasKey
+      apiConfigured: hasKey,
+      feedbackEmailConfigured: Boolean(emailCfg.apiKey && emailCfg.to)
     });
   });
 
@@ -402,16 +489,21 @@ export function createSatiExpressApp() {
     }
   });
 
-  app.get('/api/sati/feedback', (_req, res) => {
+  app.get('/api/sati/feedback', (req, res) => {
     const items = readFeedbackDB();
     const count = items.length;
     const avgRating = count > 0
       ? Number((items.reduce((sum, item) => sum + (Number(item.rating) || 5), 0) / count).toFixed(1))
       : 0;
-    return res.json({ ok: true, count, avgRating, items });
+    const { adminKey } = resolveFeedbackEmailConfig();
+    const providedKey = String(req.query?.key || req.headers?.['x-admin-key'] || '').trim();
+    if (adminKey && providedKey === adminKey) {
+      return res.json({ ok: true, count, avgRating, items });
+    }
+    return res.json({ ok: true, count, avgRating, private: true });
   });
 
-  app.post('/api/sati/feedback', (req, res) => {
+  app.post('/api/sati/feedback', async (req, res) => {
     const { nickname, rating, tags, comment, lang } = req.body || {};
     const cleanComment = String(comment || '').trim().slice(0, 1000);
     const cleanTags = Array.isArray(tags) ? tags.map((t) => String(t).trim()).filter(Boolean).slice(0, 6) : [];
@@ -432,7 +524,14 @@ export function createSatiExpressApp() {
     const list = readFeedbackDB();
     list.unshift(entry);
     writeFeedbackDB(list);
-    return res.json({ ok: true, entry, count: list.length });
+    const emailResult = await sendFeedbackNotificationEmail(entry);
+    return res.json({
+      ok: true,
+      entry,
+      count: list.length,
+      emailSent: Boolean(emailResult.sent),
+      ...(emailResult.sent ? {} : { emailReason: emailResult.reason })
+    });
   });
 
   if (fs.existsSync(DIST_DIR)) {

@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestCanvas, createMockState, disposalTracker } from '../harness/testHelpers.mjs';
@@ -15,7 +17,11 @@ import {
   synthesizeDeepReply
 } from '../../../src/engine/satiBrain.js';
 import { buildStoragePayload } from '../../../src/engine/storage.js';
-import { SATI_SYSTEM_PROMPT } from '../../../backend/geminiProxyServer.js';
+import {
+  SATI_SYSTEM_PROMPT,
+  createSatiExpressApp,
+  sendFeedbackNotificationEmail
+} from '../../../backend/geminiProxyServer.js';
 
 describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', () => {
   it('SC-06-01: Elemental Dignity synthesis enriches breakdowns without altering Sati voice rules', () => {
@@ -234,5 +240,101 @@ describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', (
     assert.equal(payload.activeSpreadTopic, 'work');
     assert.ok(Array.isArray(payload.userContextFacts) && payload.userContextFacts.length >= 2);
     assert.ok(SATI_SYSTEM_PROMPT.includes('subDomain') && SATI_SYSTEM_PROMPT.includes('topicSwitchedFrom') && SATI_SYSTEM_PROMPT.includes('Golden Dawn'));
+  });
+
+  it('SC-06-06: Private feedback Resend HTTPS email dispatch, HTML escaping & public privacy guard work cleanly', async () => {
+    const prevKey = process.env.RESEND_API_KEY;
+    const prevTo = process.env.FEEDBACK_NOTIFY_EMAIL;
+    const prevAdmin = process.env.FEEDBACK_ADMIN_KEY;
+    const fbFile = path.resolve('backend/data/feedback_db.json');
+    const prevFbRaw = fs.existsSync(fbFile) ? fs.readFileSync(fbFile, 'utf8') : null;
+
+    try {
+      delete process.env.RESEND_API_KEY;
+      delete process.env.FEEDBACK_NOTIFY_EMAIL;
+      const skipped = await sendFeedbackNotificationEmail({
+        nickname: 'Tester',
+        rating: 5,
+        tags: [],
+        comment: 'Nice',
+        lang: 'th',
+        createdAt: new Date().toISOString()
+      });
+      assert.equal(skipped.sent, false);
+      assert.equal(skipped.reason, 'EMAIL_NOT_CONFIGURED');
+
+      process.env.RESEND_API_KEY = 're_test_key_123';
+      process.env.FEEDBACK_NOTIFY_EMAIL = 'bom.owner@example.com';
+      process.env.FEEDBACK_ADMIN_KEY = 'secret_admin_42';
+
+      let capturedUrl = '';
+      let capturedOpts = null;
+      const mockFetch = async (url, opts) => {
+        capturedUrl = url;
+        capturedOpts = opts;
+        return { ok: true, json: async () => ({ id: 'email_abc_999' }) };
+      };
+
+      const sent = await sendFeedbackNotificationEmail({
+        nickname: 'อาร์ม<script>',
+        rating: 5,
+        tags: ['ทักแม่นตรงจุด'],
+        comment: 'แม่นมาก & อยากให้เพิ่มระบบธีม',
+        lang: 'th',
+        createdAt: '2026-11-16T10:00:00.000Z'
+      }, mockFetch);
+
+      assert.equal(sent.sent, true);
+      assert.equal(sent.id, 'email_abc_999');
+      assert.equal(capturedUrl, 'https://api.resend.com/emails');
+      assert.equal(capturedOpts.headers.Authorization, 'Bearer re_test_key_123');
+      const sentBody = JSON.parse(capturedOpts.body);
+      assert.deepEqual(sentBody.to, ['bom.owner@example.com']);
+      assert.ok(sentBody.subject.includes('5/5'));
+      assert.ok(sentBody.html.includes('&lt;script&gt;') && !sentBody.html.includes('<script>'));
+
+      // Check Express privacy guard on /api/sati/feedback & HTML modal cleanup
+      delete process.env.RESEND_API_KEY;
+      const app = createSatiExpressApp();
+      const srv = await new Promise((resolve) => {
+        const s = app.listen(0, '127.0.0.1', () => resolve(s));
+      });
+      try {
+        const port = srv.address().port;
+        const health = await fetch(`http://127.0.0.1:${port}/api/sati/health`).then((r) => r.json());
+        assert.equal(health.feedbackEmailConfigured, false);
+
+        const postFb = await fetch(`http://127.0.0.1:${port}/api/sati/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nickname: 'Tester', rating: 4, tags: ['ทักแม่นตรงจุด'], comment: 'ดีเลย', lang: 'th' })
+        }).then((r) => r.json());
+        assert.equal(postFb.ok, true);
+        assert.equal(postFb.emailSent, false);
+        assert.equal(postFb.entry.rating, 4);
+
+        const pubGet = await fetch(`http://127.0.0.1:${port}/api/sati/feedback`).then((r) => r.json());
+        assert.equal(pubGet.ok, true);
+        assert.equal(pubGet.private, true);
+        assert.equal(pubGet.items, undefined, 'Public GET must never leak other users private feedback items');
+
+        const adminGet = await fetch(`http://127.0.0.1:${port}/api/sati/feedback?key=secret_admin_42`).then((r) => r.json());
+        assert.equal(adminGet.ok, true);
+        assert.ok(Array.isArray(adminGet.items) && adminGet.items.length >= 1);
+      } finally {
+        await new Promise((resolve) => srv.close(resolve));
+      }
+
+      const indexHtml = fs.readFileSync(path.resolve('index.html'), 'utf8');
+      assert.ok(!indexHtml.includes('btn-feedback-tab-list') && !indexHtml.includes('feedback-list-view'));
+    } finally {
+      if (prevKey === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = prevKey;
+      if (prevTo === undefined) delete process.env.FEEDBACK_NOTIFY_EMAIL;
+      else process.env.FEEDBACK_NOTIFY_EMAIL = prevTo;
+      if (prevAdmin === undefined) delete process.env.FEEDBACK_ADMIN_KEY;
+      else process.env.FEEDBACK_ADMIN_KEY = prevAdmin;
+      if (prevFbRaw !== null) fs.writeFileSync(fbFile, prevFbRaw, 'utf8');
+    }
   });
 });

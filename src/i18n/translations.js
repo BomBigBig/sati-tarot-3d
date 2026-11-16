@@ -295,18 +295,14 @@ export const UI_TEXT = {
 
     btnFeedbackOpen: '★ รีวิว / ติชม',
     modalFeedbackTitle: 'ส่งฟีดแบ็กช่วยพัฒนาหมอดูสติ',
-    feedbackSub: 'ความคิดเห็นของคุณช่วยให้เราปรับปรุงคำทำนายและระบบให้ดียิ่งขึ้น',
-    feedbackTabForm: 'เขียนรีวิว / ติชม',
-    feedbackTabList: 'ดูฟีดแบ็กทั้งหมด',
+    feedbackSub: 'ความคิดเห็นของคุณส่งตรงถึงผู้พัฒนาเพื่อปรับปรุงคำทำนายให้แม่นยำขึ้น',
     feedbackRatingLabel: 'ความพึงพอใจและความแม่นยำโดยรวม',
     feedbackTags: ['ทักแม่นตรงจุด', 'ภาษาเป็นธรรมชาติ', 'ภาพ 3D สวยลื่นไหล', 'ใช้งานง่าย', 'อยากให้ปรับปรุงเพิ่ม'],
     feedbackCommentPlaceholder: 'เล่าให้ฟังได้เลยว่าชอบอะไร หรืออยากให้ปรับปรุงจุดไหนเพิ่มเติม...',
     btnSubmitFeedback: 'ส่งฟีดแบ็กให้ผู้พัฒนา',
-    btnExportFeedbackCsv: 'ดาวน์โหลด CSV',
-    toastFeedbackSaved: 'ขอบคุณสำหรับฟีดแบ็ก! บันทึกข้อมูลเรียบร้อยแล้ว',
-    feedbackNeedInputToast: 'พิมพ์ข้อความหรือเลือกแท็กสักข้อก่อนส่งฟีดแบ็กนะครับ',
-    feedbackStatsFmt: (count, avg) => `ทั้งหมด ${count} รีวิว • คะแนนเฉลี่ย ★ ${avg} / 5.0`,
-    feedbackEmpty: 'ยังไม่มีรายการฟีดแบ็กในขณะนี้'
+    toastFeedbackSaved: 'ส่งฟีดแบ็กถึงผู้พัฒนาเรียบร้อยแล้ว ขอบคุณมากนะ!',
+    toastFeedbackError: 'ส่งฟีดแบ็กไม่สำเร็จ กรุณาลองใหม่อีกครั้งนะ',
+    feedbackNeedInputToast: 'พิมพ์ข้อความหรือเลือกแท็กสักข้อก่อนส่งฟีดแบ็กนะ'
   },
 
   en: {
@@ -595,18 +591,14 @@ export const UI_TEXT = {
 
     btnFeedbackOpen: '★ Feedback',
     modalFeedbackTitle: 'Share Feedback to Improve Sati',
-    feedbackSub: 'Your thoughts help us refine Sati’s readings and experience',
-    feedbackTabForm: 'Write Feedback',
-    feedbackTabList: 'All Feedback',
+    feedbackSub: 'Your message is sent directly and privately to the developer',
     feedbackRatingLabel: 'Overall Accuracy & Experience',
     feedbackTags: ['Spot-On Reading', 'Natural Human Tone', 'Smooth 3D Table', 'Easy to Use', 'Needs Polish'],
     feedbackCommentPlaceholder: 'Tell us what resonated with you or what we should improve next...',
     btnSubmitFeedback: 'Submit Feedback',
-    btnExportFeedbackCsv: 'Download CSV',
-    toastFeedbackSaved: 'Thank you! Your feedback has been saved.',
-    feedbackNeedInputToast: 'Please select a tag or write a short note before submitting.',
-    feedbackStatsFmt: (count, avg) => `${count} Reviews • Avg Rating ★ ${avg} / 5.0`,
-    feedbackEmpty: 'No feedback entries yet.'
+    toastFeedbackSaved: 'Thank you! Your feedback has been sent directly to the developer.',
+    toastFeedbackError: 'Could not send feedback right now. Please try again.',
+    feedbackNeedInputToast: 'Please select a tag or write a short note before submitting.'
   },
 
   zh: {
@@ -895,18 +887,14 @@ export const UI_TEXT = {
 
     btnFeedbackOpen: '★ 评价反馈',
     modalFeedbackTitle: '提交反馈协助优化思谛',
-    feedbackSub: '你的建议将帮助我们持续优化解读与体验',
-    feedbackTabForm: '填写反馈',
-    feedbackTabList: '查看全部反馈',
+    feedbackSub: '你的建议会直接私密发送给开发者，用于持续优化解牌体验',
     feedbackRatingLabel: '整体准度与体验评分',
     feedbackTags: ['直击重点超准', '说话自然像真人', '3D 牌桌流畅好看', '操作简单易懂', '希望继续优化'],
     feedbackCommentPlaceholder: '欢迎分享你觉得准的地方，或希望我们下一步改进的细节...',
     btnSubmitFeedback: '提交反馈',
-    btnExportFeedbackCsv: '下载 CSV',
-    toastFeedbackSaved: '感谢反馈！你的建议已成功保存。',
-    feedbackNeedInputToast: '请至少选择一个标签或填写几句反馈后再提交。',
-    feedbackStatsFmt: (count, avg) => `共 ${count} 条反馈 • 平均评分 ★ ${avg} / 5.0`,
-    feedbackEmpty: '暂无反馈记录。'
+    toastFeedbackSaved: '感谢反馈！你的建议已直接发送给开发者。',
+    toastFeedbackError: '反馈发送失败，请稍后再试一次。',
+    feedbackNeedInputToast: '请至少选择一个标签或填写几句反馈后再提交。'
   }
 };
 

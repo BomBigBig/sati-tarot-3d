@@ -674,29 +674,20 @@
     </div>
   </dialog>
 
-  <!-- NATIVE MODAL 7: IN-APP FEEDBACK & SUMMARY EXPORT -->
+  <!-- NATIVE MODAL 7: PRIVATE IN-APP FEEDBACK TO DEVELOPER EMAIL -->
   <dialog id="modal-feedback" closedby="any" aria-labelledby="title-modal-feedback" class="w-full max-w-lg">
     <div class="panel-glass chamfer w-full max-h-[85vh] flex flex-col p-5 border border-[#d4af37]/60">
       <div class="flex items-start justify-between gap-2 border-b border-[#d4af37]/25 pb-3 mb-3">
         <div>
           <h3 id="title-modal-feedback" data-i18n="modalFeedbackTitle" class="font-display text-base font-bold text-[#f1ede4]">ส่งฟีดแบ็กช่วยพัฒนาหมอดูสติ</h3>
-          <p data-i18n="feedbackSub" class="text-xs text-[#a6a8b8] mt-0.5">ความคิดเห็นของคุณช่วยให้เราปรับปรุงคำทำนายและระบบให้ดียิ่งขึ้น</p>
+          <p data-i18n="feedbackSub" class="text-xs text-[#a6a8b8] mt-0.5">ความคิดเห็นของคุณส่งตรงถึงผู้พัฒนาเพื่อปรับปรุงคำทำนายให้แม่นยำขึ้น</p>
         </div>
         <form method="dialog">
           <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs cursor-pointer">ปิด</button>
         </form>
       </div>
 
-      <div class="flex items-center gap-2 mb-3">
-        <button id="btn-feedback-tab-form" type="button" data-i18n="feedbackTabForm" class="btn-gold chamfer-sm px-3 py-1.5 text-xs font-semibold cursor-pointer">
-          เขียนรีวิว / ติชม
-        </button>
-        <button id="btn-feedback-tab-list" type="button" data-i18n="feedbackTabList" class="btn-slate chamfer-sm px-3 py-1.5 text-xs cursor-pointer">
-          ดูฟีดแบ็กทั้งหมด
-        </button>
-      </div>
-
-      <!-- TAB 1: SUBMIT FEEDBACK FORM -->
+      <!-- DIRECT SUBMIT FEEDBACK FORM -->
       <form id="feedback-form-view" class="space-y-3">
         <div>
           <div data-i18n="feedbackRatingLabel" class="text-xs text-[#d6cfc2] mb-1.5">ความพึงพอใจและความแม่นยำโดยรวม</div>
@@ -718,17 +709,6 @@
           ส่งฟีดแบ็กให้ผู้พัฒนา
         </button>
       </form>
-
-      <!-- TAB 2: ALL FEEDBACK SUMMARY & CSV EXPORT -->
-      <div id="feedback-list-view" class="hidden flex-1 flex flex-col min-h-0 space-y-2.5">
-        <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-[#0e1328]/85 border border-[#d4af37]/30">
-          <div id="feedback-summary-stats" class="text-xs font-semibold text-[#f3d266]"></div>
-          <button id="btn-export-feedback-csv" type="button" data-i18n="btnExportFeedbackCsv" class="btn-gold chamfer-sm px-2.5 py-1 text-xs font-semibold cursor-pointer">
-            ดาวน์โหลด CSV
-          </button>
-        </div>
-        <div id="feedback-entries-list" class="overflow-y-auto scrollbar-thin space-y-2 pr-1 max-h-72 text-xs"></div>
-      </div>
     </div>
   </dialog>
 
