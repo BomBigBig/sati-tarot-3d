@@ -22,8 +22,18 @@ export function buildStoragePayload(state) {
     userContextFacts: Array.isArray(state.userContextFacts) ? state.userContextFacts : [],
     chatHistory: state.chatHistory,
     sessionArchives: state.sessionArchives || [],
-    lastTopic: state.lastTopic
+    lastTopic: state.lastTopic,
+    allowReversedCards: state.allowReversedCards !== false
   };
+}
+
+export function detectInAppBrowser(userAgent = '') {
+  const ua = String(userAgent || '');
+  if (!ua) return '';
+  if (/Line\//i.test(ua)) return 'line';
+  if (/Instagram/i.test(ua)) return 'instagram';
+  if (/FBAN|FBAV|FB_IAB|Messenger/i.test(ua)) return 'facebook';
+  return '';
 }
 
 function hasUsableRecord(rec) {

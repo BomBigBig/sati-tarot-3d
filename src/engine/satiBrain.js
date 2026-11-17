@@ -1844,7 +1844,7 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
     natalCards,
     activeSpread: cards,
     cards,
-    remainingCount: state.remainingDeck.length,
+    remainingCount: Array.isArray(state?.remainingDeck) ? state.remainingDeck.length : 0,
     elementalDignity: computeElementalDignityInsight(cards, lang),
     spreadPatterns,
     pastSessionMemory,

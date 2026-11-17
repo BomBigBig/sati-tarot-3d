@@ -166,6 +166,16 @@
 </head>
 <body>
   <canvas id="scene-canvas" style="touch-action: none;"></canvas>
+  <div id="spread-3d-labels" class="pointer-events-none fixed inset-0 z-10 overflow-hidden" aria-hidden="true"></div>
+
+  <!-- IN-APP BROWSER WARNING BANNER (Facebook / LINE / Instagram WebView) -->
+  <div id="inapp-browser-banner" class="hidden fixed top-2 left-1/2 -translate-x-1/2 z-50 w-[94vw] max-w-2xl panel-glass chamfer-sm border border-[#d4af37]/75 px-3 py-2 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 shadow-xl">
+    <span id="inapp-browser-text" data-i18n="inAppBannerMsg" class="text-[11px] sm:text-xs text-[#f4efe6] leading-snug">เปิดในแอป Facebook/LINE อยู่ — ประวัติดูดวงอาจหาย แนะนำเปิดใน Chrome หรือ Safari</span>
+    <div class="flex items-center gap-1.5 shrink-0 ml-auto">
+      <button id="btn-copy-app-link" type="button" data-i18n="inAppBannerCopyBtn" class="btn-gold chamfer-sm px-2.5 py-1 text-[11px] font-semibold cursor-pointer whitespace-nowrap">คัดลอกลิงก์</button>
+      <button id="btn-dismiss-inapp-banner" type="button" class="btn-slate chamfer-sm px-2 py-1 text-[11px] cursor-pointer" aria-label="Dismiss">&times;</button>
+    </div>
+  </div>
 
   <!-- UI OVERLAY LAYER -->
   <div class="ui-layer flex flex-col justify-between">
@@ -729,6 +739,17 @@
             <line x1="22" y1="9" x2="16" y2="15"/>
             <line x1="16" y1="9" x2="22" y2="15"/>
           </svg>
+        </button>
+      </div>
+
+      <!-- Reversed Cards Toggle -->
+      <div class="p-3 bg-[#0e1328]/80 border border-[#d4af37]/25 flex items-center justify-between gap-3">
+        <div>
+          <div data-i18n="settingsReversedLabel" class="text-xs font-semibold text-[#f1ede4]">ไพ่กลับหัว (Reversed)</div>
+          <div id="settings-reversed-status" class="text-[11px] text-[#a6a8b8]">เปิดใช้งานอยู่</div>
+        </div>
+        <button id="btn-toggle-reversed" type="button" aria-pressed="true" class="btn-gold chamfer-sm px-3 py-1.5 text-xs font-semibold cursor-pointer shrink-0">
+          เปิดอยู่
         </button>
       </div>
 

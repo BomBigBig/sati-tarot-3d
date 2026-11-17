@@ -3,13 +3,21 @@
  * เชื่อมโยงระบบเสียง Web Audio, ข้อมูลไพ่ 78 ใบ, สมองทักษา + Gemini Proxy,
  * เอนจิน 3D Low-Poly (.glb) และระบบบันทึกสถานะผูกกับ Gmail
  */
-import { buildFullDeck78, hydrateDeckCards, shuffleArray, getCardFrontDataURL } from './data/tarot78.js';
+import {
+  buildFullDeck78,
+  hydrateDeckCards,
+  shuffleArray,
+  getCardFrontDataURL,
+  applyReversedOrientation
+} from './data/tarot78.js';
 import {
   normalizeLang,
   getLocalizedCardData,
   getLocalizedCelticPositions,
   getLocalizedCardLabelInline,
-  getLocalizedCardShortName
+  getLocalizedCardShortName,
+  formatCardOrientationBadge,
+  getReversedEnergyNuance
 } from './data/tarot78I18n.js';
 import { getTextPack, t } from './i18n/translations.js';
 import {
@@ -20,7 +28,7 @@ import {
   detectTopicAndIntent,
   extractUserContextFacts
 } from './engine/satiBrain.js';
-import { loadAccountState, saveAccountState } from './engine/storage.js';
+import { loadAccountState, saveAccountState, detectInAppBrowser } from './engine/storage.js';
 import { generateReadingShareCardDataURL, formatShareTimestamp } from './engine/shareCardCanvas.js';
 import { createSati3DEngine, CAM_POS } from './scene/satiScene3D.js';
 
@@ -38,6 +46,28 @@ function persistLang(lang) {
   } catch {
     // ignore storage restriction
   }
+}
+
+function readSavedAllowReversed() {
+  try {
+    const raw = window.localStorage?.getItem('sati_allow_reversed');
+    if (raw === '0' || raw === 'false') return false;
+  } catch {
+    // ignore storage restriction
+  }
+  return true;
+}
+
+function persistAllowReversed(enabled) {
+  try {
+    window.localStorage?.setItem('sati_allow_reversed', enabled ? '1' : '0');
+  } catch {
+    // ignore storage restriction
+  }
+}
+
+function serializeSpreadCardMeta(c) {
+  return { uid: c.uid, name: c.name, th: c.th, ...(c.reversed ? { reversed: true } : {}) };
 }
 
 // =========================================================================
@@ -97,6 +127,7 @@ const SoundFX = {
 // =========================================================================
 const state = {
   lang: readSavedLang(),
+  allowReversedCards: readSavedAllowReversed(),
   screen: 'login',
   modelsLoaded: false,
   user: {
@@ -254,7 +285,7 @@ function setSatiDialogue(text, moodKey = 'moodChat', recordHistory = true, isLoa
   const box = document.getElementById('dialogue-content');
   box.textContent = text;
   document.getElementById('dialogue-preview').textContent = text.replace(/\s+/g, ' ').trim();
-  box.scrollTop = 0;
+  box.scrollTop = isLoading && box.scrollHeight > box.clientHeight ? box.scrollHeight : 0;
   if (recordHistory) {
     const entry = appendHistory('sati', text, 'sati', historyMeta ? { meta: historyMeta } : {});
     if (historyMeta && Array.isArray(historyMeta.cards) && historyMeta.cards.length > 0) {
@@ -454,13 +485,166 @@ function updateActiveStrip() {
   }
 }
 
+function createSatiStreamHandler(moodKey) {
+  let pendingText = '';
+  let rafPending = false;
+  let stopped = false;
+  const flush = () => {
+    rafPending = false;
+    if (stopped || !pendingText) return;
+    setSatiDialogue(pendingText, moodKey, false, true);
+  };
+  return {
+    onChunk(accumulatedText) {
+      if (stopped || !accumulatedText) return;
+      pendingText = accumulatedText;
+      if (!rafPending) {
+        rafPending = true;
+        if (typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(flush);
+        } else {
+          flush();
+        }
+      }
+    },
+    stop() {
+      stopped = true;
+    }
+  };
+}
+
+function getSpreadSlotTitle(slotIdx, totalSlots, lang) {
+  if (totalSlots === 10) {
+    const pos = getLocalizedCelticPositions(lang);
+    return pos[slotIdx] || '';
+  }
+  if (totalSlots === 3) {
+    const pos3 = getTextPack(lang).spreadPos3;
+    return Array.isArray(pos3) ? (pos3[slotIdx] || '') : '';
+  }
+  if (totalSlots === 1) {
+    return t(lang, 'spreadPos1');
+  }
+  return '';
+}
+
+const spreadLabelNodes = [];
+
+function renderSpread3DLabels(items = []) {
+  const host = document.getElementById('spread-3d-labels');
+  if (!host) return;
+  const list = Array.isArray(items) ? items : [];
+  if (list.length === 0 || state.screen !== 'game') {
+    for (let i = 0; i < spreadLabelNodes.length; i++) {
+      spreadLabelNodes[i].classList.add('hidden');
+    }
+    return;
+  }
+
+  const lang = state.lang;
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i];
+    let el = spreadLabelNodes[i];
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'hidden -translate-x-1/2 pointer-events-none absolute px-1.5 py-0.5 bg-[#0e1226]/88 border border-[#d4af37]/65 text-[10px] sm:text-[11px] leading-tight text-[#f4efe6] rounded-[3px] shadow-md whitespace-nowrap flex items-center gap-1';
+      host.appendChild(el);
+      spreadLabelNodes[i] = el;
+    }
+    if (!item?.visible) {
+      el.classList.add('hidden');
+      continue;
+    }
+    const posTitle = getSpreadSlotTitle(item.slotIdx, item.totalSlots, lang);
+    const revMark = item.reversed ? (lang === 'en' ? ' [Rev]' : lang === 'zh' ? ' [逆位]' : ' [กลับหัว]') : '';
+    el.textContent = posTitle ? `#${item.slotIdx + 1} · ${posTitle}${revMark}` : `#${item.slotIdx + 1}${revMark}`;
+    el.style.left = `${item.xPct}%`;
+    el.style.top = `${item.yPct}%`;
+    el.classList.toggle('border-[#fb7185]/70', Boolean(item.reversed));
+    el.classList.toggle('text-[#fecdd3]', Boolean(item.reversed));
+    el.classList.remove('hidden');
+  }
+  for (let i = list.length; i < spreadLabelNodes.length; i++) {
+    spreadLabelNodes[i].classList.add('hidden');
+  }
+}
+
+function syncReversedToggleUI() {
+  const statusEl = document.getElementById('settings-reversed-status');
+  const btnEl = document.getElementById('btn-toggle-reversed');
+  const enabled = state.allowReversedCards !== false;
+  if (statusEl) {
+    statusEl.textContent = t(state.lang, enabled ? 'settingsReversedOn' : 'settingsReversedOff');
+  }
+  if (btnEl) {
+    btnEl.textContent = t(state.lang, enabled ? 'btnToggleReversedOn' : 'btnToggleReversedOff');
+    btnEl.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    btnEl.classList.toggle('btn-gold', enabled);
+    btnEl.classList.toggle('btn-slate', !enabled);
+  }
+}
+
+function initInAppBrowserBanner() {
+  const banner = document.getElementById('inapp-browser-banner');
+  if (!banner) return;
+  const app = detectInAppBrowser(window.navigator?.userAgent || '');
+  let dismissed = false;
+  try {
+    dismissed = window.localStorage?.getItem('sati_inapp_banner_dismissed') === '1';
+  } catch {
+    dismissed = false;
+  }
+  banner.classList.toggle('hidden', !app || dismissed);
+
+  document.getElementById('btn-copy-app-link')?.addEventListener('click', async () => {
+    const url = window.location.href;
+    let copied = false;
+    try {
+      if (window.navigator?.clipboard?.writeText) {
+        await window.navigator.clipboard.writeText(url);
+        copied = true;
+      }
+    } catch {
+      copied = false;
+    }
+    if (!copied) {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        copied = document.execCommand('copy');
+      } catch {
+        copied = false;
+      }
+      ta.remove();
+    }
+    if (copied) showToast(t(state.lang, 'inAppBannerCopied'));
+  });
+
+  document.getElementById('btn-dismiss-inapp-banner')?.addEventListener('click', () => {
+    banner.classList.add('hidden');
+    try {
+      window.localStorage?.setItem('sati_inapp_banner_dismissed', '1');
+    } catch {
+      // ignore storage restriction
+    }
+  });
+}
+
 function openCardModal(card, posLabel) {
   const lang = state.lang;
   const localized = getLocalizedCardData(card, lang);
-  document.getElementById('modal-card-pos').textContent = posLabel;
-  document.getElementById('modal-card-name').textContent = localized.title;
+  const badge = formatCardOrientationBadge(card, lang);
+  const reversedNuance = card?.reversed ? getReversedEnergyNuance(card, lang) : '';
+  document.getElementById('modal-card-pos').textContent = badge ? `${posLabel} · ${badge}` : posLabel;
+  document.getElementById('modal-card-name').textContent = badge ? `${localized.title} ${badge}` : localized.title;
   document.getElementById('modal-card-th').textContent = localized.subtitle !== localized.title ? localized.subtitle : localized.suitLabel;
-  document.getElementById('modal-card-note').textContent = t(lang, 'cardModalMeaning', localized);
+  const baseNote = t(lang, 'cardModalMeaning', localized);
+  document.getElementById('modal-card-note').textContent = reversedNuance ? `${baseNote}\n\n${badge}: ${reversedNuance}` : baseNote;
 
   const dataUrl = getCardFrontDataURL(card);
   const artBox = document.getElementById('modal-card-art');
@@ -468,7 +652,7 @@ function openCardModal(card, posLabel) {
   const img = document.createElement('img');
   img.src = dataUrl;
   img.alt = localized.title;
-  img.className = 'w-full h-full object-contain';
+  img.className = card?.reversed ? 'w-full h-full object-contain rotate-180' : 'w-full h-full object-contain';
   artBox.appendChild(img);
 
   openModal('modal-card');
@@ -553,7 +737,10 @@ function handlePickCard(mesh) {
     pos: mesh.position.clone(),
     startTime: engine3D.getElapsedTime()
   };
-  const cardData = mesh.userData.cardData;
+  const cardData = applyReversedOrientation([mesh.userData.cardData], {
+    enabled: state.allowReversedCards !== false
+  })[0];
+  mesh.userData.cardData = cardData;
 
   state.remainingDeck = state.remainingDeck.filter((c) => c.uid !== cardData.uid);
   state.activeSpread.push(cardData);
@@ -592,7 +779,7 @@ async function finishPickingPhase() {
   document.getElementById('dock-chat').classList.remove('hidden');
   setDialogueCollapsed(false);
 
-  const toCardMeta = (arr) => (arr || []).map((c) => ({ uid: c.uid, name: c.name, th: c.th }));
+  const toCardMeta = (arr) => (arr || []).map((c) => serializeSpreadCardMeta(c));
 
   state.isThinking = true;
   renderSmartPromptChips();
@@ -600,9 +787,11 @@ async function finishPickingPhase() {
     state.natalCompleted = true;
     state.natalCards = [...state.activeSpread];
     state.activeSpreadTopic = '';
-    state.savedNatalCards = state.natalCards.map((c) => ({ uid: c.uid, name: c.name, th: c.th }));
+    state.savedNatalCards = state.natalCards.map((c) => serializeSpreadCardMeta(c));
     setSatiDialogue(t(state.lang, 'loadingNatalDialogue', state.user.fullname), 'moodLoadingNatal', false, true);
-    const reply = await requestSatiReading(state, '', state.natalCards, true);
+    const streamCtrl = createSatiStreamHandler('moodLoadingNatal');
+    const reply = await requestSatiReading(state, '', state.natalCards, true, { onChunk: streamCtrl.onChunk });
+    streamCtrl.stop();
     state.isThinking = false;
     setSatiDialogue(reply, 'moodNatal10', true, false, {
       isNatal10: true,
@@ -624,7 +813,12 @@ async function finishPickingPhase() {
     state.userContextFacts = extractUserContextFacts(state.chatHistory, state.userContextFacts);
     document.getElementById('chat-input').value = '';
     setSatiDialogue(t(state.lang, 'loadingCardsDialogue', state.user.nickname), 'moodLoadingCards', false, true);
-    const reply = await requestSatiReading(state, q, state.activeSpread, false, { isExpandFollowUp: isExpandFlow });
+    const streamCtrl = createSatiStreamHandler('moodLoadingCards');
+    const reply = await requestSatiReading(state, q, state.activeSpread, false, {
+      isExpandFollowUp: isExpandFlow,
+      onChunk: streamCtrl.onChunk
+    });
+    streamCtrl.stop();
     state.isThinking = false;
     setSatiDialogue(reply, 'moodReply', true, false, {
       isNatal10: false,
@@ -813,6 +1007,7 @@ function applyLanguage(newLang) {
   if (toggleDockBtn) {
     toggleDockBtn.textContent = t(lang, state.dockCollapsed ? 'btnShowDock' : 'btnHideDock');
   }
+  syncReversedToggleUI();
   const moodEl = document.getElementById('sati-mood-tag');
   if (moodEl) {
     moodEl.textContent = t(lang, state.currentMoodKey || 'moodIdle');
@@ -940,6 +1135,7 @@ async function handleSelectEmailAccount(email, defaultFullname, defaultNickname)
 window.addEventListener('DOMContentLoaded', () => {
   setupDialogLightDismissFallback();
   populateBirthdateSelectors();
+  initInAppBrowserBanner();
   applyLanguage(state.lang);
 
   document.querySelectorAll('.lang-btn').forEach((btn) => {
@@ -954,6 +1150,7 @@ window.addEventListener('DOMContentLoaded', () => {
     canvas,
     state,
     onCardPicked: handlePickCard,
+    onSpreadProjection: renderSpread3DLabels,
     onSpreadCardInspect: (card, posLabel) => {
       const idx = state.activeSpread.findIndex((c) => c.uid === card.uid);
       const label = state.activeSpread.length === 10 && idx >= 0
@@ -1027,6 +1224,11 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     state.chatHistory = pendingSavedRecord.chatHistory || [];
     state.sessionArchives = Array.isArray(pendingSavedRecord.sessionArchives) ? pendingSavedRecord.sessionArchives : [];
+    state.allowReversedCards = pendingSavedRecord.allowReversedCards !== undefined
+      ? Boolean(pendingSavedRecord.allowReversedCards)
+      : readSavedAllowReversed();
+    persistAllowReversed(state.allowReversedCards);
+    syncReversedToggleUI();
     state.activeSpreadTopic = pendingSavedRecord.activeSpreadTopic || '';
     state.pendingDrawTopic = '';
     state.pendingDrawIsExpand = false;
@@ -1091,7 +1293,7 @@ window.addEventListener('DOMContentLoaded', () => {
     state.lastReadingOffline = false;
     state.sessionActive = true;
     state.natalCards = saved10;
-    state.savedNatalCards = saved10.map((c) => ({ uid: c.uid, name: c.name, th: c.th }));
+    state.savedNatalCards = saved10.map((c) => serializeSpreadCardMeta(c));
     state.natalCompleted = true;
     state.activeSpread = [];
     state.activeSpreadTopic = '';
@@ -1223,6 +1425,14 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  document.getElementById('btn-toggle-reversed')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    state.allowReversedCards = state.allowReversedCards === false;
+    persistAllowReversed(state.allowReversedCards);
+    syncReversedToggleUI();
+    saveAccountState(state);
+  });
+
   // Auto-Pick remaining cards in current spread
   document.getElementById('btn-auto-pick').addEventListener('click', () => {
     if (!state.isPicking) return;
@@ -1330,6 +1540,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (soundStatus) {
       soundStatus.textContent = t(state.lang, SoundFX.muted ? 'settingsSoundOff' : 'settingsSoundOn');
     }
+    syncReversedToggleUI();
     openModal('modal-settings');
   });
 
@@ -1350,14 +1561,14 @@ window.addEventListener('DOMContentLoaded', () => {
         id: `sess_${Date.now().toString(36)}`,
         endedAt: new Date().toISOString(),
         user: { ...state.user },
-        natalCards: state.natalCards.map((c) => ({ uid: c.uid, name: c.name, th: c.th })),
+        natalCards: state.natalCards.map((c) => serializeSpreadCardMeta(c)),
         chatHistory: [...state.chatHistory],
         usedCount
       };
       state.sessionArchives = [archiveEntry, ...(state.sessionArchives || [])];
     }
     if (state.natalCards.length === 10) {
-      state.savedNatalCards = state.natalCards.map((c) => ({ uid: c.uid, name: c.name, th: c.th }));
+      state.savedNatalCards = state.natalCards.map((c) => serializeSpreadCardMeta(c));
     }
 
     state.sessionActive = false;
@@ -1425,13 +1636,18 @@ window.addEventListener('DOMContentLoaded', () => {
     state.isThinking = true;
     renderSmartPromptChips();
     setSatiDialogue(t(state.lang, 'loadingQuestionDialogue', state.user.nickname), 'moodLoadingThink', false, true);
-    const reply = await requestSatiReading(state, q, refCards, false, { topicSwitchedFrom });
+    const streamCtrl = createSatiStreamHandler('moodLoadingThink');
+    const reply = await requestSatiReading(state, q, refCards, false, {
+      topicSwitchedFrom,
+      onChunk: streamCtrl.onChunk
+    });
+    streamCtrl.stop();
     state.isThinking = false;
     setSatiDialogue(reply, 'moodDeep', true, false, {
       isNatal10: false,
       sourceWasNatal10,
       question: q,
-      cards: refCards.map((c) => ({ uid: c.uid, name: c.name, th: c.th }))
+      cards: refCards.map((c) => serializeSpreadCardMeta(c))
     });
     updateHUD();
     renderSmartPromptChips();
@@ -1543,7 +1759,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const img = document.createElement('img');
     img.src = getCardFrontDataURL(item.card);
     img.alt = item.title;
-    img.className = `${isWideGrid ? 'w-12 sm:w-14' : 'w-14 sm:w-16'} aspect-[2/3] object-cover border border-[#d4af37]/40 bg-[#efe5d2]`;
+    img.className = `${isWideGrid ? 'w-12 sm:w-14' : 'w-14 sm:w-16'} aspect-[2/3] object-cover border border-[#d4af37]/40 bg-[#efe5d2]${item.card?.reversed ? ' rotate-180' : ''}`;
 
     const posEl = document.createElement('span');
     posEl.className = 'text-[10px] text-[#d4af37] font-semibold leading-tight line-clamp-2';
@@ -1551,7 +1767,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const nameEl = document.createElement('span');
     nameEl.className = 'text-[11px] text-[#f1ede4] font-medium leading-tight line-clamp-2';
-    nameEl.textContent = getLocalizedCardShortName(item.card, lang);
+    const orientBadge = formatCardOrientationBadge(item.card, lang);
+    nameEl.textContent = orientBadge
+      ? `${getLocalizedCardShortName(item.card, lang)} ${orientBadge}`
+      : getLocalizedCardShortName(item.card, lang);
 
     const pill = document.createElement('span');
     pill.className = `text-[9.5px] px-1.5 py-0.5 leading-none ${POLARITY_BADGE_CLS[item.polarity] || POLARITY_BADGE_CLS.balanced}`;
@@ -1578,7 +1797,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const titleBtn = document.createElement('button');
     titleBtn.type = 'button';
     titleBtn.className = 'text-left text-xs font-semibold text-[#f1ede4] hover:text-[#d4af37] underline decoration-[#d4af37]/35 cursor-pointer';
-    titleBtn.textContent = `${item.posLabel} — ${item.title}`;
+    const orientBadge = formatCardOrientationBadge(item.card, lang);
+    titleBtn.textContent = orientBadge
+      ? `${item.posLabel} — ${item.title} ${orientBadge}`
+      : `${item.posLabel} — ${item.title}`;
     titleBtn.addEventListener('click', () => openCardModal(item.card, item.posLabel));
 
     const badge = document.createElement('span');
@@ -1704,7 +1926,7 @@ window.addEventListener('DOMContentLoaded', () => {
           item.type = 'button';
           item.className = 'btn-slate chamfer-sm p-1.5 flex flex-col items-center text-center hover:border-[#d4af37] transition cursor-pointer';
           const title = getLocalizedCardShortName(card, lang);
-          item.innerHTML = `<img src="${dataUrl}" class="w-full aspect-[2/3] object-contain mb-1 border border-[#d4af37]/40 rounded-[2px]" alt="${card.name}" /><div class="text-[10px] text-[#d4af37]">#${idx + 1}</div><div class="text-[11px] font-medium text-[#f1ede4] truncate w-full">${title}</div>`;
+          item.innerHTML = `<img src="${dataUrl}" class="w-full aspect-[2/3] object-contain mb-1 border border-[#d4af37]/40 rounded-[2px]${card.reversed ? ' rotate-180' : ''}" alt="${card.name}" /><div class="text-[10px] text-[#d4af37]">#${idx + 1}</div><div class="text-[11px] font-medium text-[#f1ede4] truncate w-full">${title}</div>`;
           item.addEventListener('click', () => openCardModal(card, `#${idx + 1} · ${t(lang, 'modalDiscardTitle')}`));
           grid.appendChild(item);
         });
