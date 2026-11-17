@@ -209,6 +209,129 @@ const CARDS_I18N = {
   Pentacles_King: ['星币国王', 'Seasoned mastery, rock-solid reliability, and lasting prosperity.', 'Lead with calm commercial judgment, quality, and long-term patience.', 'Strong wealth stewardship — compound reliable assets prudently.', 'Quietly protective loyalty that backs commitment with real stability.', 'Build tangible value patiently and honor every word you give.', '成熟稳健的掌舵者，用实力与信用筑起长久财富。', '展现成熟的商业眼光与耐性，专注打造长青成果。', '财务掌控力强，适合稳健放大优质资产。', '踏实有担当、言出必行，带来极强的安稳与信任。', '继续沉淀硬实力与口碑，说话算话自然成大事。']
 };
 
+const ORIENTATION_TAG_I18N = {
+  th: 'กลับหัว',
+  en: 'Reversed',
+  zh: '逆位'
+};
+
+const ORIENTATION_BADGE_I18N = {
+  th: '[กลับหัว]',
+  en: '[Rev.]',
+  zh: '[逆位]'
+};
+
+const REVERSED_NUANCE_I18N = {
+  th: {
+    Major: {
+      good: 'พลังดีมีอยู่แต่ยังติดจังหวะหรือถูกกั๊กไว้ รอปลดล็อก',
+      warn: 'บทเรียนใหญ่กำลังทำงานจากข้างใน เพื่อคลายปมเดิมให้หลุด',
+      neutral: 'จังหวะเปลี่ยนกำลังก่อตัวเงียบๆ ข้างใน ก่อนจะชัดข้างนอก'
+    },
+    Wands: {
+      good: 'ไฟและแรงผลักยังมีแต่ติดลังเลหรือออกตัวช้ากว่าจังหวะ',
+      warn: 'แรงเสียดทานเริ่มลดลงเมื่อหยุดฝืนเร่งและจัดลำดับใหม่',
+      neutral: 'แรงบันดาลใจยังหมุนอยู่ข้างใน รอจุดโฟกัสชัดค่อยพุ่ง'
+    },
+    Cups: {
+      good: 'ความรู้สึกดียังอยู่แต่เก็บไว้เงียบๆ หรือสื่อสารออกมาไม่สุด',
+      warn: 'อารมณ์ที่ค้างคาเริ่มคลี่คลายเมื่อยอมเปิดใจรับความจริงตรงๆ',
+      neutral: 'ใจกำลังทบทวนความรู้สึกเงียบๆ ยังไม่พร้อมเปิดรับเต็มตัว'
+    },
+    Swords: {
+      good: 'ความคิดคมอยู่แล้วแต่ยังวนลังเลไม่กล้าตัดใจหรือพูดตรง',
+      warn: 'หมอกความกังวลเริ่มจางลงเมื่อหยุดคิดวนและยึดข้อเท็จจริง',
+      neutral: 'คำตอบชัดขึ้นจากการเช็กข้อเท็จจริงเงียบๆ แทนการโต้เถียง'
+    },
+    Pentacles: {
+      good: 'ผลลัพธ์จริงยังมีโอกาสมา แต่ช้ากว่ากำหนดหรือต้องเก็บงานเพิ่ม',
+      warn: 'ภาระหรือจุดรั่วไหลเริ่มผ่อนเมื่อกล้าปรับงบและตั้งขอบเขต',
+      neutral: 'ฐานกำลังปรับสมดุลใหม่ เน้นเก็บทรงและเช็กตัวเลขให้ชัวร์'
+    }
+  },
+  en: {
+    Major: {
+      good: 'Positive shift is real yet delayed or held inward until you act.',
+      warn: 'A deep lesson turns inward so an old block can finally release.',
+      neutral: 'Internal recalibration is underway before outer direction settles.'
+    },
+    Wands: {
+      good: 'Drive is intact yet stalled by hesitation or scattered timing.',
+      warn: 'Friction eases once you stop forcing speed and re-prioritize.',
+      neutral: 'Spark stays internalized until you commit to one clear target.'
+    },
+    Cups: {
+      good: 'Warm feelings sit quietly inside, held back from open expression.',
+      warn: 'Lingering emotional weight begins clearing once honestly faced.',
+      neutral: 'Emotional energy turns inward for quiet reflection first.'
+    },
+    Swords: {
+      good: 'Clarity is within reach, just tangled in second-guessing.',
+      warn: 'Mental fog starts lifting once you step out of worry loops.',
+      neutral: 'Quiet verification beats rushing into sharp debate right now.'
+    },
+    Pentacles: {
+      good: 'Tangible payoff stays intact yet arrives slower, needing steady upkeep.',
+      warn: 'Material strain eases once you trim leaks and reset boundaries.',
+      neutral: 'Practical footing is under quiet audit; tighten basics first.'
+    }
+  },
+  zh: {
+    Major: {
+      good: '正向转机已在酝酿，但节奏受阻或尚在蓄力待发。',
+      warn: '重磅课题转向内在消化，正借机松动旧有症结。',
+      neutral: '内在正在悄悄重新校准方向，外在尚未急着定型。'
+    },
+    Wands: {
+      good: '行动力仍在但被犹豫拖慢，或力道略显分散。',
+      warn: '只要暂缓硬冲、重排优先序，消耗与碰撞就会缓解。',
+      neutral: '冲劲暂时闷在心里，选准单一焦点再发力更稳。'
+    },
+    Cups: {
+      good: '真心与好感其实都在，只是收在心里没能坦白流露。',
+      warn: '积压的情绪疙瘩只要坦诚面对，反而开始逐步松解。',
+      neutral: '情感能量转向内省沉淀，暂时还不想急着表态。'
+    },
+    Swords: {
+      good: '心里已有清晰判断，只是反复权衡迟迟没说出口。',
+      warn: '只要停掉内耗并直面事实，紧绷的思绪正开始退潮。',
+      neutral: '适合私下核对事实与想法，不宜急着用硬话定局。'
+    },
+    Pentacles: {
+      good: '实际回报依然可期，只是节奏偏慢、需要补稳细节。',
+      warn: '财务或事务吃紧只要及时止损立边界，就会逐步好转。',
+      neutral: '实务基本盘正处在微调期，先把账目与基础盘稳住。'
+    }
+  }
+};
+
+/**
+ * Return localized orientation tag when card is reversed, or '' when upright.
+ */
+export function formatCardOrientationTag(card, lang = 'th') {
+  if (!card?.reversed) return '';
+  return ORIENTATION_TAG_I18N[normalizeLang(lang)] || ORIENTATION_TAG_I18N.th;
+}
+
+/**
+ * Return bracketed inline reversed badge ('[กลับหัว]' / '[Rev.]' / '[逆位]') or ''.
+ */
+export function formatCardOrientationBadge(card, lang = 'th') {
+  if (!card?.reversed) return '';
+  return ORIENTATION_BADGE_I18N[normalizeLang(lang)] || ORIENTATION_BADGE_I18N.th;
+}
+
+/**
+ * Return concise constructive reversed-energy nuance by suit/arcana and card tone, or '' when upright.
+ */
+export function getReversedEnergyNuance(card, lang = 'th') {
+  if (!card?.reversed) return '';
+  const target = normalizeLang(lang);
+  const suitKey = ['Major', 'Wands', 'Cups', 'Swords', 'Pentacles'].includes(card.suit) ? card.suit : 'Major';
+  const toneKey = ['good', 'warn', 'neutral'].includes(card.tone) ? card.tone : 'neutral';
+  return REVERSED_NUANCE_I18N[target]?.[suitKey]?.[toneKey] || '';
+}
+
 /**
  * Resolve card meanings localized to 'th' | 'en' | 'zh'
  */
@@ -223,11 +346,21 @@ export function getLocalizedCardData(card, lang = 'th') {
       work: '',
       money: '',
       love: '',
-      advice: ''
+      advice: '',
+      reversed: false,
+      orientationTag: '',
+      orientationBadge: '',
+      reversedNuance: ''
     };
   }
   const arr = CARDS_I18N[card.uid];
   const zhTitle = arr?.[0] || card.name;
+  const revMeta = {
+    reversed: Boolean(card.reversed),
+    orientationTag: formatCardOrientationTag(card, target),
+    orientationBadge: formatCardOrientationBadge(card, target),
+    reversedNuance: getReversedEnergyNuance(card, target)
+  };
   if (target === 'en') {
     return {
       title: card.name,
@@ -237,7 +370,8 @@ export function getLocalizedCardData(card, lang = 'th') {
       work: arr?.[2] || card.work,
       money: arr?.[3] || card.money,
       love: arr?.[4] || card.love,
-      advice: arr?.[5] || card.advice
+      advice: arr?.[5] || card.advice,
+      ...revMeta
     };
   }
   if (target === 'zh') {
@@ -249,7 +383,8 @@ export function getLocalizedCardData(card, lang = 'th') {
       work: arr?.[7] || card.work,
       money: arr?.[8] || card.money,
       love: arr?.[9] || card.love,
-      advice: arr?.[10] || card.advice
+      advice: arr?.[10] || card.advice,
+      ...revMeta
     };
   }
   return {
@@ -260,7 +395,8 @@ export function getLocalizedCardData(card, lang = 'th') {
     work: card.work,
     money: card.money,
     love: card.love,
-    advice: card.advice
+    advice: card.advice,
+    ...revMeta
   };
 }
 
@@ -276,12 +412,15 @@ export function getLocalizedCelticPositions(lang = 'th') {
 export function getLocalizedCardLabelInline(card, lang = 'th') {
   const target = normalizeLang(lang);
   if (!card) return '';
-  if (target === 'en') return card.name;
+  const badge = formatCardOrientationBadge(card, target);
+  const revSuffix = badge ? ` ${badge}` : '';
+  if (target === 'en') return `${card.name}${revSuffix}`;
   if (target === 'zh') {
     const zh = CARDS_I18N[card.uid]?.[0];
-    return zh ? `${zh} (${card.name})` : card.name;
+    const base = zh ? `${zh} (${card.name})` : card.name;
+    return `${base}${revSuffix}`;
   }
-  return `${card.name} (${card.th})`;
+  return `${card.name} (${card.th})${revSuffix}`;
 }
 
 export function getLocalizedCardShortName(card, lang = 'th') {

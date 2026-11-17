@@ -113,8 +113,35 @@ function loadProjectEnv() {
 
 loadProjectEnv();
 
-function resolveApiKey() {
+export function getGeminiApiKey() {
   return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+}
+
+function createGeminiClient(apiKey, options = {}) {
+  if (typeof options?.createAiClient === 'function') {
+    return options.createAiClient(apiKey);
+  }
+  return new GoogleGenAI({ apiKey, httpOptions: { timeout: 22000 } });
+}
+
+function getCandidateGeminiModels() {
+  const activeOrder = GEMINI_MODEL_ORDER.filter((m) => !isModelOnCooldown(m));
+  return activeOrder.length > 0 ? activeOrder : GEMINI_MODEL_ORDER;
+}
+
+function resolveClientIp(req) {
+  const fwd = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim();
+  return fwd || req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+function writeSseEvent(res, eventName, payload) {
+  if (!res || res.writableEnded || res.destroyed) return false;
+  try {
+    res.write(`event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function readUsersDB() {
@@ -254,18 +281,28 @@ export const SATI_SYSTEM_PROMPT = `คุณคือ "สติ" นักอ�
   * คำถามกว้างเกินไป (isBroadOpen=true): ตอบแกนหลักที่เห็นจากไพ่ตรงหน้าให้เกิดประโยชน์ทันที แล้วปิดท้ายย่อหน้า 3 ด้วยคำถามสั้นๆ 1 ข้อเพื่อให้ผู้ถามเจาะประเด็นต่อ
 - ห้ามยัดเยียดสูตรสำเร็จ: ห้ามอ้าง "อักษรกาลกิณีในชื่อ" ในทุกคำถามทั่วไป (อ้างถึงเฉพาะรอบเปิดพื้นดวง 10 ใบแรก หรือเมื่อคำถามและหน้าไพ่ฟ้องปมสื่อสาร/ชื่อเสียง/จุดบอดส่วนตัวจริงๆ) และห้ามยัดประโยค "ภายนอกนิ่งข้างในแบกหนัก" หรือโทนดราม่าหนักเกินจริงให้กับไพ่ Minor ทั่วไป
 - กรณีแจ้งว่าเปลี่ยนประเด็น (topicSwitchedFrom): ให้อธิบายสั้นๆ ว่าไพ่บนโต๊ะรอบก่อนเป็นคนละหัวข้อ ระบบจึงดึงไพ่พื้นดวง 10 ใบมาอ่านให้แทน และชวนกดจั่วเพิ่ม 1-3 ใบหากอยากเจาะเรื่องใหม่นี้ให้ลึกขึ้น
+- กรณีไพ่กลับหัว (Reversed): เมื่อหน้าไพ่ระบุ [กลับหัว / Reversed] ให้อ่านอย่างสร้างสรรค์ว่าเป็นพลังงานที่ติดขัดหรือเก็บไว้ภายใน จังหวะที่ถูกหน่วง/เลื่อนเวลา หรือจุดบอดที่เจ้าชะตาลงมือปรับแก้ได้ ห้ามทำนายแบบโชคร้ายตายตัวหรือขู่ให้หมดหวังเด็ดขาด
+- หากมีข้อมูลโครงสร้างไพ่ทั้งชุด (Spread Patterns) หรือความต่อเนื่องจากรอบก่อน (Cross-Session Memory) ให้ร้อยเรียงเข้ากับการอ่านอย่างเป็นธรรมชาติโดยไม่ทวนรายงานเป็นข้อๆ
 รูปแบบการตอบ: คงโครงสร้าง 3 ย่อหน้าสั้นๆ อ่านจบไว อ่านทะลุใจ และตรงประเด็นโดยไม่เกริ่นน้ำท่วมทุ่ง:
 1. ย่อหน้าแรก (อ่านใจ Subtext + ฟันธงตรงคำถาม): จับความรู้สึกหรือปมลึกๆ หลังคำถามทันที แล้วฟันธงคำตอบตรงรูปคำถามตั้งแต่ย่อหน้านี้ ทักว่าถามซ้ำเฉพาะเมื่อถามคำถามเดิมแทบจะเหมือนกันภายในสำรับเดียวกันโดยไม่ได้กดขยายคำถามเดิมเท่านั้น ห้ามทักว่าถามซ้ำเมื่อขึ้นสำรับใหม่หรือเปลี่ยนประเด็น
 2. ย่อหน้ากลาง (ผูกหน้าไพ่ + พื้นดวง + Golden Dawn Elemental Dignity เป็นภาพชีวิตจริง): ห้ามไล่ชื่อไพ่ทั้ง 10 ใบเรียงข้อเหมือนท่องตำรา ให้คัดเฉพาะไพ่แกนหลัก 2–5 ใบที่ปะทะหรือเสริมแรงกันมากที่สุด ร้อยเรียงเป็นเรื่องเดียวเชื่อมกับธาตุทักษา ช่วงวัย/ข้อเท็จจริงชีวิตจริงที่ผู้ถามเล่า (userFacts) และกำลังธาตุไพ่ (ไฟ+ลมเสริมแรงไว / น้ำ+ดินปั้นผลมั่นคง / ไฟ+น้ำขัดกันในใจ / ลม+ดินคิดชนข้อจำกัดจริง) แปลเป็นพฤติกรรมจริงที่จับต้องได้ ห้ามพูดประโยคหว่านแหแบบ Barnum ที่ใช้ได้กับทุกคน ห้ามขึ้นบุลเล็ต (• หรือ 1) 2)) และห้ามก๊อปคำซ้ำ
 3. ย่อหน้าท้าย (จุดระวังเฉพาะเรื่อง + ก้าวแรกที่ลงมือได้วันนี้): ชี้ราคาที่ต้องจ่าย (Trade-off) หรือจุดระวังที่สอดคล้องกับหน้าไพ่จริงอย่างเพื่อนหวังดี ปิดด้วย 1 ก้าวแรกที่เป็นรูปธรรม (หรือ 1 คำถามชวนเจาะจงหากคำถามกว้างมาก)
 4. ข้อห้ามเด็ดขาด: ตอบด้วย Target Language เท่านั้น (ไทย / English / 简体中文) ห้ามใส่อีโมจิ ห้ามใช้เครื่องหมายดอกจัน (** หรือ *) หรือ Markdown ห้ามใช้คำว่า AI เอไอ บอท chatbot จอมเวท ไม่อวย สรุปตรงๆ ห้ามใส่หัวข้อแข็งๆ ห้ามขึ้นต้นหรือลงท้ายซ้ำสำนวนเดิมจากรอบก่อนหน้าเด็ดขาด ห้ามมโนอ้างชื่อไพ่ที่ไม่ได้เปิดอยู่บนโต๊ะตอนนี้ และห้ามปิดท้ายด้วยจำนวนไพ่ที่เหลือในสำรับ เช่น "(เหลือไพ่ในสำรับ XX ใบ)" หรือสอนวิธีใช้งานปุ่มในแอป`;
 
-function sanitizeSatiText(rawText, lang = 'th') {
+export function sanitizeStreamChunk(chunkText) {
+  if (!chunkText) return '';
+  return String(chunkText)
+    .replace(/\*+/g, '')
+    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '');
+}
+
+export function sanitizeSatiText(rawText, lang = 'th') {
   if (!rawText) return '';
   const selfName = lang === 'en' ? 'Sati' : lang === 'zh' ? '思谛' : 'สติ';
   return rawText
     .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
     .replace(/\*{1,3}([^*\n]+)\*{1,3}/g, '$1')
+    .replace(/\*+/g, '')
     .replace(/^#{1,6}\s*/gm, '')
     .replace(/\b(AI|เอไอ|บอท|Bot|chatbot)\b/gi, selfName)
     .replace(/จอมเวท/gi, 'หมอดู')
@@ -351,13 +388,16 @@ function resolveExtendedNatalInfo(userProfile = {}) {
   };
 }
 
-export async function handleSatiReadRequest(body) {
+export function buildSatiPromptBundle(body = {}) {
   const {
     userProfile,
     natalCards,
     activeSpread,
+    cards,
     remainingCount,
     elementalDignity,
+    spreadPatterns = '',
+    pastSessionMemory = '',
     question,
     recentHistory,
     isNatal10,
@@ -369,16 +409,8 @@ export async function handleSatiReadRequest(body) {
     topicSwitchedFrom = '',
     isExpandFollowUp: bodyIsExpand = false,
     lang: rawLang
-  } = body || {};
+  } = body && typeof body === 'object' ? body : {};
   const lang = rawLang === 'en' || rawLang === 'zh' ? rawLang : 'th';
-  const apiKey = resolveApiKey();
-
-  if (!apiKey) {
-    return {
-      fallback: true,
-      reason: 'NO_SERVER_API_KEY'
-    };
-  }
 
   const targetLangDesc = lang === 'en'
     ? 'English (respond completely in warm, direct, candid natural English as Sati)'
@@ -386,14 +418,20 @@ export async function handleSatiReadRequest(body) {
       ? 'Simplified Chinese / 简体中文 (completely respond in warm, direct, candid natural Chinese as 思谛)'
       : 'Thai / ภาษาไทย (ตอบเป็นภาษาไทยธรรมชาติ จริงใจ เป็นกันเองเหมือนเพื่อน)';
 
-  const spreadArr = Array.isArray(activeSpread) ? activeSpread : [];
+  const spreadArr = Array.isArray(activeSpread) && activeSpread.length > 0
+    ? activeSpread
+    : (Array.isArray(cards) ? cards : (Array.isArray(activeSpread) ? activeSpread : []));
   const positions3 = ['สถานการณ์ตอนนี้', 'ตัวแปร/จุดที่ต้องระวัง', 'บทสรุป/ทางออก'];
   const formattedSpread = spreadArr.map((c, idx) => {
     const posLabel = (isNatal10 || (Boolean(topicSwitchedFrom) && spreadArr.length === 10)) && Array.isArray(celticPositions)
       ? (celticPositions[idx] || `ตำแหน่งที่ ${idx + 1}`)
       : (spreadArr.length === 1 ? 'คำตอบหลัก' : (positions3[idx] || `ใบที่ ${idx + 1}`));
-    const aspects = [c.work && `งาน:${c.work}`, c.money && `เงิน:${c.money}`, c.love && `รัก:${c.love}`, c.advice && `แนะ:${c.advice}`].filter(Boolean).join(' | ');
-    return `- [${posLabel}] ${c.name} (${c.th}) [ธาตุ:${c.suit || 'Major'}${c.tone ? `, โทน:${c.tone}` : ''}]: ${c.core}${aspects ? ` (${aspects})` : ''}`;
+    const orientationTag = c?.reversed ? ' [กลับหัว / Reversed]' : '';
+    const aspects = [c?.work && `งาน:${c.work}`, c?.money && `เงิน:${c.money}`, c?.love && `รัก:${c.love}`, c?.advice && `แนะ:${c.advice}`].filter(Boolean).join(' | ');
+    const namePart = c?.name || 'Unknown';
+    const thPart = c?.th ? ` (${c.th})` : '';
+    const corePart = c?.core ? `: ${c.core}` : '';
+    return `- [${posLabel}] ${namePart}${thPart}${orientationTag} [ธาตุ:${c?.suit || 'Major'}${c?.tone ? `, โทน:${c.tone}` : ''}]${corePart}${aspects ? ` (${aspects})` : ''}`;
   }).join('\n');
 
   const kal = userProfile?.thaksaDetails?.hasKalakini
@@ -432,6 +470,9 @@ export async function handleSatiReadRequest(body) {
   const switchLine = topicSwitchedFrom
     ? `คำสั่งสำคัญเมื่อเปลี่ยนประเด็น: ไพ่ 3 ใบเดิมบนโต๊ะถูกเปิดไว้สำหรับหัวข้อ "${topicSwitchedFrom}" จึงดึงไพ่พื้นดวง 10 ใบมาใช้อ่านให้แทนในรอบนี้ — ให้บอกผู้ถามสั้นๆ อย่างเป็นมิตรว่ากำลังอ่านจากไพ่พื้นดวงหลัก และแนะนำให้กดจั่วไพ่เพิ่ม 1-3 ใบหากอยากเจาะลึกเรื่องใหม่นี้โดยตรง`
     : '';
+  const cleanSpreadPatterns = typeof spreadPatterns === 'string' ? spreadPatterns.trim() : '';
+  const cleanPastMemory = typeof pastSessionMemory === 'string' ? pastSessionMemory.trim() : '';
+  const hasReversed = spreadArr.some((c) => Boolean(c?.reversed));
 
   const userContext = [
     `Target Language: ${targetLangDesc}`,
@@ -441,10 +482,12 @@ export async function handleSatiReadRequest(body) {
     extNatalLine,
     `ทักษาชื่อ 8 ภูมิ: เด่น ${userProfile?.thaksaStrength || ''} | ${kal}${thaksaRolesSummary ? ` | รายละเอียดภูมิ:${thaksaRolesSummary}` : ''} | ไพ่ประจำตัว: ${userProfile?.birthCard || ''}`,
     factsLine,
-    `ไพ่พื้นดวง 10 ใบแรก: ${(natalCards || []).map((c, i) => `${i + 1}.${c.name}(${c.th})`).join(', ')}`,
+    `ไพ่พื้นดวง 10 ใบแรก: ${(natalCards || []).map((c, i) => `${i + 1}.${c?.name || 'Unknown'}${c?.th ? `(${c.th})` : ''}${c?.reversed ? '[กลับหัว]' : ''}`).join(', ')}`,
     `ไพ่ที่เปิดอยู่บนโต๊ะตอนนี้ (${spreadArr.length} ใบ):\n${formattedSpread || 'ยังไม่มีไพ่เปิดเพิ่มเติม'}`,
     elementalDignity ? `กำลังธาตุไพ่ (Golden Dawn Dignity): ${elementalDignity}` : '',
+    cleanSpreadPatterns ? `ภาพรวมโครงสร้างไพ่ทั้งชุด (Spread Patterns): ${cleanSpreadPatterns}` : '',
     `ไพ่คงเหลือในสำรับ: ${remainingCount ?? 68}/78 ใบ`,
+    cleanPastMemory ? `ความต่อเนื่องจากรอบก่อนหน้า (Cross-Session Memory): ${cleanPastMemory}` : '',
     digestText ? `สรุปบทสนทนาล่าสุดในสำรับนี้:\n${digestText}` : '',
     recentOpenings.length ? `ประโยคเปิดที่ใช้ไปแล้วในตาก่อนหน้า (ห้ามขึ้นต้นซ้ำเด็ดขาด ให้เปลี่ยนมุมเปิดใหม่): ${recentOpenings.join(' | ')}` : '',
     `คำสั่งสไตล์การเปิดประโยคตานี้: ${openingDirective}`,
@@ -456,16 +499,35 @@ export async function handleSatiReadRequest(body) {
     `คำถามล่าสุดที่ต้องตอบให้ตรงประเด็น: "${question || 'ช่วยอ่านสถานการณ์และคำแนะนำตรงๆ จากไพ่ชุดนี้'}"`
   ].filter(Boolean).join('\n');
 
-  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 22000 } });
+  return {
+    lang,
+    systemInstruction: SATI_SYSTEM_PROMPT,
+    userContext,
+    formattedSpread,
+    hasReversed
+  };
+}
+
+export async function handleSatiReadRequest(body, options = {}) {
+  const apiKey = getGeminiApiKey();
+
+  if (!apiKey) {
+    return {
+      fallback: true,
+      reason: 'NO_SERVER_API_KEY'
+    };
+  }
+
+  const { lang, systemInstruction, userContext } = buildSatiPromptBundle(body);
+  const ai = createGeminiClient(apiKey, options);
   let rawOutput = '';
   let usedModel = PRIMARY_GEMINI_MODEL;
   let lastErr = null;
 
-  const activeOrder = GEMINI_MODEL_ORDER.filter((m) => !isModelOnCooldown(m));
-  const candidateModels = activeOrder.length > 0 ? activeOrder : GEMINI_MODEL_ORDER;
+  const candidateModels = getCandidateGeminiModels();
 
   for (const model of candidateModels) {
-    const config = buildModelGenerateConfig(model, SATI_SYSTEM_PROMPT);
+    const config = buildModelGenerateConfig(model, systemInstruction);
     try {
       const response = await ai.models.generateContent({
         model,
@@ -494,13 +556,13 @@ export async function handleSatiReadRequest(body) {
   return { reply, fallback: false, model: usedModel };
 }
 
-export function createSatiExpressApp() {
+export function createSatiExpressApp(options = {}) {
   const app = express();
   app.use(cors());
   app.use(express.json({ limit: '2mb' }));
 
   app.get('/api/sati/health', (_req, res) => {
-    const hasKey = Boolean(resolveApiKey());
+    const hasKey = Boolean(getGeminiApiKey());
     const emailCfg = resolveFeedbackEmailConfig();
     res.json({
       ok: true,
@@ -534,8 +596,7 @@ export function createSatiExpressApp() {
   });
 
   app.post('/api/sati/read', async (req, res) => {
-    const fwd = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim();
-    const clientIp = fwd || req.ip || req.socket?.remoteAddress || 'unknown';
+    const clientIp = resolveClientIp(req);
     const rl = checkReadRateLimit(clientIp);
     if (!rl.allowed) {
       return res.status(429).json({
@@ -545,13 +606,166 @@ export function createSatiExpressApp() {
       });
     }
     try {
-      const result = await handleSatiReadRequest(req.body);
+      const result = await handleSatiReadRequest(req.body, options);
       return res.json(result);
     } catch (err) {
       return res.json({
         fallback: true,
         reason: err.message || 'API_ERROR'
       });
+    }
+  });
+
+  app.post('/api/sati/read/stream', async (req, res) => {
+    const clientIp = resolveClientIp(req);
+    const rl = checkReadRateLimit(clientIp);
+    if (!rl.allowed) {
+      return res.status(429).json({
+        fallback: true,
+        rateLimited: true,
+        reason: 'RATE_LIMITED',
+        error: 'RATE_LIMITED'
+      });
+    }
+
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) {
+      return res.json({
+        fallback: true,
+        reason: 'NO_SERVER_API_KEY'
+      });
+    }
+
+    let promptBundle;
+    try {
+      promptBundle = buildSatiPromptBundle(req.body);
+    } catch (err) {
+      return res.json({
+        fallback: true,
+        reason: err?.message || 'PROMPT_BUILD_ERROR'
+      });
+    }
+
+    res.status(200);
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    if (typeof res.flushHeaders === 'function') {
+      res.flushHeaders();
+    }
+
+    const abortController = new AbortController();
+    let clientClosed = false;
+    const handleDisconnect = () => {
+      if (res.writableEnded || res.writableFinished) return;
+      clientClosed = true;
+      if (!abortController.signal.aborted) {
+        abortController.abort();
+      }
+    };
+    const handleReqClose = () => {
+      if (!req.complete) handleDisconnect();
+    };
+    res.on('close', handleDisconnect);
+    req.on('aborted', handleDisconnect);
+    req.on('close', handleReqClose);
+
+    const { lang, systemInstruction, userContext } = promptBundle;
+    const ai = createGeminiClient(apiKey, options);
+    const candidateModels = getCandidateGeminiModels();
+
+    let streamedToClient = false;
+    let completed = false;
+    let lastErr = null;
+
+    try {
+      for (const model of candidateModels) {
+        if (clientClosed || abortController.signal.aborted || res.writableEnded) break;
+
+        const config = {
+          ...buildModelGenerateConfig(model, systemInstruction),
+          abortSignal: abortController.signal
+        };
+        let modelRawOutput = '';
+        let metaSentForModel = false;
+
+        try {
+          const stream = await ai.models.generateContentStream({
+            model,
+            contents: userContext,
+            config
+          });
+
+          for await (const chunk of stream) {
+            if (clientClosed || abortController.signal.aborted || res.writableEnded) break;
+            const rawChunkText = typeof chunk?.text === 'string' ? chunk.text : '';
+            if (!rawChunkText) continue;
+
+            modelRawOutput += rawChunkText;
+            const safeChunk = sanitizeStreamChunk(rawChunkText);
+            if (!safeChunk) continue;
+
+            if (!metaSentForModel) {
+              writeSseEvent(res, 'meta', { model });
+              metaSentForModel = true;
+            }
+            writeSseEvent(res, 'chunk', { text: safeChunk });
+            streamedToClient = true;
+          }
+
+          if (clientClosed || abortController.signal.aborted || res.writableEnded) {
+            break;
+          }
+
+          const sanitizedReply = sanitizeSatiText(modelRawOutput, lang);
+          if (sanitizedReply) {
+            if (!metaSentForModel) {
+              writeSseEvent(res, 'meta', { model });
+            }
+            writeSseEvent(res, 'done', {
+              ok: true,
+              model,
+              reply: sanitizedReply,
+              fallback: false
+            });
+            completed = true;
+            break;
+          }
+
+          if (streamedToClient) {
+            lastErr = new Error('EMPTY_MODEL_OUTPUT');
+            break;
+          }
+        } catch (err) {
+          if (clientClosed || abortController.signal.aborted) {
+            break;
+          }
+          lastErr = err;
+          const msg = String(err?.message || err || '');
+          if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg)) {
+            markModelQuotaCooldown(model, msg);
+          }
+          if (streamedToClient) {
+            break;
+          }
+        }
+      }
+
+      if (!completed && !clientClosed && !abortController.signal.aborted && !res.writableEnded) {
+        writeSseEvent(res, 'fallback', {
+          ok: false,
+          fallback: true,
+          reason: lastErr?.message || 'EMPTY_MODEL_OUTPUT'
+        });
+      }
+    } finally {
+      res.off('close', handleDisconnect);
+      req.off('aborted', handleDisconnect);
+      req.off('close', handleReqClose);
+      if (!res.writableEnded) {
+        res.end();
+      }
     }
   });
 

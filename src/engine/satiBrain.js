@@ -10,7 +10,10 @@ import {
   getLocalizedCardData,
   getLocalizedCardLabelInline,
   getLocalizedCardShortName,
-  getLocalizedCelticPositions
+  getLocalizedCelticPositions,
+  formatCardOrientationTag,
+  formatCardOrientationBadge,
+  getReversedEnergyNuance
 } from '../data/tarot78I18n.js';
 
 export const THAKSA_GROUPS = [
@@ -283,6 +286,12 @@ export function buildNatal10Reading(state, rawCards) {
   const kalChars = (state.user.thaksaDetails?.kalakiniChars || []).join(',');
   const outcomeTone = scoreCardPolarity(cOutcome);
 
+  const revCards = cards.filter((c) => Boolean(c?.reversed));
+  const revTitle = (c, d, lng) => {
+    const b = formatCardOrientationBadge(c, lng);
+    return b ? `${d.title} ${b}` : d.title;
+  };
+
   if (lang === 'en') {
     const dayText = dayI18n?.day || state.user.dayName;
     const elemText = dayI18n?.elem || state.user.elemShort || 'Balanced';
@@ -300,7 +309,10 @@ export function buildNatal10Reading(state, rawCards) {
     const dNear = getLocalizedCardData(cNear, 'en');
     const dOut = getLocalizedCardData(cOutcome, 'en');
 
-    const p2 = `Across the 10 cards you pulled, things right now sit on ${dPres.title} — ${dPres.core} Meanwhile, ${dObs.title} shows the friction crossing your path: ${dObs.core} For work, ${dGoal.title} highlights: ${dGoal.work} On money, ${dNear.title} adds: ${dNear.money}`;
+    const revNoteEn = revCards.length > 0
+      ? ` ${revCards.length} reversed card${revCards.length > 1 ? 's' : ''} here signal internalized or delayed energy waiting for deliberate alignment.`
+      : '';
+    const p2 = `Across the 10 cards you pulled, things right now sit on ${revTitle(cPresent, dPres, 'en')} — ${dPres.core} Meanwhile, ${revTitle(cObstacle, dObs, 'en')} shows the friction crossing your path: ${dObs.core} For work, ${revTitle(cGoal, dGoal, 'en')} highlights: ${dGoal.work} On money, ${revTitle(cNear, dNear, 'en')} adds: ${dNear.money}${revNoteEn}`;
 
     const advice = dOut.advice || dObs.advice || dGoal.advice;
     const outcomeLine = outcomeTone === 'caution'
@@ -308,7 +320,7 @@ export function buildNatal10Reading(state, rawCards) {
       : outcomeTone === 'favorable'
         ? `Momentum is genuinely opening up for you, ${nick}`
         : `How this lands comes down to steady balance, ${nick}`;
-    const p3 = `All of this lands at ${dOut.title} — ${dOut.core} ${outcomeLine} — ${advice}`;
+    const p3 = `All of this lands at ${revTitle(cOutcome, dOut, 'en')} — ${dOut.core} ${outcomeLine} — ${advice}`;
 
     return `${p1}\n\n${p2}\n\n${p3}`;
   }
@@ -330,7 +342,10 @@ export function buildNatal10Reading(state, rawCards) {
     const dNear = getLocalizedCardData(cNear, 'zh');
     const dOut = getLocalizedCardData(cOutcome, 'zh');
 
-    const p2 = `从你选出的这 10 张牌来看，当下主轴落在 ${dPres.title}，${dPres.core} 眼前的关键阻力或变量在于 ${dObs.title}，${dObs.core} 事业上 ${dGoal.title} 显示${dGoal.work} 财运上 ${dNear.title} 则提醒${dNear.money}`;
+    const revNoteZh = revCards.length > 0
+      ? ` 牌阵中有 ${revCards.length} 张逆位牌，表示部分能量暂时内收或放缓，需要先把内在顾虑理顺。`
+      : '';
+    const p2 = `从你选出的这 10 张牌来看，当下主轴落在 ${revTitle(cPresent, dPres, 'zh')}，${dPres.core} 眼前的关键阻力或变量在于 ${revTitle(cObstacle, dObs, 'zh')}，${dObs.core} 事业上 ${revTitle(cGoal, dGoal, 'zh')} 显示${dGoal.work} 财运上 ${revTitle(cNear, dNear, 'zh')} 则提醒${dNear.money}${revNoteZh}`;
 
     const advice = dOut.advice || dObs.advice || dGoal.advice;
     const outcomeLine = outcomeTone === 'caution'
@@ -338,7 +353,7 @@ export function buildNatal10Reading(state, rawCards) {
       : outcomeTone === 'favorable'
         ? `眼下顺势已经打开，${nick}`
         : `这段走势关键看你如何拿捏分寸，${nick}`;
-    const p3 = `整体走向收在 ${dOut.title}，${dOut.core} ${outcomeLine}——${advice}`;
+    const p3 = `整体走向收在 ${revTitle(cOutcome, dOut, 'zh')}，${dOut.core} ${outcomeLine}——${advice}`;
 
     return `${p1}\n\n${p2}\n\n${p3}`;
   }
@@ -353,16 +368,20 @@ export function buildNatal10Reading(state, rawCards) {
 
   const p1 = `สวัสดี${nick} พอผูกพื้นดวง${state.user.dayName} (ธาตุ${elemShort}) เข้ากับไพ่ประจำตัว ${state.user.birthCard} แล้ว ภาพของ${nick}ชัดเลยว่าเป็นคน${shortTrait} และมีจุดแข็งเด่นเรื่อง${topRoles}${kalShort}`;
 
+  const thLbl = (c) => getLocalizedCardLabelInline(c, 'th');
   const workVerb = scoreCardPolarity(cGoal) === 'caution' ? 'เตือนตรงๆ ว่า' : 'ชี้ว่า';
   const moneyVerb = scoreCardPolarity(cNear) === 'caution' ? 'ที่ต้องระวังตรงที่' : 'ซึ่ง';
-  const p2 = `จากไพ่ 10 ใบที่${nick}เลือกขึ้นมา ตอนนี้เรื่องหลักอยู่ที่ ${cPresent.name} (${cPresent.th}) คือ${cPresent.core} โดยมีโจทย์ตรงหน้าผ่าน ${cObstacle.name} (${cObstacle.th}) ตรงที่${cObstacle.core} ส่วนเรื่องงานมี ${cGoal.name} (${cGoal.th}) ${workVerb}${getCardMeaningForTopic(cGoal, 'work')} ขณะที่เรื่องเงินมากับ ${cNear.name} (${cNear.th}) ${moneyVerb}${getCardMeaningForTopic(cNear, 'money')}`;
+  const revNoteTh = revCards.length > 0
+    ? ` โดยมีไพ่กลับหัว ${revCards.length} ใบที่สะท้อนพลังงานที่ยังชะลอหรือติดค้างจากภายใน รอให้จัดจังหวะใหม่`
+    : '';
+  const p2 = `จากไพ่ 10 ใบที่${nick}เลือกขึ้นมา ตอนนี้เรื่องหลักอยู่ที่ ${thLbl(cPresent)} คือ${cPresent.core} โดยมีโจทย์ตรงหน้าผ่าน ${thLbl(cObstacle)} ตรงที่${cObstacle.core} ส่วนเรื่องงานมี ${thLbl(cGoal)} ${workVerb}${getCardMeaningForTopic(cGoal, 'work')} ขณะที่เรื่องเงินมากับ ${thLbl(cNear)} ${moneyVerb}${getCardMeaningForTopic(cNear, 'money')}${revNoteTh}`;
 
   const advice = cOutcome.advice || cObstacle.advice || cGoal.advice;
   const p3 = outcomeTone === 'caution'
-    ? `ภาพรวมปลายทางไปจบที่ ${cOutcome.name} (${cOutcome.th}) ที่เตือนให้ระวังว่า${cOutcome.core} จังหวะนี้${nick}อย่าเพิ่งรีบฝืนดันนะ — ${advice}`
+    ? `ภาพรวมปลายทางไปจบที่ ${thLbl(cOutcome)} ที่เตือนให้ระวังว่า${cOutcome.core} จังหวะนี้${nick}อย่าเพิ่งรีบฝืนดันนะ — ${advice}`
     : outcomeTone === 'favorable'
-      ? `ภาพรวมปลายทางเปิดรับสวยที่ ${cOutcome.name} (${cOutcome.th}) ชี้ว่า${cOutcome.core} ทิศทางรอบนี้เป็นใจให้ค่อยๆ ไปต่อได้เลย — ${advice}`
-      : `ภาพรวมปลายทางมาตกที่ ${cOutcome.name} (${cOutcome.th}) ซึ่งสะท้อนว่า${cOutcome.core} จุดชี้ขาดรอบนี้อยู่ที่การปรับสมดุลให้พอดี — ${advice}`;
+      ? `ภาพรวมปลายทางเปิดรับสวยที่ ${thLbl(cOutcome)} ชี้ว่า${cOutcome.core} ทิศทางรอบนี้เป็นใจให้ค่อยๆ ไปต่อได้เลย — ${advice}`
+      : `ภาพรวมปลายทางมาตกที่ ${thLbl(cOutcome)} ซึ่งสะท้อนว่า${cOutcome.core} จุดชี้ขาดรอบนี้อยู่ที่การปรับสมดุลให้พอดี — ${advice}`;
 
   return `${p1}\n\n${p2}\n\n${p3}`;
 }
@@ -505,6 +524,108 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
   return [pairLine, cycleLine].filter(Boolean).join(' ');
 }
 
+const SUIT_META_PATTERN = {
+  Wands: { th: 'ไฟ/ไม้เท้า', en: 'Fire/Wands', zh: '火/权杖', missTh: 'เติมไฟลงมือ', missEn: 'add decisive action', missZh: '补足行动力' },
+  Cups: { th: 'น้ำ/ถ้วย', en: 'Water/Cups', zh: '水/圣杯', missTh: 'ฟังใจและคนรอบข้าง', missEn: 'tend feelings & bonds', missZh: '顾及感受与连接' },
+  Swords: { th: 'ลม/ดาบ', en: 'Air/Swords', zh: '风/宝剑', missTh: 'เช็กเหตุผลและคุยตรง', missEn: 'verify facts clearly', missZh: '核对逻辑与沟通' },
+  Pentacles: { th: 'ดิน/เหรียญ', en: 'Earth/Pentacles', zh: '土/星币', missTh: 'วางแผนและตัวเลขจริง', missEn: 'ground in real numbers', missZh: '落实计划与数字' }
+};
+
+const RANK_SHORT = {
+  Ace: 'Ace', Two: '2', Three: '3', Four: '4', Five: '5',
+  Six: '6', Seven: '7', Eight: '8', Nine: '9', Ten: '10',
+  Page: 'Page', Knight: 'Knight', Queen: 'Queen', King: 'King'
+};
+
+/**
+ * Compute compact spread-level synthesis (Major density >=50%, repeated ranks, dominant/missing suits, reversed ratio).
+ */
+export function analyzeSpreadPatterns(cards, lang = 'th') {
+  const target = normalizeLang(lang);
+  const list = hydrateDeckCards(Array.isArray(cards) ? cards : []).filter(Boolean);
+  if (list.length < 2) return '';
+
+  const total = list.length;
+  const majorCount = list.filter((c) => c.suit === 'Major').length;
+  const revCount = list.filter((c) => Boolean(c.reversed)).length;
+  const suitCounts = { Wands: 0, Cups: 0, Swords: 0, Pentacles: 0 };
+  const rankCounts = new Map();
+
+  list.forEach((c) => {
+    if (c.suit && Object.prototype.hasOwnProperty.call(suitCounts, c.suit)) {
+      suitCounts[c.suit] += 1;
+      const rawRank = String(c.name || '').split(' ')[0];
+      if (RANK_SHORT[rawRank]) {
+        rankCounts.set(rawRank, (rankCounts.get(rawRank) || 0) + 1);
+      }
+    }
+  });
+
+  const parts = [];
+
+  if (majorCount / total >= 0.5) {
+    if (target === 'en') parts.push(`Major Arcana ${majorCount}/${total} (pivotal turning point)`);
+    else if (target === 'zh') parts.push(`大阿卡纳 ${majorCount}/${total}（关键转折定调）`);
+    else parts.push(`ไพ่ใหญ่ ${majorCount}/${total} ใบ (จุดเปลี่ยนสำคัญคุมเกม)`);
+  }
+
+  const repeated = [...rankCounts.entries()].filter(([, cnt]) => cnt >= 2).slice(0, 2);
+  if (repeated.length > 0) {
+    const repLabel = repeated.map(([rk, cnt]) => `${RANK_SHORT[rk]}×${cnt}`).join(', ');
+    if (target === 'en') parts.push(`Repeated rank ${repLabel}`);
+    else if (target === 'zh') parts.push(`重复牌阶 ${repLabel}`);
+    else parts.push(`เลข/หน้าไพ่ซ้ำ ${repLabel}`);
+  }
+
+  const suitEntries = Object.entries(suitCounts);
+  const sortedSuits = [...suitEntries].sort((a, b) => b[1] - a[1]);
+  const [topSuit, topCnt] = sortedSuits[0];
+  const missingSuits = suitEntries.filter(([, cnt]) => cnt === 0).map(([k]) => k);
+
+  if (topCnt >= 2) {
+    const domName = SUIT_META_PATTERN[topSuit][target];
+    if (total >= 3 && missingSuits.length > 0) {
+      const primaryMiss = missingSuits.includes('Pentacles') ? 'Pentacles' : missingSuits[0];
+      const missNames = missingSuits.slice(0, 2).map((s) => SUIT_META_PATTERN[s][target]).join('/');
+      const missAdvice = SUIT_META_PATTERN[primaryMiss][target === 'en' ? 'missEn' : target === 'zh' ? 'missZh' : 'missTh'];
+      if (target === 'en') parts.push(`Dominant ${domName}; missing ${missNames} (${missAdvice})`);
+      else if (target === 'zh') parts.push(`主导${domName}，缺${missNames}（宜${missAdvice}）`);
+      else parts.push(`เด่น${domName} · ขาด${missNames} (${missAdvice})`);
+    } else {
+      if (target === 'en') parts.push(`Dominant ${domName} (${topCnt}/${total})`);
+      else if (target === 'zh') parts.push(`主导${domName}（${topCnt}/${total}）`);
+      else parts.push(`เด่น${domName} (${topCnt}/${total})`);
+    }
+  } else if (total >= 3 && missingSuits.length > 0 && missingSuits.length <= 2) {
+    const primaryMiss = missingSuits[0];
+    const missNames = missingSuits.map((s) => SUIT_META_PATTERN[s][target]).join('/');
+    const missAdvice = SUIT_META_PATTERN[primaryMiss][target === 'en' ? 'missEn' : target === 'zh' ? 'missZh' : 'missTh'];
+    if (target === 'en') parts.push(`Missing ${missNames} (${missAdvice})`);
+    else if (target === 'zh') parts.push(`缺${missNames}（宜${missAdvice}）`);
+    else parts.push(`ขาด${missNames} (${missAdvice})`);
+  }
+
+  if (revCount > 0) {
+    const heavyRev = revCount / total >= 0.5;
+    if (target === 'en') {
+      parts.push(`Reversed ${revCount}/${total} (${heavyRev ? 'blocked/inward energy — clear friction first' : 'localized delay'})`);
+    } else if (target === 'zh') {
+      parts.push(`逆位 ${revCount}/${total}（${heavyRev ? '内在阻滞较多，先理顺卡点' : '局部放缓需内省'}）`);
+    } else {
+      parts.push(`กลับหัว ${revCount}/${total} (${heavyRev ? 'พลังติดขัดภายในเยอะ ค่อยๆ คลายก่อนเร่ง' : 'มีจุดชะลอเฉพาะจุด'})`);
+    }
+  }
+
+  if (parts.length === 0) return '';
+  let out = '';
+  for (const p of parts) {
+    const next = out ? `${out} · ${p}` : p;
+    if (next.length <= 280) out = next;
+    else break;
+  }
+  return out || `${parts[0].slice(0, 277)}...`;
+}
+
 function cleanChoiceOption(s, isFirst, lang = 'th') {
   if (lang === 'en') {
     return (s || '').replace(/^(should i|choose between|between|is it better to)\s*/i, '').replace(/[?]+$/, '').trim() || (s || '').trim();
@@ -610,14 +731,20 @@ export function detectTopicAndIntent(q, prevTopic) {
 }
 
 export function scoreCardPolarity(card) {
-  if (card?.tone === 'warn') return 'caution';
-  if (card?.tone === 'good') return 'favorable';
-  if (card?.tone === 'neutral') return 'balanced';
-  const challenging = ['The Devil', 'The Tower', 'The Moon', 'The Hanged Man', 'Death', 'Three of Swords', 'Five of', 'Seven of', 'Eight of Swords', 'Nine of Swords', 'Ten of Swords', 'Ten of Wands'];
-  const strongPositive = ['The Sun', 'The Star', 'The World', 'The Magician', 'The Chariot', 'Wheel of Fortune', 'Ace of', 'Three of Pentacles', 'Six of Wands', 'Nine of Pentacles', 'Ten of Cups', 'Ten of Pentacles', 'King of', 'Queen of'];
-  if (challenging.some((k) => card.name.includes(k))) return 'caution';
-  if (strongPositive.some((k) => card.name.includes(k))) return 'favorable';
-  return 'balanced';
+  let base = 'balanced';
+  if (card?.tone === 'warn') base = 'caution';
+  else if (card?.tone === 'good') base = 'favorable';
+  else if (card?.tone === 'neutral') base = 'balanced';
+  else {
+    const challenging = ['The Devil', 'The Tower', 'The Moon', 'The Hanged Man', 'Death', 'Three of Swords', 'Five of', 'Seven of', 'Eight of Swords', 'Nine of Swords', 'Ten of Swords', 'Ten of Wands'];
+    const strongPositive = ['The Sun', 'The Star', 'The World', 'The Magician', 'The Chariot', 'Wheel of Fortune', 'Ace of', 'Three of Pentacles', 'Six of Wands', 'Nine of Pentacles', 'Ten of Cups', 'Ten of Pentacles', 'King of', 'Queen of'];
+    if (challenging.some((k) => (card?.name || '').includes(k))) base = 'caution';
+    else if (strongPositive.some((k) => (card?.name || '').includes(k))) base = 'favorable';
+  }
+  if (card?.reversed && base === 'favorable') {
+    return 'balanced';
+  }
+  return base;
 }
 
 export function findMatchingNatalCard(state, topic, outcomeCard) {
@@ -818,6 +945,15 @@ function buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, nata
     if (lang === 'en') story += ` Notably, ${outcomeCard.name} echoes your natal chart — this lesson really matters right now.`;
     else if (lang === 'zh') story += ` 而且${getLocalizedCardShortName(outcomeCard, 'zh')}正好与你最初的本命牌重合，可见这是眼下关键课题。`;
     else story += ` อีกอย่างคือ ${outcomeCard.th} ซ้ำกับไพ่พื้นดวงตอนแรกของ${nick}พอดี แปลว่านี่คือบทเรียนหลักรอบนี้เลย`;
+  }
+  const revFocus = outcomeCard?.reversed ? outcomeCard : refCards.find((c) => Boolean(c?.reversed));
+  if (revFocus) {
+    const revNuance = getReversedEnergyNuance(revFocus, lang);
+    if (revNuance) {
+      if (lang === 'zh') story += `（逆位提示：${stripZhEnd(revNuance)}）`;
+      else if (lang === 'en') story += ` (${stripEnEnd(revNuance)})`;
+      else story += ` (${revNuance})`;
+    }
   }
   return story;
 }
@@ -1092,7 +1228,12 @@ function assembleBalancedReply(verdict, cardStory, actionAdvice, subtext, psychM
 
   const compact = `${verdict}\n\n${cardStory}\n\n${fallbackPrefix}${actionAdvice}`;
   if (compact.length <= 545) return compact;
-  return `${verdict}\n\n${cardStory}\n\n${actionAdvice}`;
+  const hardTail = `${verdict}\n\n${cardStory}\n\n${actionAdvice}`;
+  if (hardTail.length < 550) return hardTail;
+  const avail = Math.max(60, 545 - verdict.length - actionAdvice.length - 4);
+  const clippedStory = cardStory.length > avail ? `${cardStory.slice(0, Math.max(0, avail - 3)).trimEnd()}...` : cardStory;
+  const finalStr = `${verdict}\n\n${clippedStory}\n\n${actionAdvice}`;
+  return finalStr.length < 550 ? finalStr : `${finalStr.slice(0, 546).trimEnd()}...`;
 }
 
 export function synthesizeDeepReply(state, question, cards) {
@@ -1479,8 +1620,202 @@ export function buildDeckCarryoverSummary(state, lang = state?.lang || 'th') {
   return `${qPart}${tailCards.length ? ` (ไพ่ท้ายสำรับ: ${tailCards.join(', ')})` : ''}`.slice(0, 220);
 }
 
+const DOMAIN_SHORT_I18N = {
+  work: { th: 'งาน', en: 'Work', zh: '事业' },
+  money: { th: 'เงิน', en: 'Money', zh: '财运' },
+  love: { th: 'รัก', en: 'Love', zh: '感情' },
+  self: { th: 'ชีวิต/ตัวเอง', en: 'Self', zh: '个人' },
+  study: { th: 'เรียน/สอบ', en: 'Study', zh: '学业' },
+  health: { th: 'สุขภาพ', en: 'Health', zh: '健康' },
+  family: { th: 'ครอบครัว', en: 'Family', zh: '家庭' },
+  property: { th: 'บ้าน/รถ', en: 'Property', zh: '置业' },
+  general: { th: 'ภาพรวม', en: 'General', zh: '综合' }
+};
+
 /**
- * Call Gemini Proxy (`/api/sati/read`) with automatic localized Offline Fallback
+ * Digest the latest 2-3 archived sessions into a compact cross-session continuity note (<= 240 chars).
+ */
+export function buildCrossSessionMemorySummary(sessionArchives = [], lang = 'th') {
+  if (!Array.isArray(sessionArchives) || sessionArchives.length === 0) return '';
+  const target = normalizeLang(lang);
+  const hasTs = sessionArchives.some((s) => Number.isFinite(Date.parse(s?.endedAt)));
+  const ordered = hasTs
+    ? [...sessionArchives].sort((a, b) => (Date.parse(b?.endedAt || '') || 0) - (Date.parse(a?.endedAt || '') || 0))
+    : [...sessionArchives];
+  const recent = ordered.slice(0, 3);
+  const nonReadingPattern = /(เราชื่อสติ\s+เดี๋ยวรอบแรกนี้หยิบไพ่มา\s*10|ล้างไพ่ใหม่พร้อมแล้ว|ตอนนี้หยิบได้\s+\d+|คลิกไพ่ที่อยากถาม|Now pick 3 cards|Pick 10 cards first|请先抽取|已选\s*\d+\s*张)/i;
+
+  const items = [];
+  for (const sess of recent) {
+    if (!sess || typeof sess !== 'object') continue;
+    const hist = Array.isArray(sess.chatHistory) ? sess.chatHistory : [];
+    const userMsgs = hist
+      .filter((h) => h && (h.role === 'user' || (!h.role && !['สติ', 'Sati', '思谛'].includes(h.speaker))) && !h.isDrawAction && !h.isExpandAction)
+      .map((h) => String(h.text || '').replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    const satiMsgs = hist.filter(
+      (h) => h && (h.role === 'sati' || ['สติ', 'Sati', '思谛'].includes(h.speaker)) && !h.meta?.isGreeting && !nonReadingPattern.test(String(h.text || ''))
+    );
+
+    const lastQ = userMsgs[userMsgs.length - 1] || '';
+    const lastSati = satiMsgs[satiMsgs.length - 1] || null;
+    const { topic, subDomain } = lastQ ? detectTopicAndIntent(lastQ, '') : { topic: 'general', subDomain: 'general' };
+    const domainKey = DOMAIN_SHORT_I18N[subDomain] ? subDomain : (DOMAIN_SHORT_I18N[topic] ? topic : 'general');
+    const domainLabel = DOMAIN_SHORT_I18N[domainKey][target];
+
+    let headCard = null;
+    const satiWithCards = [...satiMsgs].reverse().find((m) => Array.isArray(m?.meta?.cards) && m.meta.cards.length > 0);
+    if (satiWithCards) {
+      const hydrated = hydrateDeckCards(satiWithCards.meta.cards);
+      headCard = hydrated[hydrated.length - 1] || null;
+    } else if (lastSati?.text) {
+      const extracted = extractCardsInOrder(lastSati.text);
+      headCard = extracted[extracted.length - 1] || null;
+    } else if (Array.isArray(sess.natalCards) && sess.natalCards.length > 0) {
+      const natal = hydrateDeckCards(sess.natalCards);
+      headCard = natal[natal.length - 1] || natal[0] || null;
+    }
+
+    const cardShort = headCard
+      ? `${getLocalizedCardShortName(headCard, target)}${headCard.reversed ? formatCardOrientationBadge(headCard, target) : ''}`
+      : '';
+    const qSnippet = lastQ ? `${lastQ.slice(0, 22)}${lastQ.length > 22 ? '...' : ''}` : '';
+    const rawTakeaway = String(lastSati?.text || '').replace(/\s+/g, ' ').trim();
+    const takeawaySnippet = rawTakeaway ? `${rawTakeaway.slice(0, 26)}${rawTakeaway.length > 26 ? '...' : ''}` : '';
+
+    if (!qSnippet && !cardShort && !takeawaySnippet) continue;
+
+    if (target === 'en') {
+      const detail = [qSnippet && `"${qSnippet}"`, cardShort || takeawaySnippet].filter(Boolean).join(' -> ');
+      items.push(`${domainLabel}: ${detail}`);
+    } else if (target === 'zh') {
+      const detail = [qSnippet, cardShort || takeawaySnippet].filter(Boolean).join('→');
+      items.push(`${domainLabel}（${detail}）`);
+    } else {
+      const detail = [qSnippet && `"${qSnippet}"`, cardShort || takeawaySnippet].filter(Boolean).join(' -> ');
+      items.push(`${domainLabel}(${detail})`);
+    }
+  }
+
+  if (items.length === 0) return '';
+  const prefix = target === 'en' ? 'Past sessions: ' : target === 'zh' ? '近期记录：' : 'รอบก่อนหน้า: ';
+  const sep = target === 'zh' ? '；' : ' ; ';
+  let out = prefix;
+  for (let i = 0; i < items.length; i += 1) {
+    const candidate = i === 0 ? `${prefix}${items[i]}` : `${out}${sep}${items[i]}`;
+    if (candidate.length <= 240) {
+      out = candidate;
+    } else if (i === 0) {
+      return `${candidate.slice(0, 237)}...`;
+    } else {
+      break;
+    }
+  }
+  return out;
+}
+
+async function consumeSatiSseStream(res, onChunk) {
+  if (!res?.ok || !res.body || typeof res.body.getReader !== 'function') {
+    return null;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let accumulatedText = '';
+  let currentModel = '';
+  let finalReply = null;
+  let sawFallback = false;
+
+  const processFrame = (rawFrame) => {
+    const normalized = rawFrame.replace(/\r\n/g, '\n');
+    if (!normalized.trim()) return;
+    let eventName = 'message';
+    const dataLines = [];
+    for (const line of normalized.split('\n')) {
+      if (!line || line.startsWith(':')) continue;
+      if (line.startsWith('event:')) {
+        eventName = line.slice(6).trim();
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice(5).trimStart());
+      }
+    }
+    if (dataLines.length === 0) return;
+    let payload = null;
+    try {
+      payload = JSON.parse(dataLines.join('\n'));
+    } catch {
+      return;
+    }
+    if (eventName === 'meta') {
+      if (payload?.model) currentModel = String(payload.model);
+    } else if (eventName === 'chunk') {
+      if (typeof payload?.text === 'string' && payload.text.length > 0) {
+        accumulatedText += payload.text;
+        onChunk(accumulatedText, { model: payload?.model || currentModel });
+      }
+    } else if (eventName === 'done') {
+      if (payload && !payload.fallback && typeof payload.reply === 'string' && payload.reply.trim()) {
+        finalReply = {
+          reply: payload.reply,
+          model: payload.model || currentModel || ''
+        };
+      } else {
+        sawFallback = true;
+      }
+    } else if (eventName === 'fallback') {
+      sawFallback = true;
+    }
+  };
+
+  const findFrameBoundary = (str) => {
+    const lfIdx = str.indexOf('\n\n');
+    const crlfIdx = str.indexOf('\r\n\r\n');
+    if (lfIdx === -1 && crlfIdx === -1) return null;
+    if (lfIdx !== -1 && (crlfIdx === -1 || lfIdx <= crlfIdx)) {
+      return { index: lfIdx, len: 2 };
+    }
+    return { index: crlfIdx, len: 4 };
+  };
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let sep;
+      while ((sep = findFrameBoundary(buffer)) !== null) {
+        const frame = buffer.slice(0, sep.index);
+        buffer = buffer.slice(sep.index + sep.len);
+        processFrame(frame);
+        if (sawFallback || finalReply) break;
+      }
+      if (sawFallback || finalReply) break;
+    }
+    if (!sawFallback && !finalReply) {
+      buffer += decoder.decode();
+      let sep;
+      while ((sep = findFrameBoundary(buffer)) !== null) {
+        const frame = buffer.slice(0, sep.index);
+        buffer = buffer.slice(sep.index + sep.len);
+        processFrame(frame);
+      }
+      if (!sawFallback && !finalReply && buffer.trim()) {
+        processFrame(buffer);
+      }
+    }
+  } finally {
+    try {
+      await reader.cancel();
+    } catch {
+      // ignore cancel errors
+    }
+  }
+
+  return (!sawFallback && finalReply) ? finalReply : null;
+}
+
+/**
+ * Call Gemini Proxy (`/api/sati/read/stream` or `/api/sati/read`) with automatic localized Offline Fallback
  */
 export async function requestSatiReading(state, question, rawCards, isNatal10 = false, extra = {}) {
   const lang = normalizeLang(state.lang);
@@ -1500,30 +1835,54 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
     ? buildNatal10Reading(state, cards)
     : synthesizeDeepReply(state, question, cards);
 
-  try {
-    const res = await fetch('/api/sati/read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        lang,
-        userProfile: state.user,
-        natalCards,
-        activeSpread: cards,
-        remainingCount: state.remainingDeck.length,
-        elementalDignity: computeElementalDignityInsight(cards, lang),
-        isNatal10,
-        celticPositions: getLocalizedCelticPositions(lang),
-        deckNumber: Number(state.deckNumber) || 1,
-        deckCarryoverSummary: state.deckCarryoverSummary || '',
-        questionProfile,
-        userFacts,
-        topicSwitchedFrom: extra?.topicSwitchedFrom || '',
-        isExpandFollowUp: Boolean(extra?.isExpandFollowUp),
-        question: qText,
-        recentHistory: scopedHist.slice(-6)
-      })
-    });
+  const spreadPatterns = analyzeSpreadPatterns(cards, lang);
+  const pastSessionMemory = buildCrossSessionMemorySummary(state?.sessionArchives || [], lang);
 
+  const requestBody = {
+    lang,
+    userProfile: state.user,
+    natalCards,
+    activeSpread: cards,
+    cards,
+    remainingCount: state.remainingDeck.length,
+    elementalDignity: computeElementalDignityInsight(cards, lang),
+    spreadPatterns,
+    pastSessionMemory,
+    isNatal10,
+    celticPositions: getLocalizedCelticPositions(lang),
+    deckNumber: Number(state.deckNumber) || 1,
+    deckCarryoverSummary: state.deckCarryoverSummary || '',
+    questionProfile,
+    userFacts,
+    topicSwitchedFrom: extra?.topicSwitchedFrom || '',
+    isExpandFollowUp: Boolean(extra?.isExpandFollowUp),
+    question: qText,
+    recentHistory: scopedHist.slice(-6)
+  };
+
+  const fetchInit = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody),
+    ...(extra?.signal ? { signal: extra.signal } : {})
+  };
+
+  if (typeof extra?.onChunk === 'function' && typeof ReadableStream !== 'undefined') {
+    try {
+      const streamRes = await fetch('/api/sati/read/stream', fetchInit);
+      const streamed = await consumeSatiSseStream(streamRes, extra.onChunk);
+      if (streamed?.reply) {
+        state.lastReadingOffline = false;
+        state.lastReadingModel = streamed.model || '';
+        return streamed.reply;
+      }
+    } catch {
+      // Network/stream failure falls back seamlessly to /api/sati/read -> offline
+    }
+  }
+
+  try {
+    const res = await fetch('/api/sati/read', fetchInit);
     if (!res.ok) {
       state.lastReadingOffline = true;
       state.lastReadingModel = 'offline-thaksa';
@@ -1622,7 +1981,9 @@ function extractCardsInOrder(text) {
       }
       if (!overlaps && validBoundary) {
         claimed.push([idx, end]);
-        hits.push({ idx, card });
+        const tailProbe = text.slice(end, end + 28);
+        const isRev = /^\s*(?:\([^)]*\)\s*)?\[(?:กลับหัว|Rev\.|逆位)\]/i.test(tailProbe);
+        hits.push({ idx, card: isRev ? { ...card, reversed: true } : card });
         break;
       }
       searchFrom = idx + 1;
@@ -1646,6 +2007,7 @@ function buildWhyCardSpeaksReason(card, posLabel, roleIndex, totalCount, isNatal
   const suitDesc = BREAKDOWN_COPY.suitHint[card.suit]?.[lang] || BREAKDOWN_COPY.suitHint.Major[lang];
   const topicDesc = BREAKDOWN_COPY.topicLabel[topic]?.[lang] || BREAKDOWN_COPY.topicLabel.general[lang];
   const coreClean = (data.core || '').replace(/[.。]+$/, '');
+  const revNuance = data.reversedNuance || '';
 
   if (lang === 'en') {
     const toneClause = polarity === 'favorable'
@@ -1662,7 +2024,8 @@ function buildWhyCardSpeaksReason(card, posLabel, roleIndex, totalCount, isNatal
           : roleIndex === totalCount - 1
             ? 'Closing in the final slot, it shows how the trajectory resolves when you act on this.'
             : 'Sitting in the middle bridge, it acts as the pivot between your starting point and outcome.';
-    return `${suitDesc} — this energy ${toneClause}. ${roleLine} Applied to ${topicDesc.toLowerCase()}, "${coreClean}" translates directly into what you need to see here.`;
+    const revNote = revNuance ? ` Drawn reversed: ${revNuance}` : '';
+    return `${suitDesc} — this energy ${toneClause}. ${roleLine} Applied to ${topicDesc.toLowerCase()}, "${coreClean}" translates directly into what you need to see here.${revNote}`;
   }
 
   if (lang === 'zh') {
@@ -1680,7 +2043,8 @@ function buildWhyCardSpeaksReason(card, posLabel, roleIndex, totalCount, isNatal
           : roleIndex === totalCount - 1
             ? '压轴落在最终收尾位，直接决定这轮问题往哪个结果收束。'
             : '处于中段过渡桥梁位，起到连接起点与结果的关键杠杆作用。';
-    return `${suitDesc}，这股牌象正${toneClause}。${roleLine}紧扣“${topicDesc}”，核心意象“${coreClean}”因此正好对应到你的问题上。`;
+    const revNote = revNuance ? ` 逆位提醒：${revNuance}` : '';
+    return `${suitDesc}，这股牌象正${toneClause}。${roleLine}紧扣“${topicDesc}”，核心意象“${coreClean}”因此正好对应到你的问题上。${revNote}`;
   }
 
   const toneClause = polarity === 'favorable'
@@ -1697,7 +2061,8 @@ function buildWhyCardSpeaksReason(card, posLabel, roleIndex, totalCount, isNatal
         : roleIndex === totalCount - 1
           ? 'เมื่อมาปิดเป็นใบสุดท้าย (ปลายทางคำตอบ) จึงเป็นตัวฟันธงบทสรุปของเรื่องนี้ตรงๆ'
           : 'เมื่อวางอยู่ตรงกลาง จึงทำหน้าที่เป็นตัวเชื่อมและจุดเปลี่ยนระหว่างจุดเริ่มต้นกับผลลัพธ์ปลายทาง';
-  return `ไพ่ใบนี้คือ${suitDesc} ซึ่ง${toneClause} — ${roleLine} เมื่อนำมาจับกับ${topicDesc} ภาพของ "${coreClean}" เลยแปลออกมาตรงกับคำถามนี้พอดี`;
+  const revNote = revNuance ? ` (หน้าไพ่กลับหัว: ${revNuance})` : '';
+  return `ไพ่ใบนี้คือ${suitDesc} ซึ่ง${toneClause} — ${roleLine} เมื่อนำมาจับกับ${topicDesc} ภาพของ "${coreClean}" เลยแปลออกมาตรงกับคำถามนี้พอดี${revNote}`;
 }
 
 function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, intent, user, natalCard, nick, lang) {
@@ -1722,6 +2087,7 @@ function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, i
   const subtextNote = !isNatal10 ? buildSubtextHook(intent, topic, false, nick, lang).deepSubtext : '';
   const psychNote = buildPsychMirrorClause(user, refCards, spreadTone, nick, lang).deep;
   const synergyNote = analyzeCardElementalSynergy(refCards, lang);
+  const patternNote = analyzeSpreadPatterns(refCards, lang);
   const dignityNote = computeElementalDignityInsight(refCards, lang);
   const qEcho = question
     ? (lang === 'en'
@@ -1730,7 +2096,7 @@ function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, i
           ? `回到你问的“${question}”：`
           : `เชื่อมเข้าคำถาม "${question}": `)
     : '';
-  return [qEcho + storyLine, subtextNote, psychNote, synergyNote, dignityNote].filter(Boolean).join('\n\n');
+  return [qEcho + storyLine, subtextNote, psychNote, synergyNote, patternNote, dignityNote].filter(Boolean).join('\n\n');
 }
 
 /**
@@ -1764,13 +2130,18 @@ export function buildReadingBreakdown(entry, prevUserText = '', state = {}, deck
   const toDetailedItem = (card, posIndex, posLabel, cardTopic, totalCount, isCited = true, roleIdx = posIndex) => {
     const polarity = scoreCardPolarity(card);
     const data = getLocalizedCardData(card, lang);
+    const revBadge = formatCardOrientationBadge(card, lang);
     return {
       card,
       posIndex,
       posLabel,
       polarity,
       polarityLabel: BREAKDOWN_COPY.polarity[polarity][lang],
-      title: data.title,
+      reversed: Boolean(card?.reversed),
+      orientationTag: formatCardOrientationTag(card, lang),
+      orientationBadge: revBadge,
+      reversedNuance: data.reversedNuance,
+      title: revBadge ? `${data.title} ${revBadge}` : data.title,
       coreMeaning: data.core,
       topicFocusLabel: BREAKDOWN_COPY.topicLabel[cardTopic]?.[lang] || BREAKDOWN_COPY.topicLabel.general[lang],
       topicMeaning: getCardMeaningForTopic(card, cardTopic, lang),

@@ -3,7 +3,7 @@
  * วาดการ์ดสรุปคำทำนายพร้อมหน้าไพ่ทาโรต์จริงในธีม Obsidian & Antique Gold สำหรับบันทึกเก็บในเครื่องและแชร์
  */
 import { createCardFrontTexture, hydrateDeckCards } from '../data/tarot78.js';
-import { normalizeLang, getLocalizedCardShortName } from '../data/tarot78I18n.js';
+import { normalizeLang, getLocalizedCardShortName, formatCardOrientationBadge } from '../data/tarot78I18n.js';
 
 function segmentTextWords(text, lang = 'th') {
   const str = String(text || '');
@@ -130,6 +130,68 @@ const SHORT_NATAL_POS = {
   en: ['1. Present', '2. Challenge', '3. Root', '4. Past', '5. Goal', '6. Near Future', '7. Self', '8. Surroundings', '9. Hope/Fear', '10. Outcome'],
   zh: ['1. 现状', '2. 阻力', '3. 根基', '4. 过去', '5. 目标', '6. 近期', '7. 态度', '8. 环境', '9. 隐忧', '10. 结局']
 };
+
+/**
+ * Draw a single tarot card slot (rotated 180deg when reversed + localized reversed badge)
+ */
+function drawShareTarotCardSlot(ctx, {
+  cx,
+  cy,
+  cardW,
+  cardH,
+  card,
+  posShort,
+  targetLang,
+  fontFamily,
+  borderColor,
+  borderWidth,
+  shadowBlur,
+  shadowOffsetY,
+  posFontSize,
+  titleFontSize,
+  posOffsetY,
+  titleOffsetY,
+  maxTextWidth
+}) {
+  const isReversed = Boolean(card?.reversed);
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+  ctx.shadowBlur = shadowBlur;
+  ctx.shadowOffsetY = shadowOffsetY;
+  ctx.fillStyle = '#efe5d2';
+  ctx.fillRect(cx, cy, cardW, cardH);
+  ctx.restore();
+
+  const tex = createCardFrontTexture(card);
+  if (tex?.image) {
+    if (isReversed) {
+      ctx.save();
+      ctx.translate(cx + cardW / 2, cy + cardH / 2);
+      ctx.rotate(Math.PI);
+      ctx.drawImage(tex.image, -cardW / 2, -cardH / 2, cardW, cardH);
+      ctx.restore();
+    } else {
+      ctx.drawImage(tex.image, cx, cy, cardW, cardH);
+    }
+  }
+
+  ctx.strokeStyle = isReversed ? '#fda4af' : borderColor;
+  ctx.lineWidth = borderWidth;
+  ctx.strokeRect(cx, cy, cardW, cardH);
+
+  const titleShort = getLocalizedCardShortName(card, targetLang);
+  const revBadge = formatCardOrientationBadge(card, targetLang);
+  const titleWithBadge = revBadge ? `${titleShort} ${revBadge}` : titleShort;
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#d4af37';
+  ctx.font = `600 ${posFontSize}px ${fontFamily}`;
+  ctx.fillText(posShort, cx + cardW / 2, cy + cardH + posOffsetY, maxTextWidth);
+  ctx.fillStyle = isReversed ? '#fecdd3' : '#f4efe6';
+  ctx.font = `600 ${titleFontSize}px ${fontFamily}`;
+  ctx.fillText(titleWithBadge, cx + cardW / 2, cy + cardH + titleOffsetY, maxTextWidth);
+}
 
 /**
  * Render a styled luxury Reading Card PNG Data URL (containing actual card artwork)
@@ -330,37 +392,30 @@ export async function generateReadingShareCardDataURL({
         const cx = startX + col * (cardW + gapX);
         const cy = gridTop + row * rowStep;
 
-        // Card frame shadow & image
-        ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.72)';
-        ctx.shadowBlur = 14;
-        ctx.shadowOffsetY = 6;
-        ctx.fillStyle = '#efe5d2';
-        ctx.fillRect(cx, cy, cardW, cardH);
-        ctx.restore();
-
-        const tex = createCardFrontTexture(item.card);
-        if (tex?.image) {
-          ctx.drawImage(tex.image, cx, cy, cardW, cardH);
-        }
-
-        ctx.strokeStyle = item.isCited ? '#f3d266' : 'rgba(212, 175, 55, 0.65)';
-        ctx.lineWidth = item.isCited ? 3 : 2;
-        ctx.strokeRect(cx, cy, cardW, cardH);
-
-        // Pos & Name under card
         const shortList = SHORT_NATAL_POS[targetLang] || SHORT_NATAL_POS.th;
         const posShort = (isNatal10 || cardsList.length === 10) && shortList[idx]
           ? shortList[idx]
           : String(item.posLabel || `${idx + 1}`).split(':')[0];
-        const titleShort = getLocalizedCardShortName(item.card, targetLang);
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#d4af37';
-        ctx.font = `600 17px ${fontFamily}`;
-        ctx.fillText(posShort, cx + cardW / 2, cy + cardH + 24, cardW + 10);
-        ctx.fillStyle = '#f4efe6';
-        ctx.font = `500 18px ${fontFamily}`;
-        ctx.fillText(titleShort, cx + cardW / 2, cy + cardH + 49, cardW + 10);
+
+        drawShareTarotCardSlot(ctx, {
+          cx,
+          cy,
+          cardW,
+          cardH,
+          card: item.card,
+          posShort,
+          targetLang,
+          fontFamily,
+          borderColor: item.isCited ? '#f3d266' : 'rgba(212, 175, 55, 0.65)',
+          borderWidth: item.isCited ? 3 : 2,
+          shadowBlur: 14,
+          shadowOffsetY: 6,
+          posFontSize: 17,
+          titleFontSize: 18,
+          posOffsetY: 24,
+          titleOffsetY: 49,
+          maxTextWidth: cardW + 10
+        });
       });
     } else {
       const count = cardsList.length;
@@ -381,32 +436,27 @@ export async function generateReadingShareCardDataURL({
           ctx.fillText('→', cx - gapX / 2, cy + cardH / 2 + 10);
         }
 
-        ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.78)';
-        ctx.shadowBlur = 18;
-        ctx.shadowOffsetY = 8;
-        ctx.fillStyle = '#efe5d2';
-        ctx.fillRect(cx, cy, cardW, cardH);
-        ctx.restore();
-
-        const tex = createCardFrontTexture(item.card);
-        if (tex?.image) {
-          ctx.drawImage(tex.image, cx, cy, cardW, cardH);
-        }
-
-        ctx.strokeStyle = '#f3d266';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(cx, cy, cardW, cardH);
-
         const posShort = String(item.posLabel || `${idx + 1}`).split('·')[0].trim().slice(0, 26);
-        const titleShort = getLocalizedCardShortName(item.card, targetLang);
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#d4af37';
-        ctx.font = `600 19px ${fontFamily}`;
-        ctx.fillText(posShort, cx + cardW / 2, cy + cardH + 28, cardW + 28);
-        ctx.fillStyle = '#f4efe6';
-        ctx.font = `600 22px ${fontFamily}`;
-        ctx.fillText(titleShort, cx + cardW / 2, cy + cardH + 58, cardW + 28);
+
+        drawShareTarotCardSlot(ctx, {
+          cx,
+          cy,
+          cardW,
+          cardH,
+          card: item.card,
+          posShort,
+          targetLang,
+          fontFamily,
+          borderColor: '#f3d266',
+          borderWidth: 3,
+          shadowBlur: 18,
+          shadowOffsetY: 8,
+          posFontSize: 19,
+          titleFontSize: 22,
+          posOffsetY: 28,
+          titleOffsetY: 58,
+          maxTextWidth: cardW + 28
+        });
       });
     }
     curY += cardsSectionH + 30;

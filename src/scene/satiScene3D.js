@@ -34,15 +34,21 @@ export const CAM_POS = {
   view2PLook: new THREE.Vector3(0, 0.95, 0.15)
 };
 
-export function createSati3DEngine({
-  canvas,
-  state,
-  onCardPicked,
-  onSpreadCardInspect,
-  onCrystalInspect,
-  onDiscardInspect,
-  onModelsLoaded
-}) {
+export function createSati3DEngine(options = {}) {
+  const {
+    canvas,
+    state,
+    onCardPicked,
+    onSpreadCardInspect,
+    onCrystalInspect,
+    onDiscardInspect,
+    onModelsLoaded,
+    onSpreadProjection: directOnSpreadProjection,
+    callbacks
+  } = options || {};
+  const onSpreadProjection = typeof directOnSpreadProjection === 'function'
+    ? directOnSpreadProjection
+    : (typeof callbacks?.onSpreadProjection === 'function' ? callbacks.onSpreadProjection : null);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#130b16');
   scene.fog = new THREE.FogExp2('#130b16', 0.032);
@@ -157,12 +163,17 @@ export function createSati3DEngine({
   const _restRightPos = new THREE.Vector3();
   const _targetLeftPos = new THREE.Vector3();
   const _targetRightPos = new THREE.Vector3();
+  const _tmpSpreadTarget = new THREE.Vector3();
+  const _projWorldVec = new THREE.Vector3();
+  const _projCamVec = new THREE.Vector3();
   const _tmpEuler = new THREE.Euler(0, 0, 0, 'XYZ');
   const _tmpQuat = new THREE.Quaternion();
   const FINGER_NAMES = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
   const BASE_HAND_SCALE = 1.88;
+  const PROJECTION_DELTA_THRESHOLD = 0.35;
   let handRigL = null;
   let handRigR = null;
+  let lastProjectedSpread = [];
 
   function createFacetedCrystalMaterial(hasVertexColors = false) {
     const mat = new THREE.MeshPhysicalMaterial({
@@ -527,6 +538,140 @@ export function createSati3DEngine({
     if (onModelsLoaded) onModelsLoaded();
   }
 
+  function getViewportDimensions() {
+    let rect = null;
+    if (typeof canvas?.getBoundingClientRect === 'function') {
+      rect = canvas.getBoundingClientRect();
+    }
+    const winW = typeof window !== 'undefined' ? Number(window.innerWidth) : 0;
+    const winH = typeof window !== 'undefined' ? Number(window.innerHeight) : 0;
+    const width = Number(rect?.width) || Number(canvas?.clientWidth) || winW || Number(canvas?.width) || 0;
+    const height = Number(rect?.height) || Number(canvas?.clientHeight) || winH || Number(canvas?.height) || 0;
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      return null;
+    }
+    return { width, height };
+  }
+
+  function hasSpreadProjectionChanged(nextItems) {
+    if (nextItems.length !== lastProjectedSpread.length) return true;
+    for (let i = 0; i < nextItems.length; i += 1) {
+      const next = nextItems[i];
+      const prev = lastProjectedSpread[i];
+      if (
+        next.slotIdx !== prev.slotIdx ||
+        next.totalSlots !== prev.totalSlots ||
+        next.visible !== prev.visible ||
+        next.reversed !== prev.reversed ||
+        next.cardName !== prev.cardName ||
+        Math.abs(next.xPct - prev.xPct) > PROJECTION_DELTA_THRESHOLD ||
+        Math.abs(next.yPct - prev.yPct) > PROJECTION_DELTA_THRESHOLD
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function emitSpreadProjection() {
+    if (typeof onSpreadProjection !== 'function' || isDisposed) return;
+
+    if (!Array.isArray(spreadCardMeshes) || spreadCardMeshes.length === 0) {
+      if (lastProjectedSpread.length > 0) {
+        lastProjectedSpread = [];
+        onSpreadProjection([]);
+      }
+      return;
+    }
+
+    if (
+      !camera ||
+      typeof camera.updateMatrixWorld !== 'function' ||
+      !camera.matrixWorldInverse ||
+      !camera.projectionMatrix
+    ) {
+      return;
+    }
+
+    if (!getViewportDimensions()) return;
+
+    camera.updateMatrixWorld();
+    const totalSlotsFallback = spreadCardMeshes.length;
+    const isScreenAllowed = !state?.screen || state.screen === 'game';
+    const nextItems = [];
+
+    for (let idx = 0; idx < spreadCardMeshes.length; idx += 1) {
+      const mesh = spreadCardMeshes[idx];
+      if (!mesh || typeof mesh.getWorldPosition !== 'function') continue;
+      if (typeof mesh.updateMatrixWorld === 'function') {
+        mesh.updateMatrixWorld();
+      }
+
+      mesh.getWorldPosition(_projWorldVec);
+      if (
+        !Number.isFinite(_projWorldVec.x) ||
+        !Number.isFinite(_projWorldVec.y) ||
+        !Number.isFinite(_projWorldVec.z)
+      ) {
+        continue;
+      }
+
+      // Project bottom-front edge of the card in camera view (+Z edge on top face)
+      const scaleY = Number.isFinite(mesh.scale?.y) ? mesh.scale.y : 1;
+      const scaleZ = Number.isFinite(mesh.scale?.z) ? mesh.scale.z : 1;
+      _projWorldVec.y += 0.007 * scaleY;
+      _projWorldVec.z += 0.17 * scaleZ;
+
+      let isInFront = true;
+      if (typeof _projCamVec.applyMatrix4 === 'function') {
+        _projCamVec.copy(_projWorldVec).applyMatrix4(camera.matrixWorldInverse);
+        isInFront = Number.isFinite(_projCamVec.z) && _projCamVec.z < -0.05;
+      }
+
+      if (typeof _projWorldVec.project !== 'function') continue;
+      _projWorldVec.project(camera);
+
+      const ndcValid =
+        Number.isFinite(_projWorldVec.x) &&
+        Number.isFinite(_projWorldVec.y) &&
+        Number.isFinite(_projWorldVec.z);
+      const rawXPct = ndcValid ? (_projWorldVec.x * 0.5 + 0.5) * 100 : 50;
+      const rawYPct = ndcValid ? (-_projWorldVec.y * 0.5 + 0.5) * 100 : 50;
+
+      const visible = Boolean(
+        isScreenAllowed &&
+        mesh.visible !== false &&
+        isInFront &&
+        ndcValid &&
+        _projWorldVec.z >= -1 &&
+        _projWorldVec.z <= 1 &&
+        rawXPct >= 0 &&
+        rawXPct <= 100 &&
+        rawYPct >= 0 &&
+        rawYPct <= 100
+      );
+
+      const xPct = Math.round(Math.max(0, Math.min(100, rawXPct)) * 100) / 100;
+      const yPct = Math.round(Math.max(0, Math.min(100, rawYPct)) * 100) / 100;
+      const cardData = mesh.userData?.cardData;
+
+      nextItems.push({
+        slotIdx: typeof mesh.userData?.slotIdx === 'number' ? mesh.userData.slotIdx : idx,
+        totalSlots: typeof mesh.userData?.totalSlots === 'number' ? mesh.userData.totalSlots : totalSlotsFallback,
+        xPct,
+        yPct,
+        visible,
+        reversed: Boolean(mesh.userData?.reversed ?? cardData?.reversed),
+        cardName: String(cardData?.name || cardData?.th || '')
+      });
+    }
+
+    if (hasSpreadProjectionChanged(nextItems)) {
+      lastProjectedSpread = nextItems.map((item) => ({ ...item }));
+      onSpreadProjection(nextItems);
+    }
+  }
+
   function updateCameraForAspect() {
     const w = window.innerWidth;
     const h = Math.max(1, window.innerHeight);
@@ -565,6 +710,7 @@ export function createSati3DEngine({
     composer.setPixelRatio(dpr);
     composer.setSize(w, h);
     bloomPass.setSize(Math.max(1, Math.floor(w * 0.5)), Math.max(1, Math.floor(h * 0.5)));
+    emitSpreadProjection();
   }
 
   function setCameraTarget(posVec, lookVec) {
@@ -625,6 +771,7 @@ export function createSati3DEngine({
     spreadCardMeshes.forEach((m) => disposeCardMesh(m, disposedGeos, disposedMats));
     fanCardMeshes = [];
     spreadCardMeshes = [];
+    emitSpreadProjection();
   }
 
   function clearDiscardPile3D() {
@@ -754,12 +901,15 @@ export function createSati3DEngine({
       cardScale = 1.0 + portraitFactor * 0.48;
     }
 
+    const isReversed = Boolean(mesh.userData.reversed ?? mesh.userData.cardData?.reversed);
     mesh.scale.setScalar(cardScale);
     mesh.userData.slotIdx = slotIdx;
     mesh.userData.totalSlots = totalSlots;
+    mesh.userData.reversed = isReversed;
     mesh.userData.targetPos = new THREE.Vector3(tx, 1.05, tz);
     mesh.userData.targetRotX = Math.PI;
-    mesh.userData.targetRotY = 0;
+    mesh.userData.targetRotY = isReversed ? Math.PI : 0;
+    mesh.userData.targetRotZ = 0;
     mesh.userData.flipping = true;
   }
 
@@ -771,6 +921,10 @@ export function createSati3DEngine({
 
     // Lazily generate & attach high-res Tarot Card Front only for actually drawn cards
     const activeData = cardData || mesh.userData.cardData;
+    if (activeData) {
+      mesh.userData.cardData = activeData;
+    }
+    mesh.userData.reversed = Boolean(activeData?.reversed);
     if (activeData && Array.isArray(mesh.material) && mesh.material.length >= 4) {
       const frontTex = createCardFrontTexture(activeData);
       frontTex.anisotropy = maxAniso;
@@ -784,6 +938,7 @@ export function createSati3DEngine({
 
     applySpreadCardPose(mesh, slotIdx, totalSlots);
     spreadCardMeshes.push(mesh);
+    emitSpreadProjection();
   }
 
   function playPlayerHandShuffle3D(onDone) {
@@ -819,6 +974,7 @@ export function createSati3DEngine({
     const disposedMats = new Set();
     spreadCardMeshes.forEach((m) => disposeCardMesh(m, disposedGeos, disposedMats));
     spreadCardMeshes = [];
+    emitSpreadProjection();
   }
 
   function onPointerMove(e) {
@@ -1105,12 +1261,22 @@ export function createSati3DEngine({
       }
     });
 
-    // Spread cards flip & glide animation
+    // Spread cards flip & glide animation (arc upward mid-flip so corners never clip table)
     spreadCardMeshes.forEach((m) => {
       if (m.userData.targetPos) {
-        m.position.lerp(m.userData.targetPos, spreadDamp);
+        const flipSin = Math.max(0, Math.sin(m.rotation.x));
+        const flipLift = flipSin * 0.18 * (Number.isFinite(m.scale?.y) ? m.scale.y : 1);
+        _tmpSpreadTarget.set(
+          m.userData.targetPos.x,
+          m.userData.targetPos.y + flipLift,
+          m.userData.targetPos.z
+        );
+        m.position.lerp(_tmpSpreadTarget, spreadDamp);
         m.rotation.x += (m.userData.targetRotX - m.rotation.x) * spreadDamp;
         m.rotation.y += (m.userData.targetRotY - m.rotation.y) * spreadDamp;
+        if (m.userData.targetRotZ !== undefined) {
+          m.rotation.z += (m.userData.targetRotZ - m.rotation.z) * spreadDamp;
+        }
       }
     });
 
@@ -1277,6 +1443,7 @@ export function createSati3DEngine({
     } else {
       renderer.render(scene, camera);
     }
+    emitSpreadProjection();
   }
 
   updateCameraForAspect();
@@ -1300,6 +1467,7 @@ export function createSati3DEngine({
   function dispose() {
     if (isDisposed) return;
     isDisposed = true;
+    lastProjectedSpread = [];
 
     activeTimers.forEach((tid) => clearTimeout(tid));
     activeTimers.clear();

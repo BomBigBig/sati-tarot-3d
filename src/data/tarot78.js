@@ -275,8 +275,26 @@ const FULL_DECK_MAP = new Map(buildFullDeck78().flatMap((c) => [[c.uid, c], [c.n
 export function hydrateDeckCards(cards) {
   if (!Array.isArray(cards)) return [];
   return cards.map((c) => {
-    const fresh = c && (FULL_DECK_MAP.get(c.uid) || FULL_DECK_MAP.get(c.name));
-    return fresh ? { ...c, ...fresh } : c;
+    if (!c || typeof c !== 'object') return c;
+    const fresh = FULL_DECK_MAP.get(c.uid) || FULL_DECK_MAP.get(c.name);
+    return fresh
+      ? { ...c, ...fresh, reversed: Boolean(c.reversed) }
+      : { ...c, reversed: Boolean(c.reversed) };
+  });
+}
+
+/**
+ * Clone cards non-destructively with reversed orientation flag.
+ */
+export function applyReversedOrientation(cards, options = {}) {
+  if (!Array.isArray(cards)) return [];
+  const { enabled = true, probability = 0.28, rng = Math.random } = options || {};
+  const p = Number.isFinite(Number(probability)) ? Math.max(0, Math.min(1, Number(probability))) : 0.28;
+  const randFn = typeof rng === 'function' ? rng : Math.random;
+  return cards.map((card) => {
+    if (!card || typeof card !== 'object') return card;
+    const isReversed = enabled ? randFn() < p : false;
+    return { ...card, reversed: Boolean(isReversed) };
   });
 }
 
