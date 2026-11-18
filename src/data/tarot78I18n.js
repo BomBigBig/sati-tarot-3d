@@ -423,6 +423,104 @@ export function getLocalizedCardLabelInline(card, lang = 'th') {
   return `${card.name} (${card.th})${revSuffix}`;
 }
 
+export const SPREAD_3_PRESETS_I18N = {
+  past_present_future: {
+    th: {
+      title: 'อดีต · ปัจจุบัน · อนาคต',
+      desc: 'ดูลำดับเหตุการณ์และแนวโน้มของเรื่องที่ถาม',
+      positions: ['อดีต', 'ปัจจุบัน', 'อนาคต'],
+      defaultQ: 'ขอดูภาพรวมอดีต ปัจจุบัน และอนาคตของเรื่องนี้'
+    },
+    en: {
+      title: 'Past · Present · Future',
+      desc: 'Track timeline and trajectory of your question',
+      positions: ['Past', 'Present', 'Future'],
+      defaultQ: 'Show me the Past, Present, and Future trajectory of this matter'
+    },
+    zh: {
+      title: '过去 · 现在 · 未来',
+      desc: '理清事情的来龙去脉与后续走势',
+      positions: ['过去', '现在', '未来'],
+      defaultQ: '请帮我解读这件事的过去、现在与未来走势'
+    }
+  },
+  external_internal_solution: {
+    th: {
+      title: 'ปัจจัยภายนอก · ภายใน · ทางออก',
+      desc: 'แยกแยะสิ่งรอบตัว ใจเรา และวิธีคลี่คลายปัญหา',
+      positions: ['ปัจจัยภายนอก', 'ปัจจัยภายใน', 'ทางออก'],
+      defaultQ: 'ช่วยแยกแยะปัจจัยภายนอก ปัจจัยภายใน และทางออกให้หน่อย'
+    },
+    en: {
+      title: 'External · Internal · Solution',
+      desc: 'Separate outer forces, inner state and way forward',
+      positions: ['External Factors', 'Internal Factors', 'Solution'],
+      defaultQ: 'Show the external factors, internal state, and practical solution'
+    },
+    zh: {
+      title: '外在因素 · 内在心态 · 解决之道',
+      desc: '看清外在阻力、内在状态与破局出口',
+      positions: ['外在因素', '内在心态', '解决之道'],
+      defaultQ: '请解析这件事的外在因素、内在心态与具体出口'
+    }
+  },
+  situation_obstacle_advice: {
+    th: {
+      title: 'สถานการณ์ · อุปสรรค · แนวทาง',
+      desc: 'เจาะจุดติดขัดเฉพาะเรื่องและก้าวต่อไปที่ชัดที่สุด',
+      positions: ['สถานการณ์', 'อุปสรรค / ปัจจัยซ่อน', 'แนวทางและทางออก'],
+      defaultQ: 'ช่วยดูสถานการณ์ อุปสรรค และแนวทางรับมือเรื่องนี้หน่อย'
+    },
+    en: {
+      title: 'Situation · Obstacle · Guidance',
+      desc: 'Pinpoint core tension and your clearest next move',
+      positions: ['Situation', 'Obstacle / Hidden', 'Guidance & Path'],
+      defaultQ: 'Show the current situation, obstacle, and clearest path forward'
+    },
+    zh: {
+      title: '现状 · 阻碍 · 指引',
+      desc: '聚焦当前局势、阻滞点与应对指引',
+      positions: ['现状', '阻碍 / 隐情', '指引与出路'],
+      defaultQ: '请看清这件事的现状、阻碍与应对指引'
+    }
+  },
+  daily_mindset_guidance: {
+    th: {
+      title: 'ชีวิตประจำวัน · จุดระวัง · คำแนะนำสติ',
+      desc: 'เช็กพลังวันนี้ไวๆ โดยไม่ต้องตั้งคำถามยาว',
+      positions: ['พลังวันนี้', 'จุดควรระวัง', 'คำแนะนำสติ'],
+      defaultQ: 'ขอดูดวงชีวิตประจำวัน พลังวันนี้ จุดควรระวัง และคำแนะนำสติ'
+    },
+    en: {
+      title: 'Daily Flow · Caution · Mindful Advice',
+      desc: 'Quick everyday check-in without typing a long prompt',
+      positions: ["Today's Energy", 'Watch Out For', 'Mindful Advice'],
+      defaultQ: "Give me an everyday check-in: today's energy, caution, and mindful advice"
+    },
+    zh: {
+      title: '今日状态 · 留意重点 · 思谛叮嘱',
+      desc: '每日生活速览，无需输入复杂问题',
+      positions: ['今日能量', '须留意之处', '思谛指引'],
+      defaultQ: '请为我做今日生活速览：今日能量、须留意之处与叮嘱'
+    }
+  }
+};
+
+export function normalizeSpread3Preset(presetId) {
+  return SPREAD_3_PRESETS_I18N[presetId] ? presetId : 'past_present_future';
+}
+
+export function getSpread3PresetInfo(presetId = 'past_present_future', lang = 'th') {
+  const id = normalizeSpread3Preset(presetId);
+  const target = normalizeLang(lang);
+  const pack = SPREAD_3_PRESETS_I18N[id]?.[target] || SPREAD_3_PRESETS_I18N[id].th;
+  return { id, ...pack };
+}
+
+export function listSpread3Presets(lang = 'th') {
+  return Object.keys(SPREAD_3_PRESETS_I18N).map((id) => getSpread3PresetInfo(id, lang));
+}
+
 export function getLocalizedCardShortName(card, lang = 'th') {
   const target = normalizeLang(lang);
   if (!card) return '';

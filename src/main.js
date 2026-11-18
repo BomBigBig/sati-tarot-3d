@@ -17,7 +17,10 @@ import {
   getLocalizedCardLabelInline,
   getLocalizedCardShortName,
   formatCardOrientationBadge,
-  getReversedEnergyNuance
+  getReversedEnergyNuance,
+  normalizeSpread3Preset,
+  getSpread3PresetInfo,
+  listSpread3Presets
 } from './data/tarot78I18n.js';
 import { getTextPack, t } from './i18n/translations.js';
 import {
@@ -128,6 +131,8 @@ const SoundFX = {
 const state = {
   lang: readSavedLang(),
   allowReversedCards: readSavedAllowReversed(),
+  entryStartMode: '10',
+  activeSpreadPreset: 'past_present_future',
   screen: 'login',
   modelsLoaded: false,
   user: {
@@ -245,7 +250,11 @@ function updateStepCoachBar() {
   const el = document.getElementById('sati-step-guide');
   if (!el) return;
   if (state.isPicking) {
-    el.textContent = t(state.lang, state.natalCompleted ? 'stepCoachFollowUp' : 'stepCoachPick10');
+    if (state.currentPickMode === 'quick3' || state.pickTargetCount === 3) {
+      el.textContent = t(state.lang, state.natalCompleted ? 'stepCoachFollowUp' : 'stepCoachPick3');
+    } else {
+      el.textContent = t(state.lang, state.natalCompleted ? 'stepCoachFollowUp' : 'stepCoachPick10');
+    }
   } else if (state.natalCompleted && state.activeSpread.length === 0) {
     el.textContent = t(state.lang, 'stepCoachChatSavedNatal');
   } else {
@@ -351,14 +360,24 @@ function updateDrawQuestionGateUI() {
   const lang = state.lang;
   const typedQ = document.getElementById('chat-input')?.value.trim() || '';
   const busy = Boolean(state.isPicking || state.isThinking || state.isAnimatingShuffle || state.isPlayerShuffling);
-  const canDrawNew = typedQ.length > 0 && !busy;
+  const canDrawWithQ = typedQ.length > 0 && !busy;
 
-  ['btn-draw-1', 'btn-draw-3', 'btn-draw-10-opt'].forEach((id) => {
-    const btn = document.getElementById(id);
-    if (!btn) return;
-    btn.disabled = !canDrawNew;
-    btn.classList.toggle('border-[#f3d266]', canDrawNew);
-  });
+  const btn1 = document.getElementById('btn-draw-1');
+  if (btn1) {
+    btn1.disabled = !canDrawWithQ;
+    btn1.classList.toggle('border-[#f3d266]', canDrawWithQ);
+  }
+  const btn3 = document.getElementById('btn-draw-3');
+  if (btn3) {
+    btn3.disabled = busy;
+    btn3.classList.toggle('border-[#f3d266]', !busy);
+  }
+  const btn10 = document.getElementById('btn-draw-10-opt');
+  if (btn10) {
+    const canDraw10 = !busy && (!state.natalCompleted || canDrawWithQ);
+    btn10.disabled = !canDraw10;
+    btn10.classList.toggle('border-[#f3d266]', canDraw10);
+  }
 
   const hintEl = document.getElementById('draw-gate-hint');
   if (hintEl) {
@@ -371,7 +390,7 @@ function updateDrawQuestionGateUI() {
   const expandBar = document.getElementById('expand-prev-bar');
   const expandText = document.getElementById('expand-prev-text');
   if (expandBar && expandText) {
-    const showExpand = Boolean(lastQ) && state.natalCompleted && !busy;
+    const showExpand = Boolean(lastQ) && !busy && (state.natalCompleted || state.activeSpread.length > 0);
     expandBar.classList.toggle('hidden', !showExpand);
     if (showExpand) {
       expandText.textContent = t(lang, 'expandPrevLabelFmt', lastQ);
@@ -383,7 +402,7 @@ function renderSmartPromptChips() {
   renderPresetCategoryTabs();
   const container = document.getElementById('smart-prompt-chips');
   if (!container) return;
-  if (state.isPicking || state.isThinking || !state.natalCompleted) {
+  if (state.isPicking || state.isThinking) {
     container.classList.add('hidden');
     container.innerHTML = '';
     return;
@@ -439,7 +458,7 @@ function updateHUD() {
   );
 
   document.getElementById('btn-natal-drawer').classList.toggle('hidden', !state.natalCompleted);
-  const show10Opt = !(state.deckNumber < 2 && !state.natalCompleted);
+  const show10Opt = !state.natalCompleted || state.deckNumber >= 2;
   document.getElementById('btn-draw-10-opt').classList.toggle('hidden', !show10Opt);
   const drawRow = document.getElementById('draw-actions-row');
   if (drawRow) {
@@ -519,13 +538,72 @@ function getSpreadSlotTitle(slotIdx, totalSlots, lang) {
     return pos[slotIdx] || '';
   }
   if (totalSlots === 3) {
-    const pos3 = getTextPack(lang).spreadPos3;
-    return Array.isArray(pos3) ? (pos3[slotIdx] || '') : '';
+    const positions = getSpread3PresetInfo(state.activeSpreadPreset, lang).positions;
+    return positions[slotIdx] || '';
   }
   if (totalSlots === 1) {
     return t(lang, 'spreadPos1');
   }
   return '';
+}
+
+function renderSpreadPresetSelector(containerId, currentPresetId, lang, onSelect) {
+  const host = document.getElementById(containerId);
+  if (!host) return;
+  const activeId = normalizeSpread3Preset(currentPresetId);
+  host.innerHTML = '';
+  listSpread3Presets(lang).forEach((preset) => {
+    const selected = preset.id === activeId;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.presetId = preset.id;
+    btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    btn.className = `${selected ? 'btn-gold' : 'btn-slate'} chamfer-sm p-2 text-left cursor-pointer border ${selected ? 'border-[#f3d266]' : 'border-[#d4af37]/30'} transition`;
+    const titleEl = document.createElement('div');
+    titleEl.className = `text-[11.5px] font-bold leading-snug ${selected ? 'text-[#0b0d19]' : 'text-[#f3d266]'}`;
+    titleEl.textContent = preset.title;
+    const descEl = document.createElement('div');
+    descEl.className = `text-[10px] leading-snug mt-0.5 ${selected ? 'text-[#0b0d19]/85' : 'text-[#c5c7d4]'}`;
+    descEl.textContent = preset.desc;
+    btn.append(titleEl, descEl);
+    btn.addEventListener('click', () => onSelect(preset.id));
+    host.appendChild(btn);
+  });
+}
+
+function syncEntryModeUI() {
+  const isQuick3 = state.entryStartMode === '3';
+  const btn3 = document.getElementById('btn-entry-mode-3');
+  const btn10 = document.getElementById('btn-entry-mode-10');
+  const box3 = document.getElementById('ledger-spread3-box');
+  if (btn3) {
+    btn3.setAttribute('aria-pressed', isQuick3 ? 'true' : 'false');
+    btn3.classList.toggle('btn-gold', isQuick3);
+    btn3.classList.toggle('btn-slate', !isQuick3);
+    btn3.classList.toggle('border-[#f3d266]', isQuick3);
+    btn3.classList.toggle('border-[#d4af37]/35', !isQuick3);
+    const sub3 = btn3.querySelector('[data-i18n="ledgerMode3Sub"]');
+    const tit3 = btn3.querySelector('[data-i18n="ledgerMode3Title"]');
+    if (tit3) { tit3.classList.toggle('text-[#0b0d19]', isQuick3); tit3.classList.toggle('text-[#f3d266]', !isQuick3); }
+    if (sub3) { sub3.classList.toggle('text-[#0b0d19]/85', isQuick3); sub3.classList.toggle('text-[#c5c7d4]', !isQuick3); }
+  }
+  if (btn10) {
+    btn10.setAttribute('aria-pressed', !isQuick3 ? 'true' : 'false');
+    btn10.classList.toggle('btn-gold', !isQuick3);
+    btn10.classList.toggle('btn-slate', isQuick3);
+    btn10.classList.toggle('border-[#f3d266]', !isQuick3);
+    btn10.classList.toggle('border-[#d4af37]/35', isQuick3);
+    const sub10 = btn10.querySelector('[data-i18n="ledgerMode10Sub"]');
+    const tit10 = btn10.querySelector('[data-i18n="ledgerMode10Title"]');
+    if (tit10) { tit10.classList.toggle('text-[#0b0d19]', !isQuick3); tit10.classList.toggle('text-[#f3d266]', isQuick3); }
+    if (sub10) { sub10.classList.toggle('text-[#0b0d19]/85', !isQuick3); sub10.classList.toggle('text-[#c5c7d4]', isQuick3); }
+  }
+  if (box3) box3.classList.toggle('hidden', !isQuick3);
+  renderSpreadPresetSelector('ledger-spread3-options', state.activeSpreadPreset, state.lang, (id) => {
+    SoundFX.playPick();
+    state.activeSpreadPreset = normalizeSpread3Preset(id);
+    syncEntryModeUI();
+  });
 }
 
 const spreadLabelNodes = [];
@@ -659,9 +737,11 @@ function openCardModal(card, posLabel) {
 }
 
 function updatePickInstruction() {
-  const label = state.currentPickMode === 'followup'
-    ? t(state.lang, 'pickFollowUpPrompt', state.pickTargetCount)
-    : t(state.lang, 'pickInitialPrompt');
+  const label = state.currentPickMode === 'quick3'
+    ? t(state.lang, 'pickQuick3Prompt')
+    : state.currentPickMode === 'followup'
+      ? t(state.lang, 'pickFollowUpPrompt', state.pickTargetCount)
+      : t(state.lang, 'pickInitialPrompt');
   document.getElementById('pick-instruction').textContent = t(
     state.lang,
     'pickInstructionFmt',
@@ -751,7 +831,9 @@ function handlePickCard(mesh) {
     state.lang,
     'pickOrderPos',
     currentCount,
-    state.pickTargetCount === 10 ? positions[currentCount - 1] : ''
+    state.pickTargetCount === 10
+      ? positions[currentCount - 1]
+      : (state.pickTargetCount === 3 ? getSpread3PresetInfo(state.activeSpreadPreset, state.lang).positions[currentCount - 1] : '')
   );
   mesh.userData.posLabel = posName;
 
@@ -823,7 +905,11 @@ async function finishPickingPhase() {
     setSatiDialogue(reply, 'moodReply', true, false, {
       isNatal10: false,
       question: lastRealUserQ || q,
-      cards: toCardMeta(state.activeSpread)
+      cards: toCardMeta(state.activeSpread),
+      ...(state.activeSpread.length === 3 ? {
+        spread3Preset: state.activeSpreadPreset,
+        spreadPositions: getSpread3PresetInfo(state.activeSpreadPreset, state.lang).positions
+      } : {})
     });
   }
   updateHUD();
@@ -1008,6 +1094,12 @@ function applyLanguage(newLang) {
     toggleDockBtn.textContent = t(lang, state.dockCollapsed ? 'btnShowDock' : 'btnHideDock');
   }
   syncReversedToggleUI();
+  syncEntryModeUI();
+  renderSpreadPresetSelector('spread3-modal-options', state.activeSpreadPreset, state.lang, (id) => {
+    SoundFX.playPick();
+    state.activeSpreadPreset = normalizeSpread3Preset(id);
+    syncEntryModeUI();
+  });
   const moodEl = document.getElementById('sati-mood-tag');
   if (moodEl) {
     moodEl.textContent = t(lang, state.currentMoodKey || 'moodIdle');
@@ -1080,11 +1172,11 @@ async function handleSelectEmailAccount(email, defaultFullname, defaultNickname)
     state.savedNatalCards = savedNatal;
     state.sessionArchives = archives;
 
-    if (saved.sessionActive && saved.natalCompleted) {
+    if (saved.sessionActive && (saved.natalCompleted || saved.chatHistory?.length > 0)) {
       updateResumeBannerInfo();
       resumeBanner.classList.remove('hidden');
       returningBox?.classList.add('hidden');
-      if (submitBtn) submitBtn.textContent = t(state.lang, 'btnDrawNewNatal');
+      if (submitBtn) submitBtn.textContent = savedNatal.length === 10 ? t(state.lang, 'btnDrawNewNatal') : t(state.lang, 'btnSubmitLedger');
     } else if (savedNatal.length === 10 || archives.length > 0) {
       resumeBanner.classList.add('hidden');
       returningBox?.classList.remove('hidden');
@@ -1155,7 +1247,9 @@ window.addEventListener('DOMContentLoaded', () => {
       const idx = state.activeSpread.findIndex((c) => c.uid === card.uid);
       const label = state.activeSpread.length === 10 && idx >= 0
         ? t(state.lang, 'pickOrderPos', idx + 1, getLocalizedCelticPositions(state.lang)[idx])
-        : (idx >= 0 ? t(state.lang, 'activeCardLabel', idx) : posLabel);
+        : (state.activeSpread.length === 3 && idx >= 0
+            ? t(state.lang, 'pickOrderPos', idx + 1, getSpread3PresetInfo(state.activeSpreadPreset, state.lang).positions[idx])
+            : (idx >= 0 ? t(state.lang, 'activeCardLabel', idx) : posLabel));
       openCardModal(card, label);
     },
     onCrystalInspect: () => {
@@ -1230,6 +1324,8 @@ window.addEventListener('DOMContentLoaded', () => {
     persistAllowReversed(state.allowReversedCards);
     syncReversedToggleUI();
     state.activeSpreadTopic = pendingSavedRecord.activeSpreadTopic || '';
+    state.activeSpreadPreset = normalizeSpread3Preset(pendingSavedRecord.activeSpreadPreset);
+    syncEntryModeUI();
     state.pendingDrawTopic = '';
     state.pendingDrawIsExpand = false;
     state.userContextFacts = Array.isArray(pendingSavedRecord.userContextFacts)
@@ -1389,13 +1485,31 @@ window.addEventListener('DOMContentLoaded', () => {
     updateHUD();
 
     startShuffleAndFan(() => {
-      enterPickingPhase(10, 'initial');
-      setSatiDialogue(
-        t(state.lang, 'welcomeFirstDialogue', state.user.nickname),
-        'moodGreeting',
-        true,
-        false
-      );
+      if (state.entryStartMode === '3') {
+        const presetInfo = getSpread3PresetInfo(state.activeSpreadPreset, state.lang);
+        const rawLedgerQ = document.getElementById('input-ledger-question')?.value.trim() || '';
+        const cleanQ = rawLedgerQ || presetInfo.defaultQ;
+        const prof = detectTopicAndIntent(cleanQ, 'general');
+        state.pendingDrawTopic = prof.subDomain && prof.subDomain !== 'general' ? prof.subDomain : prof.topic;
+        state.pendingDrawIsExpand = false;
+        state.pendingDrawQuestion = cleanQ;
+        appendHistory(state.user.nickname, cleanQ, 'user');
+        enterPickingPhase(3, 'quick3');
+        setSatiDialogue(
+          t(state.lang, 'welcomeQuick3Dialogue', state.user.nickname, presetInfo.title, rawLedgerQ),
+          'moodGreeting',
+          false,
+          false
+        );
+      } else {
+        enterPickingPhase(10, 'initial');
+        setSatiDialogue(
+          t(state.lang, 'welcomeFirstDialogue', state.user.nickname),
+          'moodGreeting',
+          true,
+          false
+        );
+      }
       saveAccountState(state);
     });
   });
@@ -1472,10 +1586,94 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-self-shuffle')?.addEventListener('click', triggerPlayerSelfShuffle);
   document.getElementById('btn-self-shuffle-chat')?.addEventListener('click', triggerPlayerSelfShuffle);
 
-  // Follow-up Draw Buttons (gated by active question in #chat-input)
+  document.getElementById('btn-entry-mode-3')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    state.entryStartMode = '3';
+    syncEntryModeUI();
+  });
+  document.getElementById('btn-entry-mode-10')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    state.entryStartMode = '10';
+    syncEntryModeUI();
+  });
+  document.getElementById('btn-ledger-daily-now')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    state.entryStartMode = '3';
+    state.activeSpreadPreset = 'daily_mindset_guidance';
+    const qInput = document.getElementById('input-ledger-question');
+    if (qInput) qInput.value = getSpread3PresetInfo('daily_mindset_guidance', state.lang).defaultQ;
+    syncEntryModeUI();
+  });
+
+  function startSpread3DrawWithOptions(presetId, rawQ = '') {
+    if (state.remainingDeck.length < 3) {
+      showToast(t(state.lang, 'toastLowDeck'));
+      document.getElementById('btn-reshuffle')?.classList.remove('hidden');
+      return;
+    }
+    const preset = normalizeSpread3Preset(presetId);
+    state.activeSpreadPreset = preset;
+    const presetInfo = getSpread3PresetInfo(preset, state.lang);
+    const cleanQ = String(rawQ || '').trim() || presetInfo.defaultQ;
+    const pNew = detectTopicAndIntent(cleanQ, state.lastTopic);
+    state.pendingDrawTopic = pNew.subDomain && pNew.subDomain !== 'general' ? pNew.subDomain : pNew.topic;
+    state.pendingDrawIsExpand = false;
+    state.pendingDrawQuestion = cleanQ;
+    appendHistory(state.user.nickname, cleanQ, 'user');
+    const chatInputEl = document.getElementById('chat-input');
+    if (chatInputEl) chatInputEl.value = '';
+    enterPickingPhase(3, 'quick3');
+    setSatiDialogue(t(state.lang, 'welcomeQuick3Dialogue', state.user.nickname, presetInfo.title, rawQ.trim()), 'moodWaitPick', false, false);
+  }
+
+  function openSpread3Modal() {
+    if (state.isPicking || state.isThinking || state.isAnimatingShuffle || state.isPlayerShuffling) return;
+    SoundFX.playPick();
+    const redraw = () => {
+      renderSpreadPresetSelector('spread3-modal-options', state.activeSpreadPreset, state.lang, (id) => {
+        SoundFX.playPick();
+        state.activeSpreadPreset = normalizeSpread3Preset(id);
+        redraw();
+      });
+    };
+    redraw();
+    const chatVal = document.getElementById('chat-input')?.value.trim() || '';
+    const qModalInput = document.getElementById('spread3-question-input');
+    if (qModalInput) qModalInput.value = chatVal;
+    openModal('modal-spread3');
+  }
+
+  document.getElementById('btn-spread3-daily-now')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    const typed = document.getElementById('spread3-question-input')?.value.trim() || '';
+    closeModal('modal-spread3');
+    startSpread3DrawWithOptions('daily_mindset_guidance', typed);
+  });
+
+  document.getElementById('btn-spread3-confirm')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    const typed = document.getElementById('spread3-question-input')?.value.trim() || '';
+    closeModal('modal-spread3');
+    startSpread3DrawWithOptions(state.activeSpreadPreset, typed);
+  });
+
+  // Follow-up Draw Buttons
   document.getElementById('btn-draw-1').addEventListener('click', () => triggerFollowUpDraw(1, false, false));
-  document.getElementById('btn-draw-3').addEventListener('click', () => triggerFollowUpDraw(3, false, false));
-  document.getElementById('btn-draw-10-opt').addEventListener('click', () => triggerFollowUpDraw(10, false, false));
+  document.getElementById('btn-draw-3').addEventListener('click', () => openSpread3Modal());
+  document.getElementById('btn-draw-10-opt').addEventListener('click', () => {
+    if (!state.natalCompleted) {
+      if (state.remainingDeck.length < 10) {
+        showToast(t(state.lang, 'toastLowDeck'));
+        document.getElementById('btn-reshuffle')?.classList.remove('hidden');
+        return;
+      }
+      SoundFX.playPick();
+      enterPickingPhase(10, 'initial');
+      setSatiDialogue(t(state.lang, 'welcomeFirstDialogue', state.user.nickname), 'moodWaitPick', false, false);
+      return;
+    }
+    triggerFollowUpDraw(10, false, false);
+  });
 
   // Expand Previous Question Quick Draw Buttons
   document.getElementById('btn-expand-prev-1')?.addEventListener('click', () => triggerFollowUpDraw(1, false, true));
@@ -1629,9 +1827,11 @@ window.addEventListener('DOMContentLoaded', () => {
       !qProfile.isElliptical &&
       qDomain !== spreadDomain
     );
-    const refCards = (state.activeSpread.length > 0 && !isTopicSwitch) ? state.activeSpread : state.natalCards;
-    const sourceWasNatal10 = state.activeSpread.length === 0 || isTopicSwitch;
-    const topicSwitchedFrom = isTopicSwitch ? spreadDomain : '';
+    const refCards = (state.activeSpread.length > 0 && (!isTopicSwitch || state.natalCards.length === 0))
+      ? state.activeSpread
+      : (state.natalCards.length > 0 ? state.natalCards : state.activeSpread);
+    const sourceWasNatal10 = state.natalCards.length > 0 && (state.activeSpread.length === 0 || isTopicSwitch);
+    const topicSwitchedFrom = (isTopicSwitch && state.natalCards.length > 0) ? spreadDomain : '';
 
     state.isThinking = true;
     renderSmartPromptChips();
@@ -1647,7 +1847,11 @@ window.addEventListener('DOMContentLoaded', () => {
       isNatal10: false,
       sourceWasNatal10,
       question: q,
-      cards: refCards.map((c) => serializeSpreadCardMeta(c))
+      cards: refCards.map((c) => serializeSpreadCardMeta(c)),
+      ...(!sourceWasNatal10 && refCards.length === 3 ? {
+        spread3Preset: state.activeSpreadPreset,
+        spreadPositions: getSpread3PresetInfo(state.activeSpreadPreset, state.lang).positions
+      } : {})
     });
     updateHUD();
     renderSmartPromptChips();

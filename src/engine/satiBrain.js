@@ -11,6 +11,7 @@ import {
   getLocalizedCardLabelInline,
   getLocalizedCardShortName,
   getLocalizedCelticPositions,
+  getSpread3PresetInfo,
   formatCardOrientationTag,
   formatCardOrientationBadge,
   getReversedEnergyNuance
@@ -1838,6 +1839,13 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
   const spreadPatterns = analyzeSpreadPatterns(cards, lang);
   const pastSessionMemory = buildCrossSessionMemorySummary(state?.sessionArchives || [], lang);
 
+  const spread3Info = !isNatal10 && cards.length === 3
+    ? getSpread3PresetInfo(extra?.spread3Preset || state?.activeSpreadPreset, lang)
+    : null;
+  const spreadPositions = Array.isArray(extra?.spreadPositions) && extra.spreadPositions.length === cards.length
+    ? extra.spreadPositions
+    : (spread3Info ? spread3Info.positions : null);
+
   const requestBody = {
     lang,
     userProfile: state.user,
@@ -1850,6 +1858,8 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
     pastSessionMemory,
     isNatal10,
     celticPositions: getLocalizedCelticPositions(lang),
+    ...(spreadPositions ? { spreadPositions } : {}),
+    ...(spread3Info ? { spreadPresetTitle: spread3Info.title } : {}),
     deckNumber: Number(state.deckNumber) || 1,
     deckCarryoverSummary: state.deckCarryoverSummary || '',
     questionProfile,
@@ -2199,11 +2209,18 @@ export function buildReadingBreakdown(entry, prevUserText = '', state = {}, deck
 
     if (!followCards.length) return { isReading: false };
 
-    const roleTable = followCards.length === 1
-      ? [BREAKDOWN_COPY.spreadRole.single[lang]]
-      : followCards.length === 2
-        ? BREAKDOWN_COPY.spreadRole.pair[lang]
-        : BREAKDOWN_COPY.spreadRole.trio[lang];
+    const customMetaPositions = Array.isArray(entry?.meta?.spreadPositions) && entry.meta.spreadPositions.length === followCards.length
+      ? entry.meta.spreadPositions
+      : (followCards.length === 3 && entry?.meta?.spread3Preset
+          ? getSpread3PresetInfo(entry.meta.spread3Preset, lang).positions
+          : null);
+    const roleTable = customMetaPositions || (
+      followCards.length === 1
+        ? [BREAKDOWN_COPY.spreadRole.single[lang]]
+        : followCards.length === 2
+          ? BREAKDOWN_COPY.spreadRole.pair[lang]
+          : BREAKDOWN_COPY.spreadRole.trio[lang]
+    );
 
     primaryCards = followCards.map((card, i) => {
       const label = roleTable[i] || `${i + 1}`;

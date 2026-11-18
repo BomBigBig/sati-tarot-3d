@@ -349,7 +349,7 @@
 
     <!-- STAGE 2: NATAL LEDGER ONBOARDING (3D Table Ledger) -->
     <section id="screen-ledger" class="hidden pointer-auto fixed inset-0 flex items-center justify-center p-4 bg-[#0b0d19]/55">
-      <div class="panel-glass chamfer w-full max-w-md p-6 sm:p-7 border border-[#d4af37]/60">
+      <div class="panel-glass chamfer w-full max-w-md max-h-[90vh] overflow-y-auto scrollbar-thin p-5 sm:p-7 border border-[#d4af37]/60">
         <div class="flex items-center justify-between border-b border-[#d4af37]/25 pb-3 mb-4">
           <div>
             <p data-i18n="ledgerEyebrow" class="text-xs text-[#d4af37] tracking-wider uppercase">สมุดบันทึกพื้นดวง</p>
@@ -401,6 +401,32 @@
             </div>
           </div>
 
+          <div>
+            <label data-i18n="ledgerModeLabel" class="block text-xs text-[#c5c7d4] mb-1.5">เลือกรูปแบบการเปิดไพ่รอบแรก</label>
+            <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Opening spread mode">
+              <button id="btn-entry-mode-3" type="button" aria-pressed="false" class="btn-slate chamfer-sm p-2.5 text-left cursor-pointer border border-[#d4af37]/35">
+                <div data-i18n="ledgerMode3Title" class="text-xs font-bold text-[#f3d266]">🃏 เปิดเร็ว 3 ใบ</div>
+                <div data-i18n="ledgerMode3Sub" class="text-[10.5px] text-[#c5c7d4] leading-snug mt-0.5">ชีวิตประจำวัน / เรื่องเฉพาะเจาะจง</div>
+              </button>
+              <button id="btn-entry-mode-10" type="button" aria-pressed="true" class="btn-gold chamfer-sm p-2.5 text-left cursor-pointer border border-[#f3d266]">
+                <div data-i18n="ledgerMode10Title" class="text-xs font-bold text-[#0b0d19]">🔮 ผังใหญ่ 10 ใบ</div>
+                <div data-i18n="ledgerMode10Sub" class="text-[10.5px] leading-snug mt-0.5 opacity-90">เจาะลึกพื้นดวงทั้งชีวิต (แนะนำ)</div>
+              </button>
+            </div>
+          </div>
+
+          <div id="ledger-spread3-box" class="hidden p-3 bg-[#10152b]/90 border border-[#d4af37]/40 chamfer-sm space-y-2.5">
+            <div id="ledger-spread3-options" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5"></div>
+            <div>
+              <label for="input-ledger-question" data-i18n="ledgerQuestionLabel" class="block text-[11px] text-[#c5c7d4] mb-1">เรื่องที่อยากดู (ไม่บังคับ — ถ้าเว้นว่างถือว่าดูภาพรวม)</label>
+              <input id="input-ledger-question" type="text" data-i18n-placeholder="ledgerQuestionPlaceholder" placeholder="เช่น งานสัปดาห์นี้เป็นยังไง หรือกดดูดวงวันนี้เลยด้านล่าง"
+                class="w-full px-3 py-2 bg-[#0b0d19]/90 border border-[#d4af37]/35 focus:border-[#d4af37] outline-none text-xs text-[#f1ede4]" />
+            </div>
+            <button id="btn-ledger-daily-now" type="button" data-i18n="btnLedgerDailyNow" class="btn-slate chamfer-sm px-2.5 py-1 text-[11px] text-[#f3d266] cursor-pointer">
+              ☀️ ตั้งเป็นดูดวงชีวิตประจำวันวันนี้
+            </button>
+          </div>
+
           <button type="submit" data-i18n="btnSubmitLedger" class="w-full btn-gold chamfer py-3 text-sm sm:text-base mt-2">
             ประทับตราเริ่มดูดวง
           </button>
@@ -447,7 +473,7 @@
               <span data-i18n="btnDraw1">จั่วเพิ่ม 1 ใบ</span>
             </button>
             <button id="btn-draw-3" type="button" disabled class="btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer">
-              <span data-i18n="btnDraw3">จั่วเพิ่ม 3 ใบ</span>
+              <span data-i18n="btnDraw3">เปิด 3 ใบ (เลือกผัง)</span>
             </button>
             <button id="btn-draw-10-opt" type="button" disabled class="hidden btn-slate chamfer-sm h-8 px-1.5 sm:px-2 text-[10.5px] sm:text-xs flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer">
               <span data-i18n="btnDraw10Opt">เปิดผังใหญ่ 10 ใบ</span>
@@ -865,6 +891,35 @@
   </dialog>
 
   <!-- TOAST NOTIFICATION -->
+  <!-- NATIVE MODAL 12: 3-CARD SPREAD LAYOUT CHOOSER -->
+  <dialog id="modal-spread3" closedby="any" aria-labelledby="title-modal-spread3" class="w-full max-w-lg">
+    <div class="panel-glass chamfer w-full max-h-[88vh] flex flex-col p-5 border border-[#d4af37]/70 space-y-3">
+      <div class="flex items-start justify-between gap-2 border-b border-[#d4af37]/25 pb-2.5">
+        <div>
+          <h3 id="title-modal-spread3" data-i18n="modalSpread3Title" class="font-display text-base font-bold text-[#f3d266]">เปิดไพ่ 3 ใบ · เลือกกรอบคำทำนาย</h3>
+          <p data-i18n="modalSpread3Sub" class="text-[11px] text-[#b0a999] mt-0.5">เลือกความหมายของไพ่ทั้ง 3 ตำแหน่งให้ตรงกับเรื่องที่อยากรู้ที่สุด</p>
+        </div>
+        <form method="dialog">
+          <button value="close" data-i18n="btnClose" autofocus class="btn-slate chamfer-sm px-3 py-1 text-xs cursor-pointer">ปิด</button>
+        </form>
+      </div>
+      <div id="spread3-modal-options" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto scrollbar-thin pr-0.5"></div>
+      <div>
+        <label for="spread3-question-input" data-i18n="spread3QuestionLabel" class="block text-xs text-[#c5c7d4] mb-1">คำถามเฉพาะเจาะจง (ไม่บังคับ)</label>
+        <input id="spread3-question-input" type="text" data-i18n-placeholder="spread3QuestionPlaceholder" placeholder="พิมพ์เรื่องที่อยากถาม หรือกดดูดวงวันนี้เลยด้านล่าง"
+          class="w-full px-3 py-2 bg-[#0b0d19]/90 border border-[#d4af37]/40 focus:border-[#d4af37] outline-none text-xs sm:text-sm text-[#f1ede4]" />
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <button id="btn-spread3-daily-now" type="button" data-i18n="btnSpread3DailyNow" class="btn-slate chamfer-sm px-3 py-2 text-xs text-[#f3d266] cursor-pointer">
+          ☀️ ดูดวงวันนี้เลย
+        </button>
+        <button id="btn-spread3-confirm" type="button" data-i18n="btnSpread3Confirm" class="btn-gold chamfer-sm px-4 py-2 text-xs font-semibold cursor-pointer">
+          🃏 เริ่มหยิบไพ่ 3 ใบ
+        </button>
+      </div>
+    </div>
+  </dialog>
+
   <div id="toast-box" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-40 panel-glass chamfer-sm px-4 py-2 text-xs sm:text-sm text-[#f1ede4] border-[#d4af37]"></div>
 
   <script type="module" src="/src/main.js"></script>

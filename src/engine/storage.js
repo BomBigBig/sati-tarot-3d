@@ -19,6 +19,7 @@ export function buildStoragePayload(state) {
     natalCompleted: state.natalCompleted,
     activeSpread: state.activeSpread,
     activeSpreadTopic: state.activeSpreadTopic || '',
+    activeSpreadPreset: state.activeSpreadPreset || 'past_present_future',
     userContextFacts: Array.isArray(state.userContextFacts) ? state.userContextFacts : [],
     chatHistory: state.chatHistory,
     sessionArchives: state.sessionArchives || [],

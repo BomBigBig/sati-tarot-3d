@@ -29,6 +29,21 @@ export const UI_TEXT = {
     placeholderMonth: 'เดือน',
     placeholderYear: 'ปี พ.ศ.',
     btnSubmitLedger: 'ประทับตราเริ่มดูดวง',
+    ledgerModeLabel: 'เลือกรูปแบบการเปิดไพ่รอบแรก',
+    ledgerMode3Title: '🃏 เปิดเร็ว 3 ใบ',
+    ledgerMode3Sub: 'ชีวิตประจำวัน / เรื่องเฉพาะเจาะจง',
+    ledgerMode10Title: '🔮 ผังใหญ่ 10 ใบ',
+    ledgerMode10Sub: 'เจาะลึกพื้นดวงทั้งชีวิต (แนะนำ)',
+    ledgerQuestionLabel: 'เรื่องที่อยากดู (ไม่บังคับ — ถ้าเว้นว่างถือว่าดูภาพรวม)',
+    ledgerQuestionPlaceholder: 'เช่น งานสัปดาห์นี้เป็นยังไง หรือกดดูดวงวันนี้เลยด้านล่าง',
+    btnLedgerDailyNow: '☀️ ตั้งเป็นดูดวงชีวิตประจำวันวันนี้',
+    modalSpread3Title: 'เปิดไพ่ 3 ใบ · เลือกกรอบคำทำนาย',
+    modalSpread3Sub: 'เลือกความหมายของไพ่ทั้ง 3 ตำแหน่งให้ตรงกับเรื่องที่อยากรู้ที่สุด',
+    spread3QuestionLabel: 'คำถามเฉพาะเจาะจง (ไม่บังคับ)',
+    spread3QuestionPlaceholder: 'พิมพ์เรื่องที่อยากถาม หรือกดดูดวงวันนี้เลยด้านล่าง',
+    btnSpread3DailyNow: '☀️ ดูดวงวันนี้เลย',
+    btnSpread3Confirm: '🃏 เริ่มหยิบไพ่ 3 ใบ',
+    btnDraw3: 'เปิด 3 ใบ (เลือกผัง)',
     months: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'],
     formatYear: (beYear) => `${beYear}`,
 
@@ -214,6 +229,10 @@ export const UI_TEXT = {
 
     welcomeFirstDialogue: (nick) =>
       `สวัสดีนะ${nick} เราชื่อสติ เดี๋ยวขั้นแรกให้${nick}เลือกไพ่ 10 ใบจากบนโต๊ะก่อนนะ เพื่อผูกเข้ากับชื่อ-วันเกิด ดูพื้นดวง อดีต ปัจจุบัน และอนาคตของ${nick}ให้ชัดๆ พอเปิดครบแล้วสติจะพาไปดูขั้นต่อไปทีละก้าวเอง`,
+    welcomeQuick3Dialogue: (nick, presetTitle, q) =>
+      `สวัสดีนะ${nick} เราชื่อสติ เตรียมสำรับไว้ให้แล้ว — เลือกหยิบไพ่ 3 ใบตามผัง "${presetTitle}" ได้เลย${q ? ` สำหรับเรื่อง "${q}"` : ''} เดี๋ยวสติอ่านเชื่อมให้ตรงจุดทันที`,
+    pickQuick3Prompt: 'เลือกไพ่ 3 ใบตามผังที่ตั้งใจไว้',
+    stepCoachPick3: 'เลือกหยิบไพ่ 3 ใบจากวงพัดบนโต๊ะ (หรือกด "สุ่มหยิบให้ครบ") เพื่อดูคำทำนาย 3 ตำแหน่งทันที',
     welcomeUseSavedNatalDialogue: (nick) =>
       `ยินดีต้อนรับกลับมานะ${nick} สติจำพื้นดวงและไพ่ 10 ใบเดิมของ${nick}ไว้ครบแล้ว รอบใหม่นี้จัดสำรับใหม่ครบ 78 ใบวางตรงหน้าเรียบร้อย เลือกหมวดคำถามพรีเซ็ตหรือจั่วไพ่ถามต่อได้เลย`,
     welcomeBackDialogue: (nick, rem) =>
@@ -227,8 +246,8 @@ export const UI_TEXT = {
     toastCrystal: 'พลังงานจากลูกแก้วคริสตัลตอบรับสมาธิแล้ว',
     toastNeedQuestionBeforeDraw: 'กรุณาพิมพ์คำถามหรือแตะเลือกคำถามพรีเซ็ตก่อนกดจั่วไพ่ครับ',
 
-    drawGateLockedHint: 'ตั้งคำถามในช่องพิมพ์ หรือแตะเลือกคำถามพรีเซ็ตด้านล่างก่อน จึงจะกดจั่วไพ่เพิ่มได้',
-    drawGateReadyHint: 'ตั้งคำถามพร้อมแล้ว — กด "ถามสติ" เพื่ออ่านจากไพ่บนโต๊ะ หรือกด "จั่วเพิ่ม 1 / 3 ใบ" ด้านบนได้เลย',
+    drawGateLockedHint: 'พิมพ์คำถามก่อนกด "ถามสติ / จั่ว 1 ใบ" — หรือกด "เปิด 3 ใบ (เลือกผัง)" ด้านบนได้ทันที',
+    drawGateReadyHint: 'คำถามพร้อมแล้ว — กด "ถามสติ" หรือกดจั่ว 1 / เปิด 3 ใบ ด้านบนได้เลย',
     expandPrevLabelFmt: (q) => `ขยายคำถามเดิม: "${q}"`,
     btnExpandPrev1: 'ขยาย 1 ใบ',
     btnExpandPrev3: 'ขยาย 3 ใบ',
@@ -316,6 +335,21 @@ export const UI_TEXT = {
     placeholderMonth: 'Month',
     placeholderYear: 'Year',
     btnSubmitLedger: 'Seal Ledger & Begin Reading',
+    ledgerModeLabel: 'Choose Your Opening Spread',
+    ledgerMode3Title: '🃏 Quick 3 Cards',
+    ledgerMode3Sub: 'Daily flow or a specific question',
+    ledgerMode10Title: '🔮 Full 10-Card Natal',
+    ledgerMode10Sub: 'Deep Celtic Cross + birth chart (Recommended)',
+    ledgerQuestionLabel: 'Specific question (optional)',
+    ledgerQuestionPlaceholder: 'e.g., How will my week go? Or tap Daily Check-in below',
+    btnLedgerDailyNow: '☀️ Set to Today’s Daily Reading',
+    modalSpread3Title: '3-Card Spread · Choose Your Layout',
+    modalSpread3Sub: 'Pick how the 3 cards should frame your question',
+    spread3QuestionLabel: 'Specific Question (optional)',
+    spread3QuestionPlaceholder: 'Type a specific question, or tap Daily Check-in below',
+    btnSpread3DailyNow: '☀️ Daily Check-In Now',
+    btnSpread3Confirm: '🃏 Pick 3 Cards',
+    btnDraw3: 'Open 3 Cards (Spreads)',
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     formatYear: (beYear) => `${beYear - 543}`,
 
@@ -501,6 +535,10 @@ export const UI_TEXT = {
 
     welcomeFirstDialogue: (nick) =>
       `Good to see you, ${nick}. I'm Sati. Let's start by pulling 10 cards so I can tie your name and birth date into the spread and map out your past to present clearly. (You can switch the 1P/2P camera view at top right too.)`,
+    welcomeQuick3Dialogue: (nick, presetTitle, q) =>
+      `Good to see you, ${nick}. I'm Sati. Go ahead and draw 3 cards for "${presetTitle}"${q ? ` on "${q}"` : ''} — I'll read each position right away.`,
+    pickQuick3Prompt: 'Pick 3 cards for your chosen spread',
+    stepCoachPick3: 'Pick 3 cards from the 3D fan (or tap Auto-Pick) to unlock your 3-position reading right away.',
     welcomeUseSavedNatalDialogue: (nick) =>
       `Welcome back, ${nick}. Your natal profile and 10 natal cards are already remembered, and a fresh full 78-card deck is fanned on the table. Pick a question preset or draw more cards anytime.`,
     welcomeBackDialogue: (nick, rem) =>
@@ -514,8 +552,8 @@ export const UI_TEXT = {
     toastCrystal: 'Crystal orb energy answered your focus.',
     toastNeedQuestionBeforeDraw: 'Please type a question or select a preset question before drawing cards.',
 
-    drawGateLockedHint: 'Type a question or tap a preset below first to unlock drawing new cards',
-    drawGateReadyHint: 'Question ready — press "Ask Sati" using current table cards, or press "Draw 1 / 3 Cards" above',
+    drawGateLockedHint: 'Type a question to Ask Sati or Draw 1 — or click "Open 3 Cards (Spreads)" above anytime',
+    drawGateReadyHint: 'Question ready — press "Ask Sati" or draw 1 / 3 cards above',
     expandPrevLabelFmt: (q) => `Expand previous question: "${q}"`,
     btnExpandPrev1: 'Expand 1 Card',
     btnExpandPrev3: 'Expand 3 Cards',
@@ -598,6 +636,21 @@ export const UI_TEXT = {
     placeholderMonth: '月',
     placeholderYear: '年份',
     btnSubmitLedger: '盖印启盘占卜',
+    ledgerModeLabel: '选择首次开牌方式',
+    ledgerMode3Title: '🃏 快捷 3 张牌',
+    ledgerMode3Sub: '日常运势或具体单项提问',
+    ledgerMode10Title: '🔮 10 张完整本命盘',
+    ledgerMode10Sub: '凯尔特十字深度全盘解读（推荐）',
+    ledgerQuestionLabel: '想具体询问的事情（选填）',
+    ledgerQuestionPlaceholder: '如：本周工作运势如何？或点下方直接看今日状态',
+    btnLedgerDailyNow: '☀️ 设为今日日常速览',
+    modalSpread3Title: '开启 3 张牌 · 选择牌阵角度',
+    modalSpread3Sub: '选择最贴合你当下问题的三位置解牌视角',
+    spread3QuestionLabel: '具体问题（选填）',
+    spread3QuestionPlaceholder: '输入想问的具体事情，或直接点击下方今日速览',
+    btnSpread3DailyNow: '☀️ 立即看今日状态',
+    btnSpread3Confirm: '🃏 开始挑选 3 张牌',
+    btnDraw3: '开启 3 张（选阵型）',
     months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
     formatYear: (beYear) => `${beYear - 543} 年`,
 
@@ -783,6 +836,10 @@ export const UI_TEXT = {
 
     welcomeFirstDialogue: (nick) =>
       `你好，${nick}，我是思谛。我们先抽 10 张牌，把你的名字、生辰和当下处境连起来看一遍，从过去到现在一次看清。（右上角也可以自由切换第一人称和对坐视角。）`,
+    welcomeQuick3Dialogue: (nick, presetTitle, q) =>
+      `你好，${nick}，我是思谛。已为你备好整副牌，请按“${presetTitle}”挑选 3 张牌${q ? `（聚焦：“${q}”）` : ''}，我立刻帮你拆解三张位置关联。`,
+    pickQuick3Prompt: '请挑选 3 张牌对应所选阵型',
+    stepCoachPick3: '从桌面牌扇挑选 3 张牌（或点击“自动抽满”），立即获得三位置直击解读。',
     welcomeUseSavedNatalDialogue: (nick) =>
       `欢迎回来，${nick}。我已记下你的生辰与最初 10 张本命牌，桌前已为你重整好全副 78 张新牌，随时选分类提问或加抽牌吧。`,
     welcomeBackDialogue: (nick, rem) =>
@@ -796,8 +853,8 @@ export const UI_TEXT = {
     toastCrystal: '水晶球回应了你的专注。',
     toastNeedQuestionBeforeDraw: '请先输入问题或选择预设问题后再抽牌。',
 
-    drawGateLockedHint: '请先在输入框填写问题或点击下方预设问题，即可解锁加抽新牌',
-    drawGateReadyHint: '问题已就绪——可点击“提问”结合桌面现有牌解读，或点击上方“加抽 1 / 3 张”',
+    drawGateLockedHint: '输入问题即可“提问”或“加抽 1 张”——或随时直接点击上方“开启 3 张（选阵型）”',
+    drawGateReadyHint: '问题已就绪——点击“提问”直接解读，或点击上方抽 1 / 3 张牌',
     expandPrevLabelFmt: (q) => `追问上一题：“${q}”`,
     btnExpandPrev1: '加抽 1 张',
     btnExpandPrev3: '加抽 3 张',

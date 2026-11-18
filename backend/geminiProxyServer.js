@@ -402,6 +402,8 @@ export function buildSatiPromptBundle(body = {}) {
     recentHistory,
     isNatal10,
     celticPositions,
+    spreadPositions = null,
+    spreadPresetTitle = '',
     deckNumber = 1,
     deckCarryoverSummary = '',
     questionProfile = null,
@@ -421,7 +423,10 @@ export function buildSatiPromptBundle(body = {}) {
   const spreadArr = Array.isArray(activeSpread) && activeSpread.length > 0
     ? activeSpread
     : (Array.isArray(cards) ? cards : (Array.isArray(activeSpread) ? activeSpread : []));
-  const positions3 = ['สถานการณ์ตอนนี้', 'ตัวแปร/จุดที่ต้องระวัง', 'บทสรุป/ทางออก'];
+  const customPos3 = Array.isArray(spreadPositions) && spreadPositions.length === 3
+    ? spreadPositions.map((p) => String(p || '').trim())
+    : null;
+  const positions3 = customPos3 || ['สถานการณ์ตอนนี้', 'ตัวแปร/จุดที่ต้องระวัง', 'บทสรุป/ทางออก'];
   const formattedSpread = spreadArr.map((c, idx) => {
     const posLabel = (isNatal10 || (Boolean(topicSwitchedFrom) && spreadArr.length === 10)) && Array.isArray(celticPositions)
       ? (celticPositions[idx] || `ตำแหน่งที่ ${idx + 1}`)
@@ -474,6 +479,11 @@ export function buildSatiPromptBundle(body = {}) {
   const cleanPastMemory = typeof pastSessionMemory === 'string' ? pastSessionMemory.trim() : '';
   const hasReversed = spreadArr.some((c) => Boolean(c?.reversed));
 
+  const cleanSpreadPresetTitle = typeof spreadPresetTitle === 'string' ? spreadPresetTitle.trim() : '';
+  const natalSummaryText = Array.isArray(natalCards) && natalCards.length > 0
+    ? natalCards.map((c, i) => `${i + 1}.${c?.name || 'Unknown'}${c?.th ? `(${c.th})` : ''}${c?.reversed ? '[กลับหัว]' : ''}`).join(', ')
+    : 'ยังไม่เปิดผังพื้นดวง 10 ใบ (ผู้ถามเลือกโหมดเปิดเร็ว — ให้อ่านจากไพ่บนโต๊ะเชื่อมกับข้อมูลเกิดและทักษาชื่อเต็มที่)';
+
   const userContext = [
     `Target Language: ${targetLangDesc}`,
     deckHeader,
@@ -482,7 +492,10 @@ export function buildSatiPromptBundle(body = {}) {
     extNatalLine,
     `ทักษาชื่อ 8 ภูมิ: เด่น ${userProfile?.thaksaStrength || ''} | ${kal}${thaksaRolesSummary ? ` | รายละเอียดภูมิ:${thaksaRolesSummary}` : ''} | ไพ่ประจำตัว: ${userProfile?.birthCard || ''}`,
     factsLine,
-    `ไพ่พื้นดวง 10 ใบแรก: ${(natalCards || []).map((c, i) => `${i + 1}.${c?.name || 'Unknown'}${c?.th ? `(${c.th})` : ''}${c?.reversed ? '[กลับหัว]' : ''}`).join(', ')}`,
+    `ไพ่พื้นดวง 10 ใบแรก: ${natalSummaryText}`,
+    !isNatal10 && spreadArr.length === 3 && (cleanSpreadPresetTitle || customPos3)
+      ? `กรอบผัง 3 ใบที่ผู้ถามเลือก (${cleanSpreadPresetTitle || positions3.join(' · ')}): ตีความแต่ละใบให้ตรงตามบทบาท [${positions3.join(' -> ')}] อย่างชัดเจน`
+      : '',
     `ไพ่ที่เปิดอยู่บนโต๊ะตอนนี้ (${spreadArr.length} ใบ):\n${formattedSpread || 'ยังไม่มีไพ่เปิดเพิ่มเติม'}`,
     elementalDignity ? `กำลังธาตุไพ่ (Golden Dawn Dignity): ${elementalDignity}` : '',
     cleanSpreadPatterns ? `ภาพรวมโครงสร้างไพ่ทั้งชุด (Spread Patterns): ${cleanSpreadPatterns}` : '',
