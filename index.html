@@ -310,13 +310,36 @@
           <div id="dialogue-content" class="mt-1.5 text-xs sm:text-sm leading-relaxed text-[#f4efe6] whitespace-pre-line max-h-40 sm:max-h-60 overflow-y-auto scrollbar-thin pr-1">
             กำลังเตรียมสำรับ...
           </div>
-          <div id="dialogue-footer-actions" class="hidden mt-2 pt-1.5 border-t border-[#d4af37]/20 flex items-center justify-end gap-2">
-            <button id="btn-live-share-reading" type="button" data-i18n="btnShareReading" class="btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] text-[#f4efe6] hover:border-[#f3d266] cursor-pointer">
-              บันทึกรูป / แชร์
-            </button>
-            <button id="btn-live-more-details" type="button" data-i18n="btnMoreDetails" class="btn-gold chamfer-sm px-2.5 py-0.5 text-[11px] cursor-pointer">
-              รายละเอียดเพิ่มเติม
-            </button>
+          <div id="dialogue-footer-actions" class="hidden mt-2 pt-1.5 border-t border-[#d4af37]/20 flex flex-col gap-1.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div id="live-calib-controls" class="flex flex-wrap items-center gap-1.5">
+                <button id="btn-calib-accurate" type="button" data-i18n="btnCalibAccurate" class="btn-slate chamfer-sm px-2 py-0.5 text-[11px] text-[#f4efe6] hover:border-[#6ee7b7] cursor-pointer">
+                  ตรงจุดนี้
+                </button>
+                <button id="btn-calib-inaccurate" type="button" data-i18n="btnCalibInaccurate" class="btn-slate chamfer-sm px-2 py-0.5 text-[11px] text-[#f4efe6] hover:border-[#fda4af] cursor-pointer">
+                  ยังไม่ตรง เพราะ...
+                </button>
+                <span id="live-calib-status" class="hidden text-[10.5px] text-[#6ee7b7] font-medium"></span>
+              </div>
+              <div class="flex items-center gap-2 ml-auto">
+                <button id="btn-live-share-reading" type="button" data-i18n="btnShareReading" class="btn-slate chamfer-sm px-2.5 py-0.5 text-[11px] text-[#f4efe6] hover:border-[#f3d266] cursor-pointer">
+                  บันทึกรูป / แชร์
+                </button>
+                <button id="btn-live-more-details" type="button" data-i18n="btnMoreDetails" class="btn-gold chamfer-sm px-2.5 py-0.5 text-[11px] cursor-pointer">
+                  รายละเอียดเพิ่มเติม
+                </button>
+              </div>
+            </div>
+            <div id="calib-reason-wrap" class="hidden flex items-center gap-1.5 pt-1">
+              <input id="calib-reason-input" type="text" data-i18n-placeholder="calibReasonPlaceholder" placeholder="ระบุข้อเท็จจริงเพื่อปรับจูนความแม่นยำ..."
+                class="flex-1 min-w-0 px-2.5 py-1 bg-[#0b0d19]/90 border border-[#d4af37]/40 focus:border-[#d4af37] outline-none text-[11px] text-[#f1ede4]" />
+              <button id="btn-calib-submit" type="button" data-i18n="btnCalibSubmit" class="btn-gold chamfer-sm px-2.5 py-1 text-[11px] font-semibold cursor-pointer shrink-0">
+                บันทึกปรับจูน
+              </button>
+              <button id="btn-calib-cancel" type="button" data-i18n="btnCalibCancel" class="btn-slate chamfer-sm px-2 py-1 text-[11px] cursor-pointer shrink-0">
+                ยกเลิก
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -405,11 +428,11 @@
             <label data-i18n="ledgerModeLabel" class="block text-xs text-[#c5c7d4] mb-1.5">เลือกรูปแบบการเปิดไพ่รอบแรก</label>
             <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Opening spread mode">
               <button id="btn-entry-mode-3" type="button" aria-pressed="false" class="btn-slate chamfer-sm p-2.5 text-left cursor-pointer border border-[#d4af37]/35">
-                <div data-i18n="ledgerMode3Title" class="text-xs font-bold text-[#f3d266]">🃏 เปิดเร็ว 3 ใบ</div>
+                <div data-i18n="ledgerMode3Title" class="text-xs font-bold text-[#f3d266]">เปิดเร็ว 3 ใบ</div>
                 <div data-i18n="ledgerMode3Sub" class="text-[10.5px] text-[#c5c7d4] leading-snug mt-0.5">ชีวิตประจำวัน / เรื่องเฉพาะเจาะจง</div>
               </button>
               <button id="btn-entry-mode-10" type="button" aria-pressed="true" class="btn-gold chamfer-sm p-2.5 text-left cursor-pointer border border-[#f3d266]">
-                <div data-i18n="ledgerMode10Title" class="text-xs font-bold text-[#0b0d19]">🔮 ผังใหญ่ 10 ใบ</div>
+                <div data-i18n="ledgerMode10Title" class="text-xs font-bold text-[#0b0d19]">ผังใหญ่ 10 ใบ</div>
                 <div data-i18n="ledgerMode10Sub" class="text-[10.5px] leading-snug mt-0.5 opacity-90">เจาะลึกพื้นดวงทั้งชีวิต (แนะนำ)</div>
               </button>
             </div>
@@ -423,7 +446,7 @@
                 class="w-full px-3 py-2 bg-[#0b0d19]/90 border border-[#d4af37]/35 focus:border-[#d4af37] outline-none text-xs text-[#f1ede4]" />
             </div>
             <button id="btn-ledger-daily-now" type="button" data-i18n="btnLedgerDailyNow" class="btn-slate chamfer-sm px-2.5 py-1 text-[11px] text-[#f3d266] cursor-pointer">
-              ☀️ ตั้งเป็นดูดวงชีวิตประจำวันวันนี้
+              ตั้งเป็นดูดวงชีวิตประจำวันวันนี้
             </button>
           </div>
 
@@ -512,10 +535,10 @@
 
           <!-- Preset Category Tabs (Req 6: Love / Work / Money / General) -->
           <div id="preset-category-bar" class="grid grid-cols-4 gap-1.5">
-            <button type="button" data-cat="love" data-i18n="presetCatLove" class="preset-cat-btn btn-gold chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">❤️ ความรัก</button>
-            <button type="button" data-cat="work" data-i18n="presetCatWork" class="preset-cat-btn btn-slate chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">💼 การงาน</button>
-            <button type="button" data-cat="money" data-i18n="presetCatMoney" class="preset-cat-btn btn-slate chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">💰 การเงิน</button>
-            <button type="button" data-cat="general" data-i18n="presetCatGeneral" class="preset-cat-btn btn-slate chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">✨ อื่นๆ / ชีวิต</button>
+            <button type="button" data-cat="love" data-i18n="presetCatLove" class="preset-cat-btn btn-gold chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">ความรัก</button>
+            <button type="button" data-cat="work" data-i18n="presetCatWork" class="preset-cat-btn btn-slate chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">การงาน</button>
+            <button type="button" data-cat="money" data-i18n="presetCatMoney" class="preset-cat-btn btn-slate chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">การเงิน</button>
+            <button type="button" data-cat="general" data-i18n="presetCatGeneral" class="preset-cat-btn btn-slate chamfer-sm h-7 px-1.5 text-[11px] flex items-center justify-center whitespace-nowrap truncate cursor-pointer">อื่นๆ / ชีวิต</button>
           </div>
 
           <div id="smart-prompt-chips" class="hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5"></div>
@@ -708,7 +731,7 @@
         </button>
         <div class="pt-1 text-center">
           <button id="btn-feedback-support-open" type="button" data-i18n="supportGentleLink" class="text-[11px] text-[#f3d266]/90 hover:text-[#f3d266] underline underline-offset-4 cursor-pointer">
-            ☕ เลี้ยงกาแฟ / สนับสนุนค่าเซิร์ฟเวอร์ผู้พัฒนา (ตามอัธยาศัย)
+            เลี้ยงกาแฟ / สนับสนุนค่าเซิร์ฟเวอร์ผู้พัฒนา (ตามอัธยาศัย)
           </button>
         </div>
       </form>
@@ -806,7 +829,7 @@
         <div id="exit-confirm-box" class="hidden space-y-2 pt-2 border-t border-[#fb7185]/25">
           <p data-i18n="exitConfirmDesc" class="text-[11px] text-[#e8d5d9] leading-relaxed"></p>
           <button id="btn-exit-support-open" type="button" data-i18n="supportExitGentleCta" class="w-full btn-slate border-[#d4af37]/45 text-[#f3d266] hover:border-[#f3d266] chamfer-sm py-1.5 text-[11px] cursor-pointer">
-            ☕ ชอบคำทำนายวันนี้ไหม? สนับสนุนผู้พัฒนา (ไม่บังคับ)
+            ชอบคำทำนายวันนี้ไหม? สนับสนุนผู้พัฒนา (ไม่บังคับ)
           </button>
           <div class="flex items-center gap-2">
             <button id="btn-exit-table-confirm" type="button" data-i18n="btnExitTableConfirm" class="flex-1 bg-[#be123c] hover:bg-[#e11d48] text-white chamfer-sm py-2 text-xs font-semibold cursor-pointer">
@@ -911,10 +934,10 @@
       </div>
       <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
         <button id="btn-spread3-daily-now" type="button" data-i18n="btnSpread3DailyNow" class="btn-slate chamfer-sm px-3 py-2 text-xs text-[#f3d266] cursor-pointer">
-          ☀️ ดูดวงวันนี้เลย
+          ดูดวงวันนี้เลย
         </button>
         <button id="btn-spread3-confirm" type="button" data-i18n="btnSpread3Confirm" class="btn-gold chamfer-sm px-4 py-2 text-xs font-semibold cursor-pointer">
-          🃏 เริ่มหยิบไพ่ 3 ใบ
+          เริ่มหยิบไพ่ 3 ใบ
         </button>
       </div>
     </div>

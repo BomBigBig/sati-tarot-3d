@@ -14,18 +14,20 @@ import {
   getSpread3PresetInfo,
   formatCardOrientationTag,
   formatCardOrientationBadge,
-  getReversedEnergyNuance
+  getReversedEnergyNuance,
+  getLocalizedAstroLabel,
+  getLocalizedThaksaRole
 } from '../data/tarot78I18n.js';
 
 export const THAKSA_GROUPS = [
-  { name: 'อาทิตย์', chars: 'ออะาิีึืุูเแโใไ', elem: 'ไฟ', trait: 'กล้านำ กล้าตัดสินใจ รักศักดิ์ศรี แต่บางจังหวะกดดันตัวเองหนักเกินจำเป็น' },
-  { name: 'จันทร์', chars: 'กขคฆง', elem: 'ดิน', trait: 'ใส่ใจรายละเอียด อ่อนโยน และอ่านใจคนเก่ง แต่เวลาเลือกเพื่อตัวเองมักเกรงใจคนอื่นมากไป' },
-  { name: 'อังคาร', chars: 'จฉชซฌญ', elem: 'ลม', trait: 'คิดไวทำไว กล้าลุย ไม่ชอบรอนาน แต่ต้องระวังใจร้อนหรือพูดตรงจนคนฟังตั้งตัวไม่ทัน' },
-  { name: 'พุธ', chars: 'ฎฏฐฑฒณ', elem: 'น้ำ', trait: 'หัวไว ปรับตัวและวิเคราะห์รอบด้านได้ดี แต่บางครั้งคิดซ้อนหลายชั้นจนเหนื่อยเอง' },
-  { name: 'พฤหัสบดี', chars: 'บปผฝพฟภม', elem: 'ดิน', trait: 'มีหลักการ วางแผนเป็นระบบและพึ่งพาได้ แต่มักรับภาระคนอื่นมาแบกไว้เอง' },
-  { name: 'ศุกร์', chars: 'ศษสหฬฮ', elem: 'น้ำ', trait: 'มีเสน่ห์ รสนิยมดีและจริงใจ แต่เวลามีเรื่องค้างใจจะเก็บไปคิดวนอยู่นาน' },
-  { name: 'เสาร์', chars: 'ดตถทธน', elem: 'ไฟ', trait: 'อึด อดทน จริงจังกับเป้าหมายระยะยาว ไม่ยอมแพ้ง่ายๆ แต่ชอบเก็บความเครียดไว้คนเดียว' },
-  { name: 'ราหู', chars: 'ยรลว', elem: 'ลม', trait: 'ไหวพริบดี พลิกแพลงเก่ง ไม่ชอบกรอบจำเจ แต่ต้องระวังเบื่อง่ายเวลาเรื่องเดินช้า' }
+  { name: 'อาทิตย์', planet: 'sun', chars: 'ออะาิีึืุูเแโใไ', elem: 'ไฟ', trait: 'กล้านำ กล้าตัดสินใจ รักศักดิ์ศรี แต่บางจังหวะกดดันตัวเองหนักเกินจำเป็น' },
+  { name: 'จันทร์', planet: 'moon', chars: 'กขคฆง', elem: 'ดิน', trait: 'ใส่ใจรายละเอียด อ่อนโยน และอ่านใจคนเก่ง แต่เวลาเลือกเพื่อตัวเองมักเกรงใจคนอื่นมากไป' },
+  { name: 'อังคาร', planet: 'mars', chars: 'จฉชซฌญ', elem: 'ลม', trait: 'คิดไวทำไว กล้าลุย ไม่ชอบรอนาน แต่ต้องระวังใจร้อนหรือพูดตรงจนคนฟังตั้งตัวไม่ทัน' },
+  { name: 'พุธ', planet: 'mercury', chars: 'ฎฏฐฑฒณ', elem: 'น้ำ', trait: 'หัวไว ปรับตัวและวิเคราะห์รอบด้านได้ดี แต่บางครั้งคิดซ้อนหลายชั้นจนเหนื่อยเอง' },
+  { name: 'พฤหัสบดี', planet: 'jupiter', chars: 'บปผฝพฟภม', elem: 'ดิน', trait: 'มีหลักการ วางแผนเป็นระบบและพึ่งพาได้ แต่มักรับภาระคนอื่นมาแบกไว้เอง' },
+  { name: 'ศุกร์', planet: 'venus', chars: 'ศษสหฬฮ', elem: 'น้ำ', trait: 'มีเสน่ห์ รสนิยมดีและจริงใจ แต่เวลามีเรื่องค้างใจจะเก็บไปคิดวนอยู่นาน' },
+  { name: 'เสาร์', planet: 'saturn', chars: 'ดตถทธน', elem: 'ไฟ', trait: 'อึด อดทน จริงจังกับเป้าหมายระยะยาว ไม่ยอมแพ้ง่ายๆ แต่ชอบเก็บความเครียดไว้คนเดียว' },
+  { name: 'ราหู', planet: 'rahu', chars: 'ยรลว', elem: 'ลม', trait: 'ไหวพริบดี พลิกแพลงเก่ง ไม่ชอบกรอบจำเจ แต่ต้องระวังเบื่อง่ายเวลาเรื่องเดินช้า' }
 ];
 
 const THAKSA_RING = [0, 1, 2, 3, 6, 4, 7, 5]; // อาทิตย์ -> จันทร์ -> อังคาร -> พุธ -> เสาร์ -> พฤหัส -> ราหู -> ศุกร์
@@ -53,10 +55,141 @@ export const CELTIC_POSITIONS = [
   'บทสรุปภาพรวมและจุดเปลี่ยนสำคัญ'
 ];
 
-export function computeNatalProfile(user) {
-  const gYear = user.year - 543;
-  const dt = new Date(gYear, user.month - 1, user.day);
-  const dow = isNaN(dt.getTime()) ? ((user.day + user.month) % 7) : dt.getDay();
+function isLeapYearCE(y) {
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+function coerceReferenceDate(referenceDate) {
+  if (referenceDate == null) return new Date();
+  if (typeof referenceDate === 'string') {
+    const m = referenceDate.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+  const d = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
+function resolveBirthComponents(user = {}) {
+  if (!user || typeof user !== 'object') return null;
+  let day = parseInt(user.day, 10);
+  let month = parseInt(user.month, 10);
+  let rawYear = parseInt(user.year, 10);
+  if ((!day || !month || !rawYear) && user.birthdate) {
+    const bd = String(user.birthdate).trim();
+    const ymd = bd.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    const dmy = !ymd ? bd.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/) : null;
+    if (ymd) {
+      rawYear = parseInt(ymd[1], 10);
+      month = parseInt(ymd[2], 10);
+      day = parseInt(ymd[3], 10);
+    } else if (dmy) {
+      day = parseInt(dmy[1], 10);
+      month = parseInt(dmy[2], 10);
+      rawYear = parseInt(dmy[3], 10);
+    }
+  }
+  if (!day || !month || !rawYear) return null;
+  const gYear = rawYear > 2400 ? rawYear - 543 : rawYear;
+  if (day < 1 || day > 31 || month < 1 || month > 12 || gYear < 1800 || gYear > 2200) {
+    return null;
+  }
+  return { day, month, rawYear, gYear };
+}
+
+function parseBirthHour(birthTime) {
+  if (birthTime === undefined || birthTime === null || birthTime === '') return null;
+  const m = String(birthTime).trim().match(/^(\d{1,2})(?:[:.](\d{1,2}))?(?:\s*(am|pm))?$/i);
+  if (!m) return null;
+  let hour = parseInt(m[1], 10);
+  const ampm = m[3] ? m[3].toLowerCase() : '';
+  if (ampm === 'pm' && hour < 12) hour += 12;
+  else if (ampm === 'am' && hour === 12) hour = 0;
+  return hour >= 0 && hour <= 23 ? hour : null;
+}
+
+function resolveThaksaBirthGroupIdx(birth, birthTime) {
+  const dt = new Date(birth.gYear, birth.month - 1, birth.day);
+  const dow = isNaN(dt.getTime()) ? ((birth.day + birth.month) % 7) : dt.getDay();
+  const hour = parseBirthHour(birthTime);
+  return dow === 3 && hour !== null && (hour >= 18 || hour < 6) ? 7 : dow;
+}
+
+export function computeAnnualThaksa(user = {}, referenceDate = new Date()) {
+  const birth = resolveBirthComponents(user);
+  if (!birth) return null;
+  const ref = coerceReferenceDate(referenceDate);
+  const refYear = ref.getFullYear();
+  const refMonth = ref.getMonth() + 1;
+  const refDay = ref.getDate();
+
+  const isFeb29 = birth.month === 2 && birth.day === 29;
+  const effMonth = isFeb29 && !isLeapYearCE(refYear) ? 3 : birth.month;
+  const effDay = isFeb29 && !isLeapYearCE(refYear) ? 1 : birth.day;
+
+  let ageCompleted = refYear - birth.gYear;
+  if (refMonth < effMonth || (refMonth === effMonth && refDay < effDay)) {
+    ageCompleted -= 1;
+  }
+  ageCompleted = Math.max(0, ageCompleted);
+  const ageYung = Math.max(1, ageCompleted + 1);
+
+  const birthGroupIdx = resolveThaksaBirthGroupIdx(birth, user?.birthTime);
+  const natalStartRingIdx = THAKSA_RING.indexOf(birthGroupIdx);
+  const walkOffset = (ageYung - 1) % 8;
+  const annualStartRingIdx = (natalStartRingIdx + walkOffset) % 8;
+  const fallingGroupIdx = THAKSA_RING[annualStartRingIdx];
+  const fallingGrp = THAKSA_GROUPS[fallingGroupIdx];
+
+  const roles = THAKSA_ROLES.map((r, offset) => {
+    const gIdx = THAKSA_RING[(annualStartRingIdx + offset) % 8];
+    const grp = THAKSA_GROUPS[gIdx];
+    return {
+      role: r.key,
+      annualRole: `${r.key}จร`,
+      groupIdx: gIdx,
+      dayKey: `วัน${grp.name}`,
+      dayName: `วัน${grp.name}`,
+      planet: grp.planet,
+      elem: grp.elem
+    };
+  });
+
+  const referenceDateISO = `${refYear}-${String(refMonth).padStart(2, '0')}-${String(refDay).padStart(2, '0')}`;
+  return {
+    ageCompleted,
+    ageYung,
+    referenceDateISO,
+    referenceYearCE: refYear,
+    referenceYearBE: refYear + 543,
+    fallingHouse: {
+      groupIdx: fallingGroupIdx,
+      dayKey: `วัน${fallingGrp.name}`,
+      dayName: `วัน${fallingGrp.name}`,
+      planet: fallingGrp.planet,
+      elem: fallingGrp.elem,
+      natalRole: THAKSA_ROLES[walkOffset].key
+    },
+    briwanJon: roles[0],
+    ayuJon: roles[1],
+    dejJon: roles[2],
+    siJon: roles[3],
+    mulaJon: roles[4],
+    utsahaJon: roles[5],
+    montriJon: roles[6],
+    kalakiniJon: roles[7],
+    roles
+  };
+}
+
+export function computeNatalProfile(user, referenceDate = new Date()) {
+  const birth = resolveBirthComponents(user);
+  const safeDay = birth ? birth.day : (parseInt(user?.day, 10) || 1);
+  const safeMonth = birth ? birth.month : (parseInt(user?.month, 10) || 1);
+  const rawY = parseInt(user?.year, 10);
+  const safeGYear = birth ? birth.gYear : ((rawY > 2400 ? rawY - 543 : rawY) || 1996);
+  const dow = birth
+    ? resolveThaksaBirthGroupIdx(birth, user?.birthTime)
+    : ((safeDay + safeMonth) % 7);
   const dayGroup = THAKSA_GROUPS[dow];
 
   const startIdx = THAKSA_RING.indexOf(dow);
@@ -83,12 +216,13 @@ export function computeNatalProfile(user) {
     : matchedPositive[0] || 'อุตสาหะ (แรงลุยสร้างด้วยลำแข้ง) และ เดช (การตัดสินใจเด็ดขาด)';
 
   const sumDigits = (n) => String(n).split('').reduce((a, b) => a + (parseInt(b, 10) || 0), 0);
-  let lp = sumDigits(user.day) + sumDigits(user.month) + sumDigits(gYear);
+  let lp = sumDigits(safeDay) + sumDigits(safeMonth) + sumDigits(safeGYear);
   while (lp > 9) lp = sumDigits(lp);
 
-  const birthIdx = (user.day + user.month + (gYear % 100)) % 22;
+  const birthIdx = (safeDay + safeMonth + (safeGYear % 100)) % 22;
   const birthCard = MAJOR_ARCANA[birthIdx];
 
+  user.planet = dayGroup.planet;
   user.dayName = `วัน${dayGroup.name}`;
   user.elemShort = dayGroup.elem;
   user.element = `ธาตุ${dayGroup.elem} (${dayGroup.trait})`;
@@ -101,7 +235,7 @@ export function computeNatalProfile(user) {
   user.lifePath = lp;
   user.birthCard = `${birthCard.en} (${birthCard.th})`;
   user.birthCardCore = birthCard.core;
-  Object.assign(user, computeExtendedNatalContext(user));
+  Object.assign(user, computeExtendedNatalContext(user, referenceDate));
   return user;
 }
 
@@ -143,19 +277,22 @@ const LIFE_STAGE_META = {
   senior_wisdom: { th: 'วัยผู้ใหญ่เต็มตัว / ตกผลึกประสบการณ์', en: 'Mature / Wisdom & stewardship', zh: '阅历沉淀与传承期' }
 };
 
-export function computeExtendedNatalContext(user = {}) {
-  const day = parseInt(user?.day, 10);
-  const month = parseInt(user?.month, 10);
-  const rawYear = parseInt(user?.year, 10);
-  if (!day || !month || !rawYear || month < 1 || month > 12 || day < 1 || day > 31) {
-    return { age: null, lifeStage: '', lifeStageLabel: null, zodiacSign: null, chineseZodiac: null };
+export function computeExtendedNatalContext(user = {}, referenceDate = new Date()) {
+  const birth = resolveBirthComponents(user);
+  if (!birth) {
+    return { age: null, lifeStage: '', lifeStageLabel: null, zodiacSign: null, chineseZodiac: null, annualThaksa: null };
   }
-  const gYear = rawYear > 2400 ? rawYear - 543 : rawYear;
-  const now = new Date();
-  let age = now.getFullYear() - gYear;
-  const curMonth = now.getMonth() + 1;
-  const curDay = now.getDate();
-  if (curMonth < month || (curMonth === month && curDay < day)) {
+  const { day, month, gYear } = birth;
+  const ref = coerceReferenceDate(referenceDate);
+  const refYear = ref.getFullYear();
+  const curMonth = ref.getMonth() + 1;
+  const curDay = ref.getDate();
+  const isFeb29 = month === 2 && day === 29;
+  const effMonth = isFeb29 && !isLeapYearCE(refYear) ? 3 : month;
+  const effDay = isFeb29 && !isLeapYearCE(refYear) ? 1 : day;
+
+  let age = refYear - gYear;
+  if (curMonth < effMonth || (curMonth === effMonth && curDay < effDay)) {
     age -= 1;
   }
   if (age < 0 || age > 120) age = null;
@@ -190,20 +327,32 @@ export function computeExtendedNatalContext(user = {}) {
     lifeStage,
     lifeStageLabel: lifeStage ? LIFE_STAGE_META[lifeStage] : null,
     zodiacSign: WESTERN_ZODIAC_LIST[zIdx],
-    chineseZodiac: CHINESE_ZODIAC_LIST[czIdx]
+    chineseZodiac: CHINESE_ZODIAC_LIST[czIdx],
+    annualThaksa: computeAnnualThaksa(user, ref)
   };
 }
 
-export function extractUserContextFacts(chatHistory = [], prevFacts = []) {
+export function extractUserContextFacts(chatHistory = [], prevFacts = [], calibrationFeedback = []) {
   const factMap = new Map();
+  let detailSeq = 0;
+  const seenValues = new Set();
   const addFact = (slot, value) => {
-    if (value) factMap.set(slot, value);
+    const cleanVal = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!cleanVal) return;
+    if (slot.startsWith('detail_') || slot.startsWith('extra_')) {
+      if (seenValues.has(cleanVal)) return;
+      seenValues.add(cleanVal);
+    }
+    factMap.set(slot, cleanVal);
   };
+
   (Array.isArray(prevFacts) ? prevFacts : []).forEach((item, idx) => {
     const clean = String(item || '').trim();
     if (!clean) return;
     const colonIdx = clean.indexOf(':');
-    const slot = colonIdx > 0 ? clean.slice(0, colonIdx).trim() : `extra_${idx}`;
+    const prefix = colonIdx > 0 ? clean.slice(0, colonIdx).trim() : '';
+    const isCanonicalSlot = ['สถานะความสัมพันธ์', 'บทบาทหลัก', 'การเงินสำคัญ', 'เป้าหมายทรัพย์สิน'].includes(prefix);
+    const slot = isCanonicalSlot ? prefix : `extra_${idx}_${clean.slice(0, 24)}`;
     addFact(slot, clean);
   });
 
@@ -225,30 +374,73 @@ export function extractUserContextFacts(chatHistory = [], prevFacts = []) {
       addFact('สถานะความสัมพันธ์', 'สถานะความสัมพันธ์: มีคู่/กำลังคบหา');
     }
 
-    if (/เรียนอยู่|นักศึกษา|นักเรียน|มหาลัย|เตรียมสอบ|ทำวิทยานิพนธ์|ป\.ตรี|ป\.โท|university student|grad school|备考|学生/i.test(text)) {
-      addFact('บทบาทหลัก', 'บทบาทหลัก: กำลังเรียน/เตรียมสอบ');
+    if (/พนักงานประจำ|ออฟฟิศ|บริษัท|ข้าราชการ|มนุษย์เงินเดือน|Product Manager|office worker|employee|上班族|打工/i.test(text)) {
+      addFact('บทบาทหลัก', 'บทบาทหลัก: ทำงานประจำ/องค์กร');
     } else if (/เจ้าของกิจการ|ธุรกิจส่วนตัว|เปิดร้าน|ขายของออนไลน์|ค้าขาย|ทำแบรนด์|startup|business owner|self-employed|创业|开店|自己做生意/i.test(text)) {
       addFact('บทบาทหลัก', 'บทบาทหลัก: เจ้าของธุรกิจ/ค้าขายส่วนตัว');
     } else if (/ฟรีแลนซ์|รับงานนอก|อาชีพอิสระ|freelance|contractor|自由职业/i.test(text)) {
       addFact('บทบาทหลัก', 'บทบาทหลัก: ฟรีแลนซ์/อาชีพอิสระ');
     } else if (/ว่างงาน|ตกงาน|กำลังหางาน|เพิ่งลาออก|unemployed|job hunting|待业|找工作/i.test(text)) {
       addFact('บทบาทหลัก', 'บทบาทหลัก: กำลังหางาน/เปลี่ยนผ่านอาชีพ');
-    } else if (/พนักงานประจำ|ออฟฟิศ|บริษัท|ข้าราชการ|มนุษย์เงินเดือน|office worker|employee|上班族|打工/i.test(text)) {
-      addFact('บทบาทหลัก', 'บทบาทหลัก: ทำงานประจำ/องค์กร');
+    } else if (/เรียนอยู่|นักศึกษา|นักเรียน|มหาลัย|เตรียมสอบ|ทำวิทยานิพนธ์|ป\.ตรี|ป\.โท|university student|grad school|备考|学生/i.test(text)) {
+      addFact('บทบาทหลัก', 'บทบาทหลัก: กำลังเรียน/เตรียมสอบ');
     }
 
-    if (/ปลดหนี้|มีหนี้|ผ่อนหนี้|หมุนเงิน|debt|pay off loan|负债|还债/i.test(text)) {
+    if (/ปลดหนี้|มีหนี้|ผ่อนหนี้|หมุนเงิน|ผ่อนรถ|ผ่อนบ้าน|debt|pay off loan|负债|还债/i.test(text)) {
       addFact('การเงินสำคัญ', 'การเงินสำคัญ: มีภาระหนี้/ต้องจัดการสภาพคล่อง');
-    } else if (/ซื้อบ้าน|ซื้อคอนโด|ซื้อรถ|ย้ายหอ|ย้ายบ้าน|ออมเงินเก็บ|buy a house|mortgage|买房/i.test(text)) {
+    }
+    if (/ซื้อบ้าน|ซื้อคอนโด|ซื้อรถ|ย้ายหอ|ย้ายบ้าน|ย้ายคอนโด|ออมเงินเก็บ|buy a house|mortgage|买房/i.test(text)) {
       addFact('เป้าหมายทรัพย์สิน', 'เป้าหมายทรัพย์สิน: วางแผนเรื่องบ้าน/ที่อยู่/ทรัพย์สินใหญ่');
     }
 
-    if (text.length >= 16 && text.length <= 76 && /(อยาก|ตั้งใจ|กำลังจะ|วางแผน|เครียดเรื่อง|plan to|trying to|准备|打算)/.test(text)) {
-      addFact('เป้าหมายล่าสุด', `เป้าหมายล่าสุด: "${text}"`);
+    // Split multi-clause sentences to retain rich early context even when text > 76 chars
+    const clauses = text
+      .split(/(?:นอกจากนี้|นอกจากนั้น|อีกอย่าง|ส่วนเรื่อง|รวมถึง|พร้อมกับ|และยัง|แต่ติดที่|;|।|\n)/)
+      .map((c) => c.trim())
+      .filter((c) => c.length >= 10);
+
+    const candidateSegments = clauses.length > 0 ? clauses : [text];
+    candidateSegments.forEach((seg) => {
+      const clipped = seg.length > 140 ? `${seg.slice(0, 137)}...` : seg;
+      const hasNumberOrBudget = /\d{3,}|งบ\s*\d+|ผ่อน[^\s,;.]+|เดือนละ\s*\d+/i.test(seg);
+      const hasTimeline = /(มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม|ไตรมาส|สิ้นปี|ต้นปี|ภายในเดือน|สัปดาห์หน้า|เดือนหน้า|march|april|may|june|july|august|september|october|november|december|january|february)/i.test(seg);
+      const hasEntityOrRole = /(Product Manager|หัวหน้าชื่อ|พี่[ก-๙A-Za-z]+|คุณ[ก-๙A-Za-z]+|โครงการ[ก-๙A-Za-z0-9]+|สาย\s*[A-Za-zก-๙]+|ดูแลแม่|ดูแลพ่อ|วันเสาร์อาทิตย์|ไม่สะดวก[^\s,;.]+)/i.test(seg);
+      const hasGoalVerb = /(อยาก|ตั้งใจ|กำลังจะ|วางแผน|เครียดเรื่อง|เตรียม|ย้าย|รับผิดชอบ|plan to|trying to|准备|打算)/i.test(seg);
+
+      if (hasNumberOrBudget || hasTimeline || hasEntityOrRole || hasGoalVerb) {
+        detailSeq += 1;
+        addFact(`detail_${detailSeq}`, `บริบทเพิ่มเติม: "${clipped}"`);
+      }
+    });
+  });
+
+  (Array.isArray(calibrationFeedback) ? calibrationFeedback : []).forEach((cal, idx) => {
+    if (!cal || typeof cal !== 'object') return;
+    const note = String(cal.note || '').replace(/\s+/g, ' ').trim();
+    if (!note) return;
+    if (cal.verdict === 'inaccurate') {
+      addFact(`calib_fix_${idx}`, `ข้อมูลที่ผู้ถามแก้ให้ตรงความจริง: ${note}`);
+    } else if (cal.verdict === 'accurate') {
+      addFact(`calib_ok_${idx}`, `ประเด็นที่ผู้ถามยืนยันว่าตรง: ${note}`);
     }
   });
 
-  return [...factMap.values()].slice(-8);
+  return [...factMap.values()].slice(-18);
+}
+
+function buildEarlierContextDigest(chatHistory = [], recentSliceCount = 14) {
+  const rows = (Array.isArray(chatHistory) ? chatHistory : []).filter(
+    (h) => h && !h.isDrawAction && !h.isExpandAction && String(h.text || '').trim().length > 0
+  );
+  if (rows.length === 0) return '';
+  const cutoff = Math.max(0, rows.length - recentSliceCount);
+  const earlyPool = cutoff > 0 ? rows.slice(0, cutoff) : rows.slice(0, Math.min(4, rows.length));
+  const userLines = earlyPool
+    .filter((h) => h.role === 'user' || (!h.role && !['สติ', 'Sati', '思谛'].includes(h.speaker)))
+    .slice(0, 6)
+    .map((h) => String(h.text || '').replace(/\s+/g, ' ').trim().slice(0, 140));
+  if (userLines.length === 0) return '';
+  return userLines.join(' | ').slice(0, 420);
 }
 
 function getCardMeaningForTopic(card, topic, lang = 'th', subDomain = '') {
@@ -438,6 +630,255 @@ export function analyzeCardElementalSynergy(cards, lang = 'th') {
   return '';
 }
 
+const ELEM_TH_TO_GD = { ไฟ: 'fire', ดิน: 'earth', ลม: 'air', น้ำ: 'water' };
+
+export function computeAstroCardIntersection(userProfile, cards, lang = 'th') {
+  const target = normalizeLang(lang);
+  const list = hydrateDeckCards(Array.isArray(cards) ? cards : []).filter(
+    (c) => c && typeof c === 'object' && (c.uid || c.name)
+  );
+  const u = userProfile && typeof userProfile === 'object' ? userProfile : null;
+  const birth = u ? resolveBirthComponents(u) : null;
+  const ext = (!u?.zodiacSign || !u?.annualThaksa) && birth ? computeExtendedNatalContext(u) : null;
+
+  let userZodiac = null;
+  if (u?.zodiacSign) {
+    const zKey = typeof u.zodiacSign === 'string'
+      ? u.zodiacSign.trim().toLowerCase()
+      : String(u.zodiacSign.key || '').trim().toLowerCase();
+    userZodiac = WESTERN_ZODIAC_LIST.find((z) => z.key === zKey) || (typeof u.zodiacSign === 'object' ? u.zodiacSign : null);
+  } else if (ext?.zodiacSign) {
+    userZodiac = ext.zodiacSign;
+  }
+  const userZodiacIdx = userZodiac ? WESTERN_ZODIAC_LIST.findIndex((z) => z.key === userZodiac.key) : -1;
+  const userZodiacGdElem = userZodiac?.elem ? (ELEM_TH_TO_GD[userZodiac.elem] || '') : '';
+
+  const annual = u?.annualThaksa?.roles ? u.annualThaksa : (ext?.annualThaksa || null);
+  let birthGroupIdx = -1;
+  if (u?.dayName) {
+    birthGroupIdx = THAKSA_GROUPS.findIndex((g) => `วัน${g.name}` === u.dayName || g.name === u.dayName);
+  }
+  if (birthGroupIdx < 0 && birth) {
+    birthGroupIdx = resolveThaksaBirthGroupIdx(birth, u?.birthTime);
+  }
+  const birthPlanet = birthGroupIdx >= 0
+    ? THAKSA_GROUPS[birthGroupIdx].planet
+    : (u?.planet || annual?.roles?.find((r) => r.role === 'บริวาร' || r.natalRole === 'บริวาร')?.planet || '');
+  const userDayGdElem = ELEM_TH_TO_GD[u?.elemShort || (birthGroupIdx >= 0 ? THAKSA_GROUPS[birthGroupIdx].elem : '')] || '';
+  const birthDayName = u?.dayName || (birthGroupIdx >= 0 ? `วัน${THAKSA_GROUPS[birthGroupIdx].name}` : '');
+
+  const zodiacLinks = [];
+  const planetLinks = [];
+  const thaksaLinks = [];
+  const courtMirrors = [];
+  const matches = [];
+  const prioritized = [];
+
+  list.forEach((c) => {
+    const gd = c.gd && typeof c.gd === 'object' ? c.gd : null;
+    if (!gd) return;
+    const cardTitle = getLocalizedCardLabelInline(c, target);
+    const cardShort = getLocalizedCardShortName(c, target);
+    const cZodiac = String(gd.zodiac || '').trim().toLowerCase();
+    const cPlanet = String(gd.planet || '').trim().toLowerCase();
+    const cElem = String(gd.gdElement || '').trim().toLowerCase();
+
+    if (cZodiac && userZodiacIdx >= 0) {
+      const cIdx = WESTERN_ZODIAC_LIST.findIndex((z) => z.key === cZodiac);
+      if (cIdx >= 0) {
+        let relation = '';
+        if (cIdx === userZodiacIdx) relation = 'same_sign';
+        else if (WESTERN_ZODIAC_LIST[cIdx].elem === userZodiac.elem) relation = 'same_element';
+        else if ((userZodiacIdx + 6) % 12 === cIdx) relation = 'opposite_sign';
+        if (relation) {
+          const zLbl = getLocalizedAstroLabel('z', cZodiac, target);
+          const uZLbl = getLocalizedAstroLabel('z', userZodiac.key, target);
+          const label = target === 'en'
+            ? (relation === 'same_sign'
+                ? `${cardShort} mirrors your ${uZLbl} sign`
+                : relation === 'same_element'
+                  ? `${cardShort} (${zLbl}) harmonizes in element with ${uZLbl}`
+                  : `${cardShort} (${zLbl}) opposes ${uZLbl} polarity`)
+            : target === 'zh'
+              ? (relation === 'same_sign'
+                  ? `${cardShort}正对应你的本命${uZLbl}`
+                  : relation === 'same_element'
+                    ? `${cardShort}（${zLbl}）与${uZLbl}同元素共振`
+                    : `${cardShort}（${zLbl}）与${uZLbl}形成对宫张力`)
+              : (relation === 'same_sign'
+                  ? `${cardShort} ตรงกับ${uZLbl}ของคุณ`
+                  : relation === 'same_element'
+                    ? `${cardShort} (${zLbl}) เสริมธาตุเดียวกับ${uZLbl}`
+                    : `${cardShort} (${zLbl}) อยู่ขั้วตรงข้ามกับ${uZLbl}`);
+          const item = {
+            cardUid: c.uid,
+            cardName: c.name,
+            cardTitle,
+            reversed: Boolean(c.reversed),
+            cardZodiac: cZodiac,
+            userZodiac: userZodiac.key,
+            relation,
+            label
+          };
+          zodiacLinks.push(item);
+          matches.push({ type: 'zodiac', cardUid: c.uid, cardName: c.name, reversed: item.reversed, relation, label });
+          prioritized.push({ rank: relation === 'same_sign' ? 3 : 6, label });
+        }
+      }
+    }
+
+    if (cPlanet && birthPlanet && cPlanet === birthPlanet) {
+      const pLbl = getLocalizedAstroLabel('p', cPlanet, target);
+      const label = target === 'en'
+        ? `${cardShort} carries ${pLbl}, your birth-day ruler`
+        : target === 'zh'
+          ? `${cardShort}由你的出生日主星${pLbl}掌管`
+          : `${cardShort} ครองดาว${pLbl}ประจำวันเกิดของคุณ`;
+      const item = {
+        cardUid: c.uid,
+        cardName: c.name,
+        cardTitle,
+        reversed: Boolean(c.reversed),
+        cardPlanet: cPlanet,
+        userPlanet: birthPlanet,
+        dayName: birthDayName,
+        relation: 'natal_ruler',
+        label
+      };
+      planetLinks.push(item);
+      matches.push({ type: 'planet', cardUid: c.uid, cardName: c.name, reversed: item.reversed, relation: 'natal_ruler', label });
+      prioritized.push({ rank: 4, label });
+    }
+
+    if (cPlanet && annual) {
+      const checks = [
+        ['siJon', annual.siJon, 'ศรี', 'favorable', 1],
+        ['dejJon', annual.dejJon, 'เดช', 'authority', 2],
+        ['kalakiniJon', annual.kalakiniJon, 'กาลกิณี', 'caution', 0],
+        ['fallingHouse', annual.fallingHouse, 'fallingHouse', 'focal', 5]
+      ];
+      checks.forEach(([roleKey, roleObj, baseRole, tone, rank]) => {
+        if (!roleObj || String(roleObj.planet || '').toLowerCase() !== cPlanet) return;
+        const pLbl = getLocalizedAstroLabel('p', cPlanet, target);
+        const roleLbl = roleKey === 'fallingHouse'
+          ? (target === 'en' ? 'Annual Falling House' : target === 'zh' ? '流年落宫' : 'ตกภูมิประจำปี')
+          : getLocalizedThaksaRole(baseRole, target, true);
+        const label = target === 'en'
+          ? `${cardShort} (${pLbl}) activates ${roleLbl}`
+          : target === 'zh'
+            ? `${cardShort}（${pLbl}）触动${roleLbl}`
+            : `${cardShort} (ดาว${pLbl}) ตรง${roleLbl}`;
+        const item = {
+          cardUid: c.uid,
+          cardName: c.name,
+          cardTitle,
+          reversed: Boolean(c.reversed),
+          cardPlanet: cPlanet,
+          thaksaRole: roleKey,
+          thaksaRoleLabel: roleLbl,
+          dayName: roleObj.dayName || '',
+          tone,
+          label
+        };
+        thaksaLinks.push(item);
+        matches.push({ type: 'thaksa', cardUid: c.uid, cardName: c.name, reversed: item.reversed, relation: roleKey, label });
+        prioritized.push({ rank, label });
+      });
+    }
+
+    if (gd.category === 'court') {
+      const personality = typeof gd.courtPersonality === 'string'
+        ? gd.courtPersonality
+        : (gd.courtPersonality?.[target] || gd.courtPersonality?.en || gd.courtPersonality?.th || '');
+      const elementResonance = Boolean(cElem && (cElem === userZodiacGdElem || cElem === userDayGdElem));
+      const spanVal = gd.zodiacSpan;
+      const zodiacSpanMatch = Boolean(
+        userZodiac?.key && (
+          cZodiac === userZodiac.key
+          || (Array.isArray(spanVal) && spanVal.some((s) => String(s).toLowerCase().includes(userZodiac.key)))
+          || (typeof spanVal === 'string' && spanVal.toLowerCase().includes(userZodiac.key))
+        )
+      );
+      const label = target === 'en'
+        ? `${cardShort} (${gd.subElement}): ${personality}`
+        : target === 'zh'
+          ? `${cardShort}（${gd.subElement}）：${personality}`
+          : `${cardShort} (${gd.subElement}): ${personality}`;
+      const item = {
+        cardUid: c.uid,
+        cardName: c.name,
+        cardTitle,
+        reversed: Boolean(c.reversed),
+        subElement: gd.subElement || null,
+        zodiacSpan: gd.zodiacSpan || null,
+        personality,
+        elementResonance,
+        zodiacSpanMatch,
+        label
+      };
+      courtMirrors.push(item);
+      if (elementResonance || zodiacSpanMatch || personality) {
+        matches.push({
+          type: 'court',
+          cardUid: c.uid,
+          cardName: c.name,
+          reversed: item.reversed,
+          relation: zodiacSpanMatch ? 'zodiac_span' : (elementResonance ? 'element_resonance' : 'court_persona'),
+          label
+        });
+      }
+      if (elementResonance || zodiacSpanMatch) {
+        prioritized.push({ rank: 5.5, label });
+      } else if (u && personality) {
+        prioritized.push({ rank: 7, label });
+      }
+    }
+  });
+
+  prioritized.sort((a, b) => a.rank - b.rank);
+  const highlights = [];
+  const seenHl = new Set();
+  for (const p of prioritized) {
+    if (!seenHl.has(p.label)) {
+      seenHl.add(p.label);
+      highlights.push(p.label);
+      if (highlights.length >= 4) break;
+    }
+  }
+
+  const hasMatches = zodiacLinks.length > 0 || planetLinks.length > 0 || thaksaLinks.length > 0
+    || courtMirrors.some((m) => m.elementResonance || m.zodiacSpanMatch);
+
+  let summary = '';
+  if (highlights.length > 0 && u) {
+    const prefix = target === 'en'
+      ? 'Astro Link: '
+      : target === 'zh'
+        ? '星象呼应：'
+        : 'จุดเชื่อมดวงกับหน้าไพ่: ';
+    const joined = `${prefix}${highlights.join(' · ')}`;
+    summary = joined.length > 280 ? `${joined.slice(0, 277)}...` : joined;
+  }
+
+  return {
+    hasMatches,
+    userAstro: {
+      zodiac: userZodiac ? userZodiac.key : null,
+      birthPlanet: birthPlanet || null,
+      birthDayName,
+      annualThaksaAgeYung: annual?.ageYung ?? null,
+      fallingHousePlanet: annual?.fallingHouse?.planet || null
+    },
+    matches,
+    zodiacLinks,
+    planetLinks,
+    thaksaLinks,
+    courtMirrors,
+    highlights,
+    summary
+  };
+}
+
 export function computeElementalDignityInsight(cards = [], lang = 'th') {
   const target = normalizeLang(lang);
   const list = hydrateDeckCards(cards);
@@ -448,6 +889,7 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
   let mid = 0;
   let late = 0;
   let courts = 0;
+  const gdTags = [];
 
   list.forEach((c) => {
     counts[c.suit] = (counts[c.suit] || 0) + 1;
@@ -456,6 +898,16 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
     else if (['Four', 'Five', 'Six'].includes(first)) mid += 1;
     else if (['Seven', 'Eight', 'Nine', 'Ten'].includes(first)) late += 1;
     else if (['Page', 'Knight', 'Queen', 'King'].includes(first)) courts += 1;
+
+    if (gdTags.length < 3 && c.gd) {
+      const shortName = getLocalizedCardShortName(c, target);
+      const attr = c.gd.planet
+        ? getLocalizedAstroLabel('p', c.gd.planet, target)
+        : c.gd.zodiac
+          ? getLocalizedAstroLabel('z', c.gd.zodiac, target)
+          : (c.gd.subElement || '');
+      if (attr) gdTags.push(`${shortName} (${attr})`);
+    }
   });
 
   const hasFire = counts.Wands > 0;
@@ -465,6 +917,7 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
 
   let pairLine = '';
   let cycleLine = '';
+  let gdLine = '';
 
   if (target === 'en') {
     if (hasFire && hasAir && !hasWater && !hasEarth) {
@@ -483,7 +936,8 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
     if (courts >= 2) cycleLine = 'Strong Court card presence shows real people or decisive personal stance steer this chapter.';
     else if (late > early && late >= 1) cycleLine = 'High numbered ranks (7–10) mark a culmination phase where finishing loose ends unlocks the next cycle.';
     else if (early > late && early >= 1) cycleLine = 'Early ranks (Ace–3) point to a fresh opening stage where framing clean boundaries early pays off most.';
-    return [pairLine, cycleLine].filter(Boolean).join(' ');
+    if (gdTags.length) gdLine = `Golden Dawn keys: ${gdTags.join(', ')}.`;
+    return [pairLine, cycleLine, gdLine].filter(Boolean).join(' ');
   }
 
   if (target === 'zh') {
@@ -503,7 +957,8 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
     if (courts >= 2) cycleLine = '宫廷牌偏多，关键变量落在具体当事人态度与你自身的处事姿态。';
     else if (late > early && late >= 1) cycleLine = '高数字牌（7–10）占比偏重，说明此事已走到收官或清理旧结的阶段。';
     else if (early > late && early >= 1) cycleLine = '初阶牌（1–3）起势，重点在于尽早立下清晰规则与起点框架。';
-    return [pairLine, cycleLine].filter(Boolean).join(' ');
+    if (gdTags.length) gdLine = `黄金黎明对应：${gdTags.join('、')}。`;
+    return [pairLine, cycleLine, gdLine].filter(Boolean).join(' ');
   }
 
   if (hasFire && hasAir && !hasWater && !hasEarth) {
@@ -522,7 +977,8 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
   if (courts >= 2) cycleLine = 'มีไพ่บุคคล (Court Cards) เด่นชัด ชี้ว่าตัวแปรสำคัญอยู่ที่ท่าทีของคนจริงหรือบทบาทที่เราต้องคุมเอง';
   else if (late > early && late >= 1) cycleLine = 'เลขไพ่ช่วงปลาย (7–10) เด่น สะท้อนว่าเรื่องนี้อยู่ในช่วงสะสางปิดจบรอบเพื่อขึ้นรอบใหม่';
   else if (early > late && early >= 1) cycleLine = 'เลขไพ่ช่วงต้น (1–3) เด่น บอกว่าเพิ่งเปิดประตูเริ่มต้น เหมาะกับการวางกรอบตั้งแต่ก้าวแรก';
-  return [pairLine, cycleLine].filter(Boolean).join(' ');
+  if (gdTags.length) gdLine = `รหัส Golden Dawn: ${gdTags.join(', ')}`;
+  return [pairLine, cycleLine, gdLine].filter(Boolean).join(' ');
 }
 
 const SUIT_META_PATTERN = {
@@ -1260,7 +1716,33 @@ export function synthesizeDeepReply(state, question, cards) {
   const keyWarnCard = (intent === 'outcome' && outcomeTone !== 'caution')
     ? outcomeCard
     : (refCards.find((c) => scoreCardPolarity(c) === 'caution') || outcomeCard);
-  const actionAdvice = getLocalizedCardData(keyWarnCard, lang).advice || getLocalizedCardData(outcomeCard, lang).advice;
+  const rawActionAdvice = getLocalizedCardData(keyWarnCard, lang).advice || getLocalizedCardData(outcomeCard, lang).advice;
+  const calibList = Array.isArray(state?.calibrationFeedback) ? state.calibrationFeedback : [];
+  const latestInacc = [...calibList].reverse().find((c) => c && c.verdict === 'inaccurate' && String(c.note || '').trim());
+  const latestAcc = [...calibList].reverse().find((c) => c && c.verdict === 'accurate');
+  const activeCalib = latestInacc || latestAcc || null;
+  let calibClause = '';
+  if (activeCalib) {
+    const cleanNote = String(activeCalib.note || activeCalib.question || '')
+      .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}\u20E3\uFE0F]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 32);
+    if (activeCalib.verdict === 'inaccurate' && cleanNote) {
+      calibClause = lang === 'en'
+        ? ` (Adjusted for: ${cleanNote})`
+        : lang === 'zh'
+          ? `（已结合你补充的“${cleanNote}”调整）`
+          : ` (ปรับตามบริบท: ${cleanNote})`;
+    } else if (activeCalib.verdict === 'accurate') {
+      calibClause = lang === 'en'
+        ? ` (Aligned with your confirmed point${cleanNote ? `: ${cleanNote}` : ''})`
+        : lang === 'zh'
+          ? `（延续你确认吻合的重点${cleanNote ? `：${cleanNote}` : ''}）`
+          : ` (ต่อยอดจุดที่ยืนยันว่าตรง${cleanNote ? `: ${cleanNote}` : ''})`;
+    }
+  }
+  const actionAdvice = calibClause ? `${rawActionAdvice}${calibClause}` : rawActionAdvice;
   const subtext = buildSubtextHook(intent, topic, isRepeat, nick, lang);
   const psychMirror = buildPsychMirrorClause(state.user, refCards, spreadTone, nick, lang, turnSeed, recentTexts);
 
@@ -1830,14 +2312,24 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
     : detectTopicAndIntent(qText, state.lastTopic);
   const hist = Array.isArray(state.chatHistory) ? state.chatHistory : [];
   const scopedHist = typeof state.deckResetAtIndex === 'number' ? hist.slice(state.deckResetAtIndex) : hist;
-  const userFacts = extractUserContextFacts(hist, state.userContextFacts);
+  const calibFeedback = Array.isArray(extra?.calibrationFeedback)
+    ? extra.calibrationFeedback
+    : (Array.isArray(state?.calibrationFeedback) ? state.calibrationFeedback : []);
+  const userFacts = extractUserContextFacts(hist, state.userContextFacts, calibFeedback);
   state.userContextFacts = userFacts;
+  if (state?.user && !state.user.annualThaksa && (state.user.day || state.user.birthdate)) {
+    computeNatalProfile(state.user);
+  }
   const fallbackReply = isNatal10
     ? buildNatal10Reading(state, cards)
     : synthesizeDeepReply(state, question, cards);
 
   const spreadPatterns = analyzeSpreadPatterns(cards, lang);
   const pastSessionMemory = buildCrossSessionMemorySummary(state?.sessionArchives || [], lang);
+  const astroIntersection = computeAstroCardIntersection(state?.user, cards, lang);
+  const recentWindow = scopedHist.slice(-14);
+  const earlierContextDigest = buildEarlierContextDigest(hist, 14);
+  state.earlierContextDigest = earlierContextDigest;
 
   const spread3Info = !isNatal10 && cards.length === 3
     ? getSpread3PresetInfo(extra?.spread3Preset || state?.activeSpreadPreset, lang)
@@ -1849,11 +2341,13 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
   const requestBody = {
     lang,
     userProfile: state.user,
+    annualThaksa: state.user?.annualThaksa || null,
     natalCards,
     activeSpread: cards,
     cards,
     remainingCount: Array.isArray(state?.remainingDeck) ? state.remainingDeck.length : 0,
     elementalDignity: computeElementalDignityInsight(cards, lang),
+    astroIntersection: astroIntersection?.summary || '',
     spreadPatterns,
     pastSessionMemory,
     isNatal10,
@@ -1864,10 +2358,12 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
     deckCarryoverSummary: state.deckCarryoverSummary || '',
     questionProfile,
     userFacts,
+    calibrationFeedback: calibFeedback.slice(-10),
+    earlierContextDigest,
     topicSwitchedFrom: extra?.topicSwitchedFrom || '',
     isExpandFollowUp: Boolean(extra?.isExpandFollowUp),
     question: qText,
-    recentHistory: scopedHist.slice(-6)
+    recentHistory: recentWindow
   };
 
   const fetchInit = {
@@ -2018,6 +2514,7 @@ function buildWhyCardSpeaksReason(card, posLabel, roleIndex, totalCount, isNatal
   const topicDesc = BREAKDOWN_COPY.topicLabel[topic]?.[lang] || BREAKDOWN_COPY.topicLabel.general[lang];
   const coreClean = (data.core || '').replace(/[.。]+$/, '');
   const revNuance = data.reversedNuance || '';
+  const gdAttr = data.gdAttribution || '';
 
   if (lang === 'en') {
     const toneClause = polarity === 'favorable'
@@ -2034,8 +2531,9 @@ function buildWhyCardSpeaksReason(card, posLabel, roleIndex, totalCount, isNatal
           : roleIndex === totalCount - 1
             ? 'Closing in the final slot, it shows how the trajectory resolves when you act on this.'
             : 'Sitting in the middle bridge, it acts as the pivot between your starting point and outcome.';
+    const gdNote = gdAttr ? ` [Golden Dawn: ${gdAttr}]` : '';
     const revNote = revNuance ? ` Drawn reversed: ${revNuance}` : '';
-    return `${suitDesc} — this energy ${toneClause}. ${roleLine} Applied to ${topicDesc.toLowerCase()}, "${coreClean}" translates directly into what you need to see here.${revNote}`;
+    return `${suitDesc} — this energy ${toneClause}. ${roleLine} Applied to ${topicDesc.toLowerCase()}, "${coreClean}" translates directly into what you need to see here.${gdNote}${revNote}`;
   }
 
   if (lang === 'zh') {
@@ -2053,8 +2551,9 @@ function buildWhyCardSpeaksReason(card, posLabel, roleIndex, totalCount, isNatal
           : roleIndex === totalCount - 1
             ? '压轴落在最终收尾位，直接决定这轮问题往哪个结果收束。'
             : '处于中段过渡桥梁位，起到连接起点与结果的关键杠杆作用。';
+    const gdNote = gdAttr ? ` [黄金黎明对应：${gdAttr}]` : '';
     const revNote = revNuance ? ` 逆位提醒：${revNuance}` : '';
-    return `${suitDesc}，这股牌象正${toneClause}。${roleLine}紧扣“${topicDesc}”，核心意象“${coreClean}”因此正好对应到你的问题上。${revNote}`;
+    return `${suitDesc}，这股牌象正${toneClause}。${roleLine}紧扣“${topicDesc}”，核心意象“${coreClean}”因此正好对应到你的问题上。${gdNote}${revNote}`;
   }
 
   const toneClause = polarity === 'favorable'
@@ -2071,11 +2570,12 @@ function buildWhyCardSpeaksReason(card, posLabel, roleIndex, totalCount, isNatal
         : roleIndex === totalCount - 1
           ? 'เมื่อมาปิดเป็นใบสุดท้าย (ปลายทางคำตอบ) จึงเป็นตัวฟันธงบทสรุปของเรื่องนี้ตรงๆ'
           : 'เมื่อวางอยู่ตรงกลาง จึงทำหน้าที่เป็นตัวเชื่อมและจุดเปลี่ยนระหว่างจุดเริ่มต้นกับผลลัพธ์ปลายทาง';
+  const gdNote = gdAttr ? ` [โหราศาสตร์ Golden Dawn: ${gdAttr}]` : '';
   const revNote = revNuance ? ` (หน้าไพ่กลับหัว: ${revNuance})` : '';
-  return `ไพ่ใบนี้คือ${suitDesc} ซึ่ง${toneClause} — ${roleLine} เมื่อนำมาจับกับ${topicDesc} ภาพของ "${coreClean}" เลยแปลออกมาตรงกับคำถามนี้พอดี${revNote}`;
+  return `ไพ่ใบนี้คือ${suitDesc} ซึ่ง${toneClause} — ${roleLine} เมื่อนำมาจับกับ${topicDesc} ภาพของ "${coreClean}" เลยแปลออกมาตรงกับคำถามนี้พอดี${gdNote}${revNote}`;
 }
 
-function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, intent, user, natalCard, nick, lang) {
+function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, intent, user, natalCard, nick, lang, astroIntersection = null) {
   if (!primaryCards.length) return '';
   const refCards = primaryCards.map((item) => item.card);
   const outcomeItem = primaryCards[primaryCards.length - 1];
@@ -2099,6 +2599,8 @@ function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, i
   const synergyNote = analyzeCardElementalSynergy(refCards, lang);
   const patternNote = analyzeSpreadPatterns(refCards, lang);
   const dignityNote = computeElementalDignityInsight(refCards, lang);
+  const astroObj = astroIntersection || computeAstroCardIntersection(user, refCards, lang);
+  const astroNote = astroObj?.summary || '';
   const qEcho = question
     ? (lang === 'en'
         ? `Tied back to your question "${question}": `
@@ -2106,7 +2608,7 @@ function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, i
           ? `回到你问的“${question}”：`
           : `เชื่อมเข้าคำถาม "${question}": `)
     : '';
-  return [qEcho + storyLine, subtextNote, psychNote, synergyNote, patternNote, dignityNote].filter(Boolean).join('\n\n');
+  return [qEcho + storyLine, subtextNote, psychNote, synergyNote, patternNote, dignityNote, astroNote].filter(Boolean).join('\n\n');
 }
 
 /**
@@ -2143,6 +2645,8 @@ export function buildReadingBreakdown(entry, prevUserText = '', state = {}, deck
     const revBadge = formatCardOrientationBadge(card, lang);
     return {
       card,
+      gd: card?.gd || data.gd || null,
+      gdAttribution: data.gdAttribution || '',
       posIndex,
       posLabel,
       polarity,
@@ -2234,7 +2738,8 @@ export function buildReadingBreakdown(entry, prevUserText = '', state = {}, deck
 
   const outcomeCard = primaryCards[primaryCards.length - 1]?.card || fullSpreadCards[fullSpreadCards.length - 1]?.card;
   const natalCard = isNatal10 ? null : findMatchingNatalCard({ natalCards: natalHydrated }, topic, outcomeCard);
-  const connectionText = buildDetailedConnectionText(primaryCards, isNatal10, question, topic, intent, state.user, natalCard, nick, lang);
+  const astroIntersection = computeAstroCardIntersection(state.user, primaryCards.map((item) => item.card), lang);
+  const connectionText = buildDetailedConnectionText(primaryCards, isNatal10, question, topic, intent, state.user, natalCard, nick, lang, astroIntersection);
 
   return {
     isReading: true,
@@ -2244,6 +2749,7 @@ export function buildReadingBreakdown(entry, prevUserText = '', state = {}, deck
     intent,
     primaryCards,
     fullSpreadCards,
-    connectionText
+    connectionText,
+    astroIntersection
   };
 }

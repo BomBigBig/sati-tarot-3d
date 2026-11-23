@@ -115,6 +115,319 @@ export const THAKSA_ROLE_I18N = {
   'กาลกิณี': { en: 'Friction Point Requiring Calm', zh: '需格外留神与沉住气的阻力位' }
 };
 
+export const THAKSA_ANNUAL_ROLE_I18N = {
+  'บริวาร': { th: 'บริวารจร', en: 'Annual Briwan (People & Allies)', zh: '流年伴侣位（人际与团队）' },
+  'อายุ': { th: 'อายุจร', en: 'Annual Ayu (Vitality & Pace)', zh: '流年寿元位（精力与节奏）' },
+  'เดช': { th: 'เดชจร', en: 'Annual Dej (Authority & Drive)', zh: '流年权势位（决断与威信）' },
+  'ศรี': { th: 'ศรีจร', en: 'Annual Si (Grace & Fortune)', zh: '流年福德位（顺缘与机遇）' },
+  'มูละ': { th: 'มูละจร', en: 'Annual Mula (Assets & Base)', zh: '流年财帛位（根基与积累）' },
+  'อุตสาหะ': { th: 'อุตสาหะจร', en: 'Annual Utsaha (Effort & Grit)', zh: '流年精进位（勤勉与实干）' },
+  'มนตรี': { th: 'มนตรีจร', en: 'Annual Montri (Mentors & Support)', zh: '流年贵人位（长辈与扶持）' },
+  'กาลกิณี': { th: 'กาลกิณีจร', en: 'Annual Kalakini (Friction & Caution)', zh: '流年阻力位（须沉住气留神）' }
+};
+
+// Compact Golden Dawn Book T & Thaksa astro lookup tables (fire=0, water=1, air=2, earth=3)
+const GD_E = 'fire|ไฟ|火|water|น้ำ|水|air|ลม|风|earth|ดิน|土'.split('|');
+const GD_P = 'sun|อาทิตย์|太阳|moon|จันทร์|月亮|mars|อังคาร|火星|mercury|พุธ|水星|jupiter|พฤหัสบดี|木星|venus|ศุกร์|金星|saturn|เสาร์|土星|rahu|ราหู|罗睺'.split('|');
+const GD_PE = [0, 1, 0, 2, 0, 3, 3, 2];
+const GD_Z = 'aries|เมษ|白羊|taurus|พฤษภ|金牛|gemini|เมถุน|双子|cancer|กรกฎ|巨蟹|leo|สิงห์|狮子|virgo|กันย์|处女|libra|ตุลย์|天秤|scorpio|พิจิก|天蝎|sagittarius|ธนู|射手|capricorn|มังกร|摩羯|aquarius|กุมภ์|水瓶|pisces|มีน|双鱼'.split('|');
+const GD_ZE = [0, 3, 2, 1];
+const GD_CH = [2, 0, 5, 3, 1, 6, 4];
+const GD_SU = { Wands: [0, 0], Cups: [1, 3], Swords: [2, 6], Pentacles: [3, 9] };
+const GD_PR = {
+  Wands: 'Dominion|Established Strength|Perfected Work|Strife|Victory|Valour|Swiftness|Great Strength|Oppression'.split('|'),
+  Cups: 'Love|Abundance|Blended Pleasure|Loss in Pleasure|Pleasure|Illusionary Success|Abandoned Success|Material Happiness|Perfected Success'.split('|'),
+  Swords: 'Peace Restored|Sorrow|Truce|Defeat|Earned Success|Unstable Effort|Shortened Force|Despair and Cruelty|Ruin'.split('|'),
+  Pentacles: 'Harmonious Change|Material Works|Earthly Power|Material Trouble|Material Success|Success Unfulfilled|Prudence|Material Gain|Wealth'.split('|')
+};
+const GD_PIPS = 'Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten'.split('|');
+const GD_DEG = ['0-10', '10-20', '20-30'];
+const GD_MJ = 'e2|p3|p1|p5|z0|z1|z2|z3|z4|z5|p4|z6|e1|z7|z8|z9|p2|z10|z11|p0|e0|p6'.split('|');
+const GD_MJ_NAMES = 'The Fool|The Magician|The High Priestess|The Empress|The Emperor|The Hierophant|The Lovers|The Chariot|Strength|The Hermit|Wheel of Fortune|Justice|The Hanged Man|Death|Temperance|The Devil|The Tower|The Star|The Moon|The Sun|Judgement|The World'.split('|');
+const GD_CT = { Page: [3, -1], Knight: [0, 8], Queen: [1, 0], King: [2, 4] };
+const GD_CP = (
+  'ช่างสังเกตและกระตือรือร้น ชอบลองสิ่งใหม่|Curious and spirited pioneer eager to test fresh sparks|好奇热忱、敢于试新点子的行动学徒|' +
+  'ใจถึง รีบพุ่งชนเป้าหมาย อาจข้ามขั้นตอนเล็กๆ|Dashing and urgent mover who charges fast yet skips fine print|果敢冲锋、行动力极强但易略过细节|' +
+  'มั่นใจ อบอุ่น ดึงดูดคนรอบข้างด้วยความเป็นตัวเอง|Magnetic, warm, and self-assured leader who inspires naturally|自信明艳、真诚笃定并自然凝聚人心|' +
+  'วิสัยทัศน์ไกล กล้าตัดสินใจและรับผิดชอบเกมใหญ่|Visionary strategist who takes bold ownership of the big picture|格局远大、果断拍板并能扛住全局重任|' +
+  'อ่อนโยน ช่างรับรู้ความรู้สึก เปิดใจรับสัญญาณใหม่|Gentle, intuitive messenger open to heartfelt impressions|细腻温柔、敏锐感知情感与灵感讯息|' +
+  'สุภาพ ช่างเอาใจใส่ ขับเคลื่อนด้วยอุดมคติและความจริงใจ|Romantic, diplomatic idealist guided by sincere feeling|温和有礼、重情重义并按心中理想前行|' +
+  'เข้าใจคนลึกซึ้ง ฟังเก่งและประคองใจคนรอบข้างได้ดี|Deeply empathetic confidante with calm emotional wisdom|共情力深、安静体察人心且懂得守稳边界|' +
+  'วุฒิภาวะทางอารมณ์สูง นิ่งสยบคลื่นและดูแลคนเก่ง|Emotionally mature steward who stays calm through rising waves|情绪沉稳、宽厚顾全大局的定海神针|' +
+  'หัวไว ชอบตั้งคำถาม ตรวจสอบข้อเท็จจริงอย่างระวัง|Alert, inquisitive observer checking facts before trusting|思绪敏锐、善于察觉线索并核实真伪|' +
+  'คิดไวพูดตรง ตัดฉับเพื่อแก้ปัญหาแต่ต้องระวังคำพูดแรง|Incisive, rapid problem-solver whose blunt truth cuts delay|反应迅捷、直奔核心破局但言辞偏锋利|' +
+  'ชัดเจน มีขอบเขต ตัดสินใจจากประสบการณ์และเหตุผล|Clear-eyed realist setting firm boundaries from lived wisdom|清醒独立、看重边界与事实的理性掌舵者|' +
+  'วางระบบคิดเฉียบคม ยุติธรรม และมองทะลุโครงสร้าง|Analytical master of clarity, impartial judgment, and strategy|逻辑严谨、公正通透且擅长统筹全局|' +
+  'ขยันเรียนรู้ทีละขั้น ใส่ใจรายละเอียดที่ใช้ได้จริง|Diligent, grounded learner focused on tangible skills|踏实勤学、注重可落地细节与长期积累|' +
+  'อึด สม่ำเสมอ ทำทีละก้าวไม่ทิ้งงานกลางทาง|Steady, methodical builder who finishes every mile reliably|稳重持久、按部就班把事做实做完|' +
+  'อบอุ่น รอบคอบ ดูแลทรัพยากรและความเป็นอยู่ให้มั่นคง|Nurturing pragmatist cultivating steady comfort and resources|务实温厚、善于打理财务与安稳生活|' +
+  'หนักแน่น สร้างความมั่งคั่งระยะยาวจากวินัยและความรับผิดชอบ|Dependable steward building lasting wealth through discipline|厚重可靠、靠长期纪律筑起稳固根基'
+).split('|');
+const GD_CT_KEYS = ['Page', 'Knight', 'Queen', 'King'];
+const GD_SU_KEYS = ['Wands', 'Cups', 'Swords', 'Pentacles'];
+
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '');
+
+export const THAKSA_PLANET_I18N = (() => {
+  const out = {};
+  for (let i = 0; i < GD_P.length; i += 3) {
+    const key = GD_P[i];
+    const eBase = GD_PE[i / 3] * 3;
+    out[key] = {
+      th: GD_P[i + 1],
+      en: cap(key),
+      zh: GD_P[i + 2],
+      dayKey: `วัน${GD_P[i + 1]}`,
+      elem: { th: GD_E[eBase + 1], en: cap(GD_E[eBase]), zh: GD_E[eBase + 2] }
+    };
+  }
+  return out;
+})();
+
+export function getLocalizedAstroLabel(type, key, lang = 'th') {
+  const target = normalizeLang(lang);
+  const k = String(key || '').trim().toLowerCase();
+  if (!k) return '';
+  const list = type === 'e' ? GD_E : type === 'p' ? GD_P : type === 'z' ? GD_Z : null;
+  if (!list) return String(key || '');
+  for (let i = 0; i < list.length; i += 3) {
+    if (list[i] === k) {
+      if (target === 'en') return cap(list[i]);
+      if (target === 'zh') return type === 'z' ? `${list[i + 2]}座` : list[i + 2];
+      return type === 'z' ? `ราศี${list[i + 1]}` : list[i + 1];
+    }
+  }
+  return String(key || '');
+}
+
+export function getLocalizedThaksaRole(roleKey, lang = 'th', isAnnual = false) {
+  const target = normalizeLang(lang);
+  const base = String(roleKey || '').trim().replace(/จร$/, '');
+  if (!base) return '';
+  if (isAnnual) {
+    return THAKSA_ANNUAL_ROLE_I18N[base]?.[target] || String(roleKey || '');
+  }
+  if (target === 'th') return base;
+  return THAKSA_ROLE_I18N[base]?.[target] || base;
+}
+
+export function getLocalizedThaksaPlanetLabel(planetOrDay, lang = 'th') {
+  const target = normalizeLang(lang);
+  if (planetOrDay == null) return '';
+  if (typeof planetOrDay === 'object') {
+    const k = planetOrDay.planet || planetOrDay.dayKey || planetOrDay.dayName;
+    return getLocalizedThaksaPlanetLabel(k, target);
+  }
+  const raw = String(planetOrDay).trim();
+  if (!raw) return '';
+  const low = raw.toLowerCase();
+  if (THAKSA_PLANET_I18N[low]) return THAKSA_PLANET_I18N[low][target];
+  const stripped = raw.replace(/^วัน/, '');
+  for (const meta of Object.values(THAKSA_PLANET_I18N)) {
+    if (meta.th === stripped || meta.dayKey === raw) return meta[target];
+  }
+  return raw;
+}
+
+export function getLocalizedAnnualThaksaRoleLabel(roleOrAnnualRole, lang = 'th') {
+  return getLocalizedThaksaRole(roleOrAnnualRole, lang, true);
+}
+
+export function formatAnnualThaksaSummary(annualThaksa, lang = 'th') {
+  if (!annualThaksa?.fallingHouse) return '';
+  const target = normalizeLang(lang);
+  const fh = annualThaksa.fallingHouse;
+  const fhPlanet = getLocalizedThaksaPlanetLabel(fh, target);
+  const si = getLocalizedThaksaPlanetLabel(annualThaksa.siJon, target);
+  const dej = getLocalizedThaksaPlanetLabel(annualThaksa.dejJon, target);
+  const kal = getLocalizedThaksaPlanetLabel(annualThaksa.kalakiniJon, target);
+  if (target === 'en') {
+    const natalRole = getLocalizedThaksaRole(fh.natalRole, 'en', false);
+    return `Age ${annualThaksa.ageYung} enters ${fhPlanet} (${natalRole}) | Si-Jon: ${si}, Dej-Jon: ${dej}, Kalakini-Jon: ${kal}`;
+  }
+  if (target === 'zh') {
+    const natalRole = getLocalizedThaksaRole(fh.natalRole, 'zh', false);
+    return `虚岁 ${annualThaksa.ageYung} 行年入${fhPlanet}（本命${natalRole}） | 顺缘位：${si}，权势位：${dej}，阻力位：${kal}`;
+  }
+  return `อายุย่าง ${annualThaksa.ageYung} ปี ตกภูมิ${fh.dayName || fhPlanet} (${fh.natalRole}เดิม) | ศรีจร: ${si}, เดชจร: ${dej}, กาลกิณีจร: ${kal}`;
+}
+
+export function resolveCardGoldenDawn(cardOrUid) {
+  if (!cardOrUid) return null;
+  if (typeof cardOrUid === 'object' && cardOrUid.gd && cardOrUid.gd.gdElement) {
+    return cardOrUid.gd;
+  }
+  let uid = typeof cardOrUid === 'string' ? cardOrUid.trim() : String(cardOrUid.uid || '').trim();
+  if (!uid && typeof cardOrUid === 'object' && cardOrUid.name) {
+    const mIdx = GD_MJ_NAMES.indexOf(cardOrUid.name);
+    if (mIdx >= 0) {
+      uid = `M_${mIdx}`;
+    } else {
+      const m = String(cardOrUid.name).match(/^([A-Za-z]+)\s+of\s+(Wands|Cups|Swords|Pentacles)$/);
+      if (m) uid = `${m[2]}_${m[1]}`;
+    }
+  }
+  if (!uid) return null;
+
+  if (uid.startsWith('M_')) {
+    const idx = parseInt(uid.slice(2), 10);
+    const code = GD_MJ[idx];
+    if (!code) return null;
+    const kind = code[0];
+    const num = parseInt(code.slice(1), 10);
+    if (kind === 'e') {
+      return {
+        category: 'major',
+        planet: null,
+        zodiac: null,
+        gdElement: GD_E[num * 3],
+        subElement: null,
+        decan: null,
+        degrees: null,
+        gdTitle: null,
+        zodiacSpan: null,
+        courtPersonality: null
+      };
+    }
+    if (kind === 'p') {
+      return {
+        category: 'major',
+        planet: GD_P[num * 3],
+        zodiac: null,
+        gdElement: GD_E[GD_PE[num] * 3],
+        subElement: null,
+        decan: null,
+        degrees: null,
+        gdTitle: null,
+        zodiacSpan: null,
+        courtPersonality: null
+      };
+    }
+    return {
+      category: 'major',
+      planet: null,
+      zodiac: GD_Z[num * 3],
+      gdElement: GD_E[GD_ZE[num % 4] * 3],
+      subElement: null,
+      decan: null,
+      degrees: null,
+      gdTitle: null,
+      zodiacSpan: null,
+      courtPersonality: null
+    };
+  }
+
+  const sep = uid.indexOf('_');
+  if (sep <= 0) return null;
+  const suit = uid.slice(0, sep);
+  const rank = uid.slice(sep + 1);
+  const suMeta = GD_SU[suit];
+  if (!suMeta) return null;
+  const gdElement = GD_E[suMeta[0] * 3];
+
+  if (rank === 'Ace') {
+    return {
+      category: 'ace',
+      planet: null,
+      zodiac: null,
+      gdElement,
+      subElement: null,
+      decan: null,
+      degrees: null,
+      gdTitle: `Root of ${cap(gdElement)}`,
+      zodiacSpan: null,
+      courtPersonality: null
+    };
+  }
+
+  const pipIdx = GD_PIPS.indexOf(rank);
+  if (pipIdx >= 0) {
+    const zIdx = (suMeta[1] + Math.floor(pipIdx / 3) * 4) % 12;
+    const decan = (pipIdx % 3) + 1;
+    const pIdx = GD_CH[(zIdx * 3 + decan - 1) % 7];
+    return {
+      category: 'pip',
+      planet: GD_P[pIdx * 3],
+      zodiac: GD_Z[zIdx * 3],
+      gdElement,
+      subElement: null,
+      decan,
+      degrees: GD_DEG[decan - 1],
+      gdTitle: `Lord of ${GD_PR[suit][pipIdx]}`,
+      zodiacSpan: null,
+      courtPersonality: null
+    };
+  }
+
+  const ctMeta = GD_CT[rank];
+  const rkIdx = GD_CT_KEYS.indexOf(rank);
+  const suIdx = GD_SU_KEYS.indexOf(suit);
+  if (ctMeta && rkIdx >= 0 && suIdx >= 0) {
+    const subElem = `${cap(GD_E[ctMeta[0] * 3])} of ${cap(gdElement)}`;
+    const cpBase = (suIdx * 4 + rkIdx) * 3;
+    let zodiac = null;
+    let zodiacSpan = `Quadrant of ${cap(gdElement)}`;
+    if (ctMeta[1] >= 0) {
+      const zIdx = (suMeta[1] + ctMeta[1]) % 12;
+      const prevIdx = (zIdx + 11) % 12;
+      zodiac = GD_Z[zIdx * 3];
+      zodiacSpan = `20° ${cap(GD_Z[prevIdx * 3])} - 20° ${cap(zodiac)}`;
+    }
+    return {
+      category: 'court',
+      planet: null,
+      zodiac,
+      gdElement,
+      subElement: subElem,
+      decan: null,
+      degrees: null,
+      gdTitle: null,
+      zodiacSpan,
+      courtPersonality: {
+        th: GD_CP[cpBase],
+        en: GD_CP[cpBase + 1],
+        zh: GD_CP[cpBase + 2]
+      }
+    };
+  }
+  return null;
+}
+
+export function formatGoldenDawnAttribution(gd, lang = 'th') {
+  if (!gd || !gd.gdElement) return '';
+  const target = normalizeLang(lang);
+  const eLbl = getLocalizedAstroLabel('e', gd.gdElement, target);
+  const pLbl = gd.planet ? getLocalizedAstroLabel('p', gd.planet, target) : '';
+  const zLbl = gd.zodiac ? getLocalizedAstroLabel('z', gd.zodiac, target) : '';
+
+  if (gd.category === 'pip') {
+    if (target === 'en') return `${pLbl} in ${zLbl} (Decan ${gd.decan}, ${gd.degrees}°, ${gd.gdTitle})`;
+    if (target === 'zh') return `${pLbl}落${zLbl}（第${gd.decan}区间 ${gd.degrees}° / ${gd.gdTitle}）`;
+    return `ดาว${pLbl} ใน${zLbl} (Decan ${gd.decan}, ${gd.degrees}°, ${gd.gdTitle})`;
+  }
+  if (gd.category === 'ace') {
+    if (target === 'en') return `${gd.gdTitle} (${eLbl})`;
+    if (target === 'zh') return `${eLbl}元素之根（${gd.gdTitle}）`;
+    return `รากธาตุ${eLbl} (${gd.gdTitle})`;
+  }
+  if (gd.category === 'court') {
+    if (target === 'en') return `${gd.subElement}${zLbl ? ` (${zLbl})` : ''}`;
+    if (target === 'zh') return `${gd.subElement}${zLbl ? `（${zLbl}）` : ''}`;
+    return `${gd.subElement}${zLbl ? ` / ${zLbl}` : ''}`;
+  }
+  if (pLbl) {
+    if (target === 'en') return `${pLbl} (${eLbl})`;
+    if (target === 'zh') return `${pLbl}（${eLbl}）`;
+    return `ดาว${pLbl} (ธาตุ${eLbl})`;
+  }
+  if (zLbl) {
+    if (target === 'en') return `${zLbl} (${eLbl})`;
+    if (target === 'zh') return `${zLbl}（${eLbl}）`;
+    return `${zLbl} (ธาตุ${eLbl})`;
+  }
+  return target === 'th' ? `ธาตุ${eLbl}` : eLbl;
+}
+
 /**
  * Compact card translation entries:
  * [zhTitle, enCore, enWork, enMoney, enLove, enAdvice, zhCore, zhWork, zhMoney, zhLove, zhAdvice]
@@ -350,7 +663,10 @@ export function getLocalizedCardData(card, lang = 'th') {
       reversed: false,
       orientationTag: '',
       orientationBadge: '',
-      reversedNuance: ''
+      reversedNuance: '',
+      gd: null,
+      gdAttribution: '',
+      courtPersonality: ''
     };
   }
   const arr = CARDS_I18N[card.uid];
@@ -360,6 +676,14 @@ export function getLocalizedCardData(card, lang = 'th') {
     orientationTag: formatCardOrientationTag(card, target),
     orientationBadge: formatCardOrientationBadge(card, target),
     reversedNuance: getReversedEnergyNuance(card, target)
+  };
+  const gd = card.gd || resolveCardGoldenDawn(card);
+  const gdMeta = {
+    gd,
+    gdAttribution: formatGoldenDawnAttribution(gd, target),
+    courtPersonality: typeof gd?.courtPersonality === 'string'
+      ? gd.courtPersonality
+      : (gd?.courtPersonality?.[target] || '')
   };
   if (target === 'en') {
     return {
@@ -371,7 +695,8 @@ export function getLocalizedCardData(card, lang = 'th') {
       money: arr?.[3] || card.money,
       love: arr?.[4] || card.love,
       advice: arr?.[5] || card.advice,
-      ...revMeta
+      ...revMeta,
+      ...gdMeta
     };
   }
   if (target === 'zh') {
@@ -384,7 +709,8 @@ export function getLocalizedCardData(card, lang = 'th') {
       money: arr?.[8] || card.money,
       love: arr?.[9] || card.love,
       advice: arr?.[10] || card.advice,
-      ...revMeta
+      ...revMeta,
+      ...gdMeta
     };
   }
   return {
@@ -396,7 +722,8 @@ export function getLocalizedCardData(card, lang = 'th') {
     money: card.money,
     love: card.love,
     advice: card.advice,
-    ...revMeta
+    ...revMeta,
+    ...gdMeta
   };
 }
 

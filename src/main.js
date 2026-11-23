@@ -167,6 +167,8 @@ const state = {
   pendingDrawTopic: '',
   pendingDrawIsExpand: false,
   userContextFacts: [],
+  calibrationFeedback: [],
+  earlierContextDigest: '',
   pickTargetCount: 10,
   isPicking: false,
   isAnimatingShuffle: false,
@@ -262,6 +264,66 @@ function updateStepCoachBar() {
   }
 }
 
+function syncLiveCalibrationUI() {
+  const lastEntry = state.lastLiveShareEntry;
+  const statusEl = document.getElementById('live-calib-status');
+  const reasonWrap = document.getElementById('calib-reason-wrap');
+  const btnAcc = document.getElementById('btn-calib-accurate');
+  const btnInacc = document.getElementById('btn-calib-inaccurate');
+  const cal = lastEntry?.meta?.calibration || null;
+  if (reasonWrap && !state._calibInputOpen) {
+    reasonWrap.classList.add('hidden');
+  }
+  if (statusEl) {
+    if (cal) {
+      statusEl.textContent = cal.verdict === 'inaccurate'
+        ? t(state.lang, 'calibSavedInaccurate')
+        : t(state.lang, 'calibSavedAccurate');
+      statusEl.classList.remove('hidden');
+      statusEl.classList.toggle('text-[#fda4af]', cal.verdict === 'inaccurate');
+      statusEl.classList.toggle('text-[#6ee7b7]', cal.verdict !== 'inaccurate');
+    } else {
+      statusEl.textContent = '';
+      statusEl.classList.add('hidden');
+    }
+  }
+  if (btnAcc) btnAcc.classList.toggle('border-[#6ee7b7]', cal?.verdict === 'accurate');
+  if (btnInacc) btnInacc.classList.toggle('border-[#fda4af]', cal?.verdict === 'inaccurate');
+}
+
+function recordCalibrationFeedback(verdict, noteText = '', targetEntry = state.lastLiveShareEntry) {
+  const cleanVerdict = verdict === 'inaccurate' ? 'inaccurate' : 'accurate';
+  const cleanNote = String(noteText || '').replace(/\s+/g, ' ').trim();
+  const questionRef = targetEntry?.meta?.question || state.lastLiveShareQuestion || getLastAskedUserQuestion() || '';
+  const cardsList = Array.isArray(targetEntry?.meta?.cards) && targetEntry.meta.cards.length > 0
+    ? targetEntry.meta.cards
+    : state.activeSpread;
+  const cardsSummary = (cardsList || []).slice(0, 3).map((c) => c?.name || c?.uid || '').filter(Boolean).join(', ');
+  const calibRecord = {
+    id: `cal_${Date.now().toString(36)}`,
+    createdAt: new Date().toISOString(),
+    verdict: cleanVerdict,
+    note: cleanNote || (cleanVerdict === 'accurate' ? questionRef : ''),
+    question: questionRef,
+    topic: state.activeSpreadTopic || state.lastTopic || 'general',
+    cardsSummary
+  };
+
+  const prevList = Array.isArray(state.calibrationFeedback) ? state.calibrationFeedback : [];
+  state.calibrationFeedback = [...prevList, calibRecord].slice(-20);
+  if (targetEntry) {
+    targetEntry.meta = { ...(targetEntry.meta || {}), calibration: calibRecord };
+  }
+  state.userContextFacts = extractUserContextFacts(state.chatHistory, state.userContextFacts, state.calibrationFeedback);
+  state._calibInputOpen = false;
+  document.getElementById('calib-reason-wrap')?.classList.add('hidden');
+  const inputEl = document.getElementById('calib-reason-input');
+  if (inputEl) inputEl.value = '';
+  syncLiveCalibrationUI();
+  saveAccountState(state);
+  showToast(t(state.lang, cleanVerdict === 'inaccurate' ? 'calibSavedInaccurate' : 'calibSavedAccurate'));
+}
+
 function updateLiveDialogueActions() {
   const wrap = document.getElementById('dialogue-footer-actions');
   if (!wrap) return;
@@ -271,6 +333,7 @@ function updateLiveDialogueActions() {
     return;
   }
   wrap.classList.remove('hidden');
+  syncLiveCalibrationUI();
 }
 
 function setDialogueCollapsed(collapsed) {
@@ -1330,7 +1393,11 @@ window.addEventListener('DOMContentLoaded', () => {
     state.pendingDrawIsExpand = false;
     state.userContextFacts = Array.isArray(pendingSavedRecord.userContextFacts)
       ? pendingSavedRecord.userContextFacts
-      : extractUserContextFacts(state.chatHistory);
+      : extractUserContextFacts(state.chatHistory, [], pendingSavedRecord.calibrationFeedback);
+    state.calibrationFeedback = Array.isArray(pendingSavedRecord.calibrationFeedback)
+      ? pendingSavedRecord.calibrationFeedback
+      : [];
+    state.earlierContextDigest = pendingSavedRecord.earlierContextDigest || '';
     state.lastTopic = pendingSavedRecord.lastTopic || 'general';
     if (['love', 'work', 'money', 'general'].includes(state.lastTopic)) {
       state.selectedPresetCategory = state.lastTopic;
@@ -1678,6 +1745,38 @@ window.addEventListener('DOMContentLoaded', () => {
   // Expand Previous Question Quick Draw Buttons
   document.getElementById('btn-expand-prev-1')?.addEventListener('click', () => triggerFollowUpDraw(1, false, true));
   document.getElementById('btn-expand-prev-3')?.addEventListener('click', () => triggerFollowUpDraw(3, false, true));
+
+  document.getElementById('btn-calib-accurate')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    recordCalibrationFeedback('accurate', '');
+  });
+
+  document.getElementById('btn-calib-inaccurate')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    state._calibInputOpen = true;
+    const wrap = document.getElementById('calib-reason-wrap');
+    wrap?.classList.remove('hidden');
+    document.getElementById('calib-reason-input')?.focus();
+  });
+
+  document.getElementById('btn-calib-submit')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    const note = document.getElementById('calib-reason-input')?.value.trim() || '';
+    recordCalibrationFeedback('inaccurate', note);
+  });
+
+  document.getElementById('btn-calib-cancel')?.addEventListener('click', () => {
+    SoundFX.playPick();
+    state._calibInputOpen = false;
+    document.getElementById('calib-reason-wrap')?.classList.add('hidden');
+  });
+
+  document.getElementById('calib-reason-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('btn-calib-submit')?.click();
+    }
+  });
 
   // Unlock draw buttons live as the user types/clears question in #chat-input
   document.getElementById('chat-input')?.addEventListener('input', updateDrawQuestionGateUI);
@@ -2270,7 +2369,19 @@ window.addEventListener('DOMContentLoaded', () => {
           dotsBtn.addEventListener('click', () => toggleFn());
           detailToggleButtons.push({ entry, toggleFn, row });
 
-          footer.append(shareBtn, dotsBtn);
+          const calibBadge = document.createElement('button');
+          calibBadge.type = 'button';
+          const entryCalib = entry?.meta?.calibration || null;
+          calibBadge.className = `btn-slate chamfer-sm px-2 py-0.5 text-[10.5px] cursor-pointer ${entryCalib?.verdict === 'inaccurate' ? 'border-[#fda4af] text-[#fda4af]' : entryCalib?.verdict === 'accurate' ? 'border-[#6ee7b7] text-[#6ee7b7]' : 'text-[#c5c7d4]'}`;
+          calibBadge.textContent = entryCalib
+            ? (entryCalib.verdict === 'inaccurate' ? t(lang, 'calibSavedInaccurate') : t(lang, 'calibSavedAccurate'))
+            : t(lang, 'btnCalibAccurate');
+          calibBadge.addEventListener('click', () => {
+            recordCalibrationFeedback('accurate', '', entry);
+            calibBadge.textContent = t(state.lang, 'calibSavedAccurate');
+          });
+
+          footer.append(calibBadge, shareBtn, dotsBtn);
           row.append(footer, panel);
         }
       }

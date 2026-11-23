@@ -11,6 +11,9 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { GoogleGenAI } from '@google/genai';
+import { hydrateDeckCards } from '../src/data/tarot78.js';
+import { getLocalizedCardData } from '../src/data/tarot78I18n.js';
+import { computeAnnualThaksa, computeAstroCardIntersection } from '../src/engine/satiBrain.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_DIR = path.join(__dirname, 'data');
@@ -27,19 +30,71 @@ const GEMINI_MODEL_ORDER = [
 ];
 const modelCooldownUntil = new Map();
 
-export function buildModelGenerateConfig(model, systemInstruction = SATI_SYSTEM_PROMPT) {
+export function resolveThinkingConfigForRequest(body = {}, model = PRIMARY_GEMINI_MODEL) {
+  const safeBody = body && typeof body === 'object' ? body : {};
+  const spreadArr = Array.isArray(safeBody.activeSpread) && safeBody.activeSpread.length > 0
+    ? safeBody.activeSpread
+    : (Array.isArray(safeBody.cards) ? safeBody.cards : []);
+  const isTenCard = Boolean(safeBody.isNatal10) || spreadArr.length >= 10;
+  const qText = String(safeBody.question || '').trim();
+  const intent = safeBody.questionProfile?.intent || '';
+  const isDecision = intent === 'decision'
+    || /(ควร.*หรือ|ดีไหม\s*หรือ|ย้าย.*หรือ.*อยู่ต่อ|ลาออก.*หรือ|เลือกทางไหน|ระหว่าง.*กับ|should i .* or |stay or |switch or |还是|或者)/i.test(qText);
+  const hasCalibCorrection = Array.isArray(safeBody.calibrationFeedback)
+    && safeBody.calibrationFeedback.some((c) => c && c.verdict === 'inaccurate');
+  const isComplexQuery = qText.length >= 110 && /(และ|แต่|เพราะ|หรือ|ส่วน|ขณะที่|however|because|although)/i.test(qText);
+
+  const thinkingLevel = (isTenCard || isDecision || hasCalibCorrection || isComplexQuery) ? 'medium' : 'low';
+  const isMedium = thinkingLevel === 'medium';
+  const m = String(model || PRIMARY_GEMINI_MODEL);
+  const maxOutputTokens = /^gemini-4/i.test(m) ? (isMedium ? 4096 : 2600) : (isMedium ? 3200 : 1800);
+  const thinkingBudget = /flash-lite/i.test(m) ? undefined : (isMedium ? 1024 : 384);
+  const reason = isTenCard
+    ? '10_card_spread'
+    : isDecision
+      ? 'major_decision'
+      : hasCalibCorrection
+        ? 'calibration_correction'
+        : isComplexQuery
+          ? 'complex_query'
+          : 'fast_query';
+
+  return {
+    tier: thinkingLevel,
+    thinkingLevel,
+    maxOutputTokens,
+    ...(thinkingBudget !== undefined ? { thinkingBudget } : {}),
+    reason
+  };
+}
+
+export function buildModelGenerateConfig(model, systemInstruction = SATI_SYSTEM_PROMPT, routingOptions = undefined) {
   const m = String(model || '');
   const config = { systemInstruction };
+  const hasRouting = Boolean(routingOptions && typeof routingOptions === 'object');
+  const level = hasRouting && (routingOptions.thinkingLevel === 'high' || routingOptions.thinkingLevel === 'medium')
+    ? routingOptions.thinkingLevel
+    : 'low';
+  const isDeep = level === 'medium' || level === 'high';
+
   if (/^gemini-4/i.test(m)) {
-    config.maxOutputTokens = 2600;
-    config.thinkingConfig = { thinkingLevel: 'low' };
+    config.maxOutputTokens = hasRouting
+      ? (Number(routingOptions.maxOutputTokens) || (level === 'high' ? 6144 : isDeep ? 4096 : 2600))
+      : 2600;
+    config.thinkingConfig = { thinkingLevel: level };
   } else {
-    config.maxOutputTokens = 1800;
+    config.maxOutputTokens = hasRouting
+      ? (Number(routingOptions.maxOutputTokens) || (isDeep ? 3200 : 1800))
+      : 1800;
     if (!/^gemini-3\.[6-9]/i.test(m)) {
       config.temperature = 0.8;
     }
     if (!/flash-lite/i.test(m)) {
-      config.thinkingConfig = { thinkingBudget: 384 };
+      config.thinkingConfig = {
+        thinkingBudget: hasRouting
+          ? (Number(routingOptions.thinkingBudget) || (isDeep ? 1024 : 384))
+          : 384
+      };
     }
   }
   return config;
@@ -317,7 +372,7 @@ export function sanitizeSatiText(rawText, lang = 'th') {
 }
 
 function buildCompressedHistoryDigest(recentHistory = []) {
-  const rows = (Array.isArray(recentHistory) ? recentHistory : []).slice(-6);
+  const rows = (Array.isArray(recentHistory) ? recentHistory : []).slice(-16);
   const recentOpenings = [];
   const digestLines = rows.map((h) => {
     const cleanText = String(h?.text || '').replace(/\s+/g, ' ').trim();
@@ -388,18 +443,61 @@ function resolveExtendedNatalInfo(userProfile = {}) {
   };
 }
 
+const TH_MONTHS_FULL = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+];
+const EN_MONTHS_FULL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+const TH_WEEKDAYS = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+
+function formatRealTimeDateContext(rawNow) {
+  const parsed = rawNow ? new Date(rawNow) : new Date();
+  const dt = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  const yearCE = dt.getUTCFullYear();
+  const yearBE = yearCE + 543;
+  const monthIdx = dt.getUTCMonth();
+  const monthNum = monthIdx + 1;
+  const dayNum = dt.getUTCDate();
+  const dow = dt.getUTCDay();
+  const thMonth = TH_MONTHS_FULL[monthIdx] || '';
+  const enMonth = EN_MONTHS_FULL[monthIdx] || '';
+  const thWeekday = TH_WEEKDAYS[dow] || '';
+  const quarter = Math.floor(monthIdx / 3) + 1;
+  return {
+    dt,
+    line: `วันที่ปัจจุบัน (Real-Time Current Date): ${thWeekday}ที่ ${dayNum} ${thMonth} พ.ศ. ${yearBE} (ค.ศ. ${yearCE}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}, ${enMonth} ${dayNum}, ${yearCE}, ไตรมาส Q${quarter})`
+  };
+}
+
+function formatAnnualThaksaContextLine(annual) {
+  if (!annual || !annual.fallingHouse || !Array.isArray(annual.roles)) return '';
+  const fh = annual.fallingHouse;
+  const roleSegments = annual.roles.map((r) => {
+    const label = r.annualRole || `${r.role}จร`;
+    return `${label}=${r.dayName}(ดาว${r.planet},ธาตุ${r.elem})`;
+  });
+  return `ทักษาจรรายปี (อายุย่าง ${annual.ageYung} ปี, ตกภูมิ${fh.dayName} ดาว${fh.planet} ธาตุ${fh.elem}): ${roleSegments.join(' | ')}`;
+}
+
 export function buildSatiPromptBundle(body = {}) {
   const {
     userProfile,
+    annualThaksa: bodyAnnualThaksa = null,
     natalCards,
     activeSpread,
     cards,
     remainingCount,
     elementalDignity,
+    astroIntersection: bodyAstroIntersection = '',
     spreadPatterns = '',
     pastSessionMemory = '',
     question,
     recentHistory,
+    earlierContextDigest = '',
+    calibrationFeedback = [],
     isNatal10,
     celticPositions,
     spreadPositions = null,
@@ -410,6 +508,8 @@ export function buildSatiPromptBundle(body = {}) {
     userFacts = [],
     topicSwitchedFrom = '',
     isExpandFollowUp: bodyIsExpand = false,
+    now: bodyNow,
+    currentDate: bodyCurrentDate,
     lang: rawLang
   } = body && typeof body === 'object' ? body : {};
   const lang = rawLang === 'en' || rawLang === 'zh' ? rawLang : 'th';
@@ -420,9 +520,28 @@ export function buildSatiPromptBundle(body = {}) {
       ? 'Simplified Chinese / 简体中文 (completely respond in warm, direct, candid natural Chinese as 思谛)'
       : 'Thai / ภาษาไทย (ตอบเป็นภาษาไทยธรรมชาติ จริงใจ เป็นกันเองเหมือนเพื่อน)';
 
-  const spreadArr = Array.isArray(activeSpread) && activeSpread.length > 0
+  const { dt: refNowDate, line: currentDateLine } = formatRealTimeDateContext(bodyNow || bodyCurrentDate);
+  const resolvedAnnualThaksa = (bodyAnnualThaksa && Array.isArray(bodyAnnualThaksa.roles))
+    ? bodyAnnualThaksa
+    : ((userProfile?.annualThaksa && Array.isArray(userProfile.annualThaksa.roles))
+        ? userProfile.annualThaksa
+        : computeAnnualThaksa(userProfile || {}, refNowDate));
+  const annualThaksaLine = formatAnnualThaksaContextLine(resolvedAnnualThaksa);
+
+  const rawSpreadArr = Array.isArray(activeSpread) && activeSpread.length > 0
     ? activeSpread
     : (Array.isArray(cards) ? cards : (Array.isArray(activeSpread) ? activeSpread : []));
+  const hydratedSpread = hydrateDeckCards(rawSpreadArr);
+  const spreadArr = rawSpreadArr.map((raw, idx) => {
+    const hyd = hydratedSpread[idx] || {};
+    return {
+      ...hyd,
+      ...raw,
+      gd: raw?.gd || hyd?.gd || null,
+      reversed: Boolean(raw?.reversed ?? hyd?.reversed)
+    };
+  });
+
   const customPos3 = Array.isArray(spreadPositions) && spreadPositions.length === 3
     ? spreadPositions.map((p) => String(p || '').trim())
     : null;
@@ -432,12 +551,34 @@ export function buildSatiPromptBundle(body = {}) {
       ? (celticPositions[idx] || `ตำแหน่งที่ ${idx + 1}`)
       : (spreadArr.length === 1 ? 'คำตอบหลัก' : (positions3[idx] || `ใบที่ ${idx + 1}`));
     const orientationTag = c?.reversed ? ' [กลับหัว / Reversed]' : '';
+    const loc = c?.uid ? getLocalizedCardData(c, lang) : null;
+    const gdParts = [
+      c?.gd?.planet ? `planet:${c.gd.planet}` : '',
+      c?.gd?.zodiac ? `zodiac:${c.gd.zodiac}` : '',
+      c?.gd?.decan ? `decan:${c.gd.decan}` : '',
+      c?.gd?.subElement ? `subElement:${c.gd.subElement}` : '',
+      loc?.gdAttribution || '',
+      typeof loc?.courtPersonality === 'string' ? loc.courtPersonality : ''
+    ].filter(Boolean).join(', ').replace(/\r?\n/g, ' ');
+    const gdBracket = gdParts ? ` [GD: ${gdParts}]` : '';
     const aspects = [c?.work && `งาน:${c.work}`, c?.money && `เงิน:${c.money}`, c?.love && `รัก:${c.love}`, c?.advice && `แนะ:${c.advice}`].filter(Boolean).join(' | ');
     const namePart = c?.name || 'Unknown';
     const thPart = c?.th ? ` (${c.th})` : '';
     const corePart = c?.core ? `: ${c.core}` : '';
-    return `- [${posLabel}] ${namePart}${thPart}${orientationTag} [ธาตุ:${c?.suit || 'Major'}${c?.tone ? `, โทน:${c.tone}` : ''}]${corePart}${aspects ? ` (${aspects})` : ''}`;
+    return `- [${posLabel}] ${namePart}${thPart}${orientationTag} [ธาตุ:${c?.suit || 'Major'}${c?.tone ? `, โทน:${c.tone}` : ''}]${gdBracket}${corePart}${aspects ? ` (${aspects})` : ''}`;
   }).join('\n');
+
+  const computedInter = computeAstroCardIntersection(
+    userProfile ? { ...userProfile, annualThaksa: resolvedAnnualThaksa } : { annualThaksa: resolvedAnnualThaksa },
+    spreadArr,
+    lang
+  );
+  const spreadCardSignature = spreadArr
+    .map((c) => `${c?.name || c?.uid || 'Card'}(${c?.gd?.planet || c?.gd?.zodiac || c?.gd?.subElement || c?.suit || 'Major'})`)
+    .join(', ');
+  const astroIntersectionLine = spreadArr.length > 0
+    ? `จุดตัดดวงชะตากับไพ่ Golden Dawn (Astrological Intersection): ${[bodyAstroIntersection || computedInter?.summary || '', computedInter?.highlights?.join(' · ') || '', spreadCardSignature ? `ไพ่ชุดนี้: ${spreadCardSignature}` : ''].filter(Boolean).join(' | ')}`
+    : '';
 
   const kal = userProfile?.thaksaDetails?.hasKalakini
     ? `มีอักษรกาลกิณีในชื่อ: ${userProfile.thaksaDetails.kalakiniChars.join(',')}`
@@ -484,23 +625,41 @@ export function buildSatiPromptBundle(body = {}) {
     ? natalCards.map((c, i) => `${i + 1}.${c?.name || 'Unknown'}${c?.th ? `(${c.th})` : ''}${c?.reversed ? '[กลับหัว]' : ''}`).join(', ')
     : 'ยังไม่เปิดผังพื้นดวง 10 ใบ (ผู้ถามเลือกโหมดเปิดเร็ว — ให้อ่านจากไพ่บนโต๊ะเชื่อมกับข้อมูลเกิดและทักษาชื่อเต็มที่)';
 
+  const cleanEarlierDigest = typeof earlierContextDigest === 'string' ? earlierContextDigest.trim() : '';
+  const calibEntries = Array.isArray(calibrationFeedback) ? calibrationFeedback.filter((c) => c && typeof c === 'object') : [];
+  const calibrationLine = calibEntries.length > 0
+    ? `ผลปรับจูนความแม่นยำจากผู้ถาม (Calibration Loop Feedback): ${calibEntries.map((c) => {
+        const note = String(c.note || '').trim();
+        const qRef = String(c.question || '').trim();
+        const cardsRef = String(c.cardsSummary || '').trim();
+        return c.verdict === 'inaccurate'
+          ? `[ยังไม่ตรง/ต้องปรับสมมติฐานใหม่: ${note || 'ผู้ถามแจ้งว่ายังไม่ตรง'}${qRef ? ` (คำถาม: ${qRef})` : ''}]`
+          : `[ทายตรงจุดแล้ว/ยึดเป็นแกนต่อยอด: ${note || qRef || 'ผู้ถามยืนยันว่าตรงประเด็น'}${cardsRef ? ` (ไพ่: ${cardsRef})` : ''}]`;
+      }).join(' | ')}`
+    : '';
+
   const userContext = [
     `Target Language: ${targetLangDesc}`,
+    currentDateLine,
     deckHeader,
     `ผู้ถาม: ชื่อเล่น "${userProfile?.nickname || 'เพื่อน'}", ชื่อจริง "${userProfile?.fullname || ''}"`,
     `พื้นดวงเกิด: ${userProfile?.dayName || ''}, ธาตุ${userProfile?.elemShort || ''} (${userProfile?.element || ''}), เลขชีวิต ${userProfile?.lifePath || ''}`,
     extNatalLine,
     `ทักษาชื่อ 8 ภูมิ: เด่น ${userProfile?.thaksaStrength || ''} | ${kal}${thaksaRolesSummary ? ` | รายละเอียดภูมิ:${thaksaRolesSummary}` : ''} | ไพ่ประจำตัว: ${userProfile?.birthCard || ''}`,
+    annualThaksaLine,
     factsLine,
+    calibrationLine,
     `ไพ่พื้นดวง 10 ใบแรก: ${natalSummaryText}`,
     !isNatal10 && spreadArr.length === 3 && (cleanSpreadPresetTitle || customPos3)
       ? `กรอบผัง 3 ใบที่ผู้ถามเลือก (${cleanSpreadPresetTitle || positions3.join(' · ')}): ตีความแต่ละใบให้ตรงตามบทบาท [${positions3.join(' -> ')}] อย่างชัดเจน`
       : '',
     `ไพ่ที่เปิดอยู่บนโต๊ะตอนนี้ (${spreadArr.length} ใบ):\n${formattedSpread || 'ยังไม่มีไพ่เปิดเพิ่มเติม'}`,
     elementalDignity ? `กำลังธาตุไพ่ (Golden Dawn Dignity): ${elementalDignity}` : '',
+    astroIntersectionLine,
     cleanSpreadPatterns ? `ภาพรวมโครงสร้างไพ่ทั้งชุด (Spread Patterns): ${cleanSpreadPatterns}` : '',
     `ไพ่คงเหลือในสำรับ: ${remainingCount ?? 68}/78 ใบ`,
     cleanPastMemory ? `ความต่อเนื่องจากรอบก่อนหน้า (Cross-Session Memory): ${cleanPastMemory}` : '',
+    cleanEarlierDigest ? `สรุปบริบทช่วงต้นของการสนทนา (Earlier Context Digest): ${cleanEarlierDigest}` : '',
     digestText ? `สรุปบทสนทนาล่าสุดในสำรับนี้:\n${digestText}` : '',
     recentOpenings.length ? `ประโยคเปิดที่ใช้ไปแล้วในตาก่อนหน้า (ห้ามขึ้นต้นซ้ำเด็ดขาด ให้เปลี่ยนมุมเปิดใหม่): ${recentOpenings.join(' | ')}` : '',
     `คำสั่งสไตล์การเปิดประโยคตานี้: ${openingDirective}`,
@@ -532,15 +691,18 @@ export async function handleSatiReadRequest(body, options = {}) {
   }
 
   const { lang, systemInstruction, userContext } = buildSatiPromptBundle(body);
+  const primaryRouting = resolveThinkingConfigForRequest(body, PRIMARY_GEMINI_MODEL);
   const ai = createGeminiClient(apiKey, options);
   let rawOutput = '';
   let usedModel = PRIMARY_GEMINI_MODEL;
+  let usedThinkingLevel = primaryRouting.thinkingLevel;
   let lastErr = null;
 
   const candidateModels = getCandidateGeminiModels();
 
   for (const model of candidateModels) {
-    const config = buildModelGenerateConfig(model, systemInstruction);
+    const routing = resolveThinkingConfigForRequest(body, model);
+    const config = buildModelGenerateConfig(model, systemInstruction, routing);
     try {
       const response = await ai.models.generateContent({
         model,
@@ -551,6 +713,7 @@ export async function handleSatiReadRequest(body, options = {}) {
       if (text) {
         rawOutput = text;
         usedModel = model;
+        usedThinkingLevel = routing.thinkingLevel;
         break;
       }
     } catch (err) {
@@ -566,7 +729,7 @@ export async function handleSatiReadRequest(body, options = {}) {
   if (!reply) {
     return { fallback: true, reason: lastErr?.message || 'EMPTY_MODEL_OUTPUT' };
   }
-  return { reply, fallback: false, model: usedModel };
+  return { reply, fallback: false, model: usedModel, thinkingLevel: usedThinkingLevel };
 }
 
 export function createSatiExpressApp(options = {}) {
@@ -696,8 +859,9 @@ export function createSatiExpressApp(options = {}) {
       for (const model of candidateModels) {
         if (clientClosed || abortController.signal.aborted || res.writableEnded) break;
 
+        const routing = resolveThinkingConfigForRequest(req.body, model);
         const config = {
-          ...buildModelGenerateConfig(model, systemInstruction),
+          ...buildModelGenerateConfig(model, systemInstruction, routing),
           abortSignal: abortController.signal
         };
         let modelRawOutput = '';
@@ -720,7 +884,7 @@ export function createSatiExpressApp(options = {}) {
             if (!safeChunk) continue;
 
             if (!metaSentForModel) {
-              writeSseEvent(res, 'meta', { model });
+              writeSseEvent(res, 'meta', { model, thinkingLevel: routing.thinkingLevel });
               metaSentForModel = true;
             }
             writeSseEvent(res, 'chunk', { text: safeChunk });
@@ -734,11 +898,12 @@ export function createSatiExpressApp(options = {}) {
           const sanitizedReply = sanitizeSatiText(modelRawOutput, lang);
           if (sanitizedReply) {
             if (!metaSentForModel) {
-              writeSseEvent(res, 'meta', { model });
+              writeSseEvent(res, 'meta', { model, thinkingLevel: routing.thinkingLevel });
             }
             writeSseEvent(res, 'done', {
               ok: true,
               model,
+              thinkingLevel: routing.thinkingLevel,
               reply: sanitizedReply,
               fallback: false
             });

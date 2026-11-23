@@ -30,20 +30,27 @@ export const UI_TEXT = {
     placeholderYear: 'ปี พ.ศ.',
     btnSubmitLedger: 'ประทับตราเริ่มดูดวง',
     ledgerModeLabel: 'เลือกรูปแบบการเปิดไพ่รอบแรก',
-    ledgerMode3Title: '🃏 เปิดเร็ว 3 ใบ',
+    ledgerMode3Title: 'เปิดเร็ว 3 ใบ',
     ledgerMode3Sub: 'ชีวิตประจำวัน / เรื่องเฉพาะเจาะจง',
-    ledgerMode10Title: '🔮 ผังใหญ่ 10 ใบ',
+    ledgerMode10Title: 'ผังใหญ่ 10 ใบ',
     ledgerMode10Sub: 'เจาะลึกพื้นดวงทั้งชีวิต (แนะนำ)',
     ledgerQuestionLabel: 'เรื่องที่อยากดู (ไม่บังคับ — ถ้าเว้นว่างถือว่าดูภาพรวม)',
     ledgerQuestionPlaceholder: 'เช่น งานสัปดาห์นี้เป็นยังไง หรือกดดูดวงวันนี้เลยด้านล่าง',
-    btnLedgerDailyNow: '☀️ ตั้งเป็นดูดวงชีวิตประจำวันวันนี้',
+    btnLedgerDailyNow: 'ตั้งเป็นดูดวงชีวิตประจำวันวันนี้',
     modalSpread3Title: 'เปิดไพ่ 3 ใบ · เลือกกรอบคำทำนาย',
     modalSpread3Sub: 'เลือกความหมายของไพ่ทั้ง 3 ตำแหน่งให้ตรงกับเรื่องที่อยากรู้ที่สุด',
     spread3QuestionLabel: 'คำถามเฉพาะเจาะจง (ไม่บังคับ)',
     spread3QuestionPlaceholder: 'พิมพ์เรื่องที่อยากถาม หรือกดดูดวงวันนี้เลยด้านล่าง',
-    btnSpread3DailyNow: '☀️ ดูดวงวันนี้เลย',
-    btnSpread3Confirm: '🃏 เริ่มหยิบไพ่ 3 ใบ',
+    btnSpread3DailyNow: 'ดูดวงวันนี้เลย',
+    btnSpread3Confirm: 'เริ่มหยิบไพ่ 3 ใบ',
     btnDraw3: 'เปิด 3 ใบ (เลือกผัง)',
+    btnCalibAccurate: 'ตรงจุดนี้',
+    btnCalibInaccurate: 'ยังไม่ตรง เพราะ...',
+    calibReasonPlaceholder: 'ระบุข้อเท็จจริงเพื่อปรับจูนความแม่นยำ...',
+    btnCalibSubmit: 'บันทึกปรับจูน',
+    btnCalibCancel: 'ยกเลิก',
+    calibSavedAccurate: 'บันทึกจุดที่ทายตรงแล้ว',
+    calibSavedInaccurate: 'บันทึกข้อมูลปรับจูนแล้ว สติจะใช้ในรอบถัดไป',
     months: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'],
     formatYear: (beYear) => `${beYear}`,
 
@@ -100,7 +107,7 @@ export const UI_TEXT = {
     guideStep1Title: '1. ผูกพื้นดวงและเลือกไพ่ 10 ใบแรก',
     guideStep1Desc: 'กรอกชื่อ-นามสกุลจริงและวันเกิดเพื่อให้สติผูกหลักทักษา จากนั้นเลือกไพ่ 10 ใบแรกบนโต๊ะเพื่อเปิดภาพรวม อดีต - ปัจจุบัน - อนาคต ของคุณ',
     guideStep2Title: '2. กดดูหน้าไพ่บนโต๊ะ 3D, ไพ่กลับหัว และ "รายละเอียดเพิ่มเติม"',
-    guideStep2Desc: 'แตะไพ่บนโต๊ะ 3D เพื่อขยายดูความหมายได้ทุกใบ (รวมถึงไพ่กลับหัวที่สะท้อนปมภายในหรือจังหวะที่ควรระวัง — เปิด/ปิดได้ในเมนูตั้งค่า ⚙) หรือกด "รายละเอียดเพิ่มเติม" เพื่ออ่านความเชื่อมโยงเชิงลึก',
+    guideStep2Desc: 'แตะไพ่บนโต๊ะ 3D เพื่อขยายดูความหมายได้ทุกใบ (รวมถึงไพ่กลับหัวที่สะท้อนปมภายในหรือจังหวะที่ควรระวัง — เปิด/ปิดได้ในเมนูตั้งค่า) หรือกด "รายละเอียดเพิ่มเติม" เพื่ออ่านความเชื่อมโยงเชิงลึก',
     guideStep3Title: '3. เลือกคำถามพรีเซ็ต / สับไพ่ด้วยมือเรา / รีเซ็ตกองไพ่',
     guideStep3Desc: 'เลือกหมวดคำถาม (ความรัก การงาน การเงิน อื่นๆ) หรือพิมพ์ถามเองได้ทันที หากอยากสับไพ่ใหม่ด้วยมือตัวเองกดปุ่ม "สับไพ่ด้วยมือเรา" (ไม่ปนกองทิ้ง) และเมื่อไพ่เหลือน้อยกว่าหรือเท่ากับ 9 ใบ (0-9 ใบ) จะปลดล็อกปุ่มรีเซ็ตครบ 78 ใบ',
     guideStep4Title: '4. บันทึกรูปการ์ดคำทำนาย & ออกจากโต๊ะเมื่อคุยเสร็จ',
@@ -130,10 +137,10 @@ export const UI_TEXT = {
     btnViewArchiveSession: 'เปิดอ่าน / เซฟรูปจากรอบนี้',
     btnBackArchiveList: '← กลับหน้ารวมประวัติตามวัน-เวลา',
 
-    presetCatLove: '❤️ ความรัก',
-    presetCatWork: '💼 การงาน',
-    presetCatMoney: '💰 การเงิน',
-    presetCatGeneral: '✨ อื่นๆ / ชีวิต',
+    presetCatLove: 'ความรัก',
+    presetCatWork: 'การงาน',
+    presetCatMoney: 'การเงิน',
+    presetCatGeneral: 'อื่นๆ / ชีวิต',
     btnSelfShuffle: 'สับไพ่ด้วยมือเรา',
     btnResetDeck9: (rem) => (rem <= 9 ? 'รีเซ็ตกองไพ่ 78 ใบ (พร้อมแล้ว)' : `รีเซ็ต 78 ใบ (รอเหลือ 0-9 ใบ)`),
     toastResetLocked: 'รีเซ็ตกองไพ่ใหม่ได้ก็ต่อเมื่อเหลือไพ่ที่ยังไม่ใช้งาน 0–9 ใบเท่านั้น',
@@ -209,8 +216,8 @@ export const UI_TEXT = {
     supportQrPendingHint: 'ผู้พัฒนากำลังเพิ่มรูป QR Code จริงในเร็วๆ นี้ — เพียงแค่แวะมาเล่นและส่งฟีดแบ็กก็เป็นกำลังใจให้มากแล้วครับ',
     btnSaveSupportQr: 'บันทึกรูป QR ไว้สแกนในแอปธนาคาร',
     supportFooterNote: 'ดูดวงต่อได้ฟรีไม่อั้น ไม่ต้องโดเนทก็ใช้งานได้ครบทุกฟีเจอร์ครับ',
-    supportGentleLink: '☕ เลี้ยงกาแฟ / สนับสนุนค่าเซิร์ฟเวอร์ผู้พัฒนา (ตามอัธยาศัย)',
-    supportExitGentleCta: '☕ ชอบคำทำนายวันนี้ไหม? สนับสนุนผู้พัฒนา (ไม่บังคับ)',
+    supportGentleLink: 'เลี้ยงกาแฟ / สนับสนุนค่าเซิร์ฟเวอร์ผู้พัฒนา (ตามอัธยาศัย)',
+    supportExitGentleCta: 'ชอบคำทำนายวันนี้ไหม? สนับสนุนผู้พัฒนา (ไม่บังคับ)',
 
     activeCardLabel: (idx) => `ไพ่ใบที่ ${idx + 1}`,
     pickOrderPos: (count, pos) => (pos ? `ใบที่ ${count}: ${pos}` : `ใบที่ ${count}`),
@@ -256,34 +263,34 @@ export const UI_TEXT = {
 
     smartPromptsByTopic: {
       work: [
-        { label: '⚡ จุดเปลี่ยนงานใน 3 เดือนนี้', question: 'จุดเปลี่ยนสำคัญเรื่องงานในอีก 3 เดือนข้างหน้าคืออะไร และฉันควรตัดสินใจยังไงดี', drawCount: 0 },
-        { label: '🧭 งานนี้ไปต่อหรือเปลี่ยนทาง?', question: 'งานหรือโปรเจกต์ที่ทำอยู่ตอนนี้ ควรทุ่มไปต่อหรือมองหาทางใหม่ที่คุ้มกว่า', drawCount: 0 },
-        { label: '🤝 หัวหน้า/ทีมมองเราอย่างไร', question: 'ตอนนี้หัวหน้า ทีมงาน หรือผู้ใหญ่รอบตัวมองผลงานของเราอย่างไรและควรปรับจุดไหน', drawCount: 0 },
-        { label: '🚀 เส้นทางเติบโตและข้อควรระวัง', question: 'เส้นทางงาน โอกาสเติบโต และสิ่งที่ต้องระวังตรงหน้าในตอนนี้เป็นอย่างไร', drawCount: 0 }
+        { label: 'จุดเปลี่ยนงานใน 3 เดือนนี้', question: 'จุดเปลี่ยนสำคัญเรื่องงานในอีก 3 เดือนข้างหน้าคืออะไร และฉันควรตัดสินใจยังไงดี', drawCount: 0 },
+        { label: 'งานนี้ไปต่อหรือเปลี่ยนทาง?', question: 'งานหรือโปรเจกต์ที่ทำอยู่ตอนนี้ ควรทุ่มไปต่อหรือมองหาทางใหม่ที่คุ้มกว่า', drawCount: 0 },
+        { label: 'หัวหน้า/ทีมมองเราอย่างไร', question: 'ตอนนี้หัวหน้า ทีมงาน หรือผู้ใหญ่รอบตัวมองผลงานของเราอย่างไรและควรปรับจุดไหน', drawCount: 0 },
+        { label: 'เส้นทางเติบโตและข้อควรระวัง', question: 'เส้นทางงาน โอกาสเติบโต และสิ่งที่ต้องระวังตรงหน้าในตอนนี้เป็นอย่างไร', drawCount: 0 }
       ],
       money: [
-        { label: '💰 จุดรั่วการเงินที่มองไม่เห็น', question: 'ตอนนี้มีจุดรั่วทางการเงินหรือจังหวะเสี่ยงตรงไหนที่สติเห็นว่าต้องรีบอุดบ้าง', drawCount: 0 },
-        { label: '📈 โอกาสเก็บเงินก้อนช่วงนี้', question: 'ช่วงนี้จังหวะรายรับและเงินก้อนจะขยับขึ้นจากทางไหนได้ชัดที่สุด', drawCount: 0 },
-        { label: '⚖️ ลงทุนหรือเก็บสำรองก่อนดี', question: 'เรื่องเงินช่วงนี้ควรลุยลงทุนขยับขยาย หรือเก็บเงินสดสำรองไว้ก่อนดีกว่า', drawCount: 0 },
-        { label: '🪙 ทิศทางกระแสเงิน & โชคลาภ', question: 'ทิศทางกระแสเงิน โอกาสรับทรัพย์ และจุดที่ห้ามประมาทช่วงนี้เป็นยังไง', drawCount: 0 }
+        { label: 'จุดรั่วการเงินที่มองไม่เห็น', question: 'ตอนนี้มีจุดรั่วทางการเงินหรือจังหวะเสี่ยงตรงไหนที่สติเห็นว่าต้องรีบอุดบ้าง', drawCount: 0 },
+        { label: 'โอกาสเก็บเงินก้อนช่วงนี้', question: 'ช่วงนี้จังหวะรายรับและเงินก้อนจะขยับขึ้นจากทางไหนได้ชัดที่สุด', drawCount: 0 },
+        { label: 'ลงทุนหรือเก็บสำรองก่อนดี', question: 'เรื่องเงินช่วงนี้ควรลุยลงทุนขยับขยาย หรือเก็บเงินสดสำรองไว้ก่อนดีกว่า', drawCount: 0 },
+        { label: 'ทิศทางกระแสเงิน & โชคลาภ', question: 'ทิศทางกระแสเงิน โอกาสรับทรัพย์ และจุดที่ห้ามประมาทช่วงนี้เป็นยังไง', drawCount: 0 }
       ],
       love: [
-        { label: '❤️ ความคิดลึกๆ ของอีกฝ่าย', question: 'ความรู้สึกและความคิดลึกๆ ของอีกฝ่ายที่มีต่อฉันตอนนี้เป็นยังไงกันแน่', drawCount: 0 },
-        { label: '⏳ ควรลุยต่อหรือถอยตั้งหลัก?', question: 'ในความสัมพันธ์นี้ ฉันควรเดินหน้าเปิดใจต่อ หรือควรถอยมาตั้งหลักให้ชัดก่อน', drawCount: 0 },
-        { label: '🌸 แนวโน้มคนใหม่ / คู่ครอง', question: 'ช่วงนี้มีเกณฑ์เจอคนที่ใช่หรือพัฒนาความสัมพันธ์ให้ชัดเจนขึ้นเมื่อไหร่', drawCount: 0 },
-        { label: '💞 บทสรุปและปมในความสัมพันธ์', question: 'ความรู้สึกจริง ปมที่ค้างคา และบทสรุปความสัมพันธ์นี้จะเดินไปทางไหน', drawCount: 0 }
+        { label: 'ความคิดลึกๆ ของอีกฝ่าย', question: 'ความรู้สึกและความคิดลึกๆ ของอีกฝ่ายที่มีต่อฉันตอนนี้เป็นยังไงกันแน่', drawCount: 0 },
+        { label: 'ควรลุยต่อหรือถอยตั้งหลัก?', question: 'ในความสัมพันธ์นี้ ฉันควรเดินหน้าเปิดใจต่อ หรือควรถอยมาตั้งหลักให้ชัดก่อน', drawCount: 0 },
+        { label: 'แนวโน้มคนใหม่ / คู่ครอง', question: 'ช่วงนี้มีเกณฑ์เจอคนที่ใช่หรือพัฒนาความสัมพันธ์ให้ชัดเจนขึ้นเมื่อไหร่', drawCount: 0 },
+        { label: 'บทสรุปและปมในความสัมพันธ์', question: 'ความรู้สึกจริง ปมที่ค้างคา และบทสรุปความสัมพันธ์นี้จะเดินไปทางไหน', drawCount: 0 }
       ],
       self: [
-        { label: '🎯 ก้าวแรกที่ต้องลงมือทันที', question: 'จากไพ่ตรงหน้า อะไรคือสิ่งแรกที่ฉันควรลงมือเปลี่ยนหรือโฟกัสภายในสัปดาห์นี้', drawCount: 0 },
-        { label: '⚠️ อุปสรรคในใจที่ฉุดไว้', question: 'ตอนนี้ความกลัวหรือนิสัยเดิมแบบไหนที่กำลังฉุดไม่ให้ฉันไปข้างหน้า', drawCount: 0 },
-        { label: '🛡️ สิ่งที่ต้องระวังและสุขภาพ', question: 'ช่วงนี้มีเรื่องสุขภาพ อารมณ์ หรือคนรอบข้างตรงไหนที่ควรระวังเป็นพิเศษบ้าง', drawCount: 0 },
-        { label: '🌅 แนวทางปลดล็อกชีวิตช่วงนี้', question: 'ทางออกชีวิต จุดแข็งที่ต้องใช้ และคำเตือนสำคัญช่วงนี้คืออะไร', drawCount: 0 }
+        { label: 'ก้าวแรกที่ต้องลงมือทันที', question: 'จากไพ่ตรงหน้า อะไรคือสิ่งแรกที่ฉันควรลงมือเปลี่ยนหรือโฟกัสภายในสัปดาห์นี้', drawCount: 0 },
+        { label: 'อุปสรรคในใจที่ฉุดไว้', question: 'ตอนนี้ความกลัวหรือนิสัยเดิมแบบไหนที่กำลังฉุดไม่ให้ฉันไปข้างหน้า', drawCount: 0 },
+        { label: 'สิ่งที่ต้องระวังและสุขภาพ', question: 'ช่วงนี้มีเรื่องสุขภาพ อารมณ์ หรือคนรอบข้างตรงไหนที่ควรระวังเป็นพิเศษบ้าง', drawCount: 0 },
+        { label: 'แนวทางปลดล็อกชีวิตช่วงนี้', question: 'ทางออกชีวิต จุดแข็งที่ต้องใช้ และคำเตือนสำคัญช่วงนี้คืออะไร', drawCount: 0 }
       ],
       general: [
-        { label: '🔎 เรื่องสำคัญสุดที่ไพ่เตือน', question: 'จากไพ่ทั้งหมดตอนนี้ เรื่องไหนเร่งด่วนและสำคัญที่สุดที่ฉันต้องรีบจัดการ', drawCount: 0 },
-        { label: '🚀 สิ่งที่ควรทำภายในสัปดาห์นี้', question: 'ในสัปดาห์นี้ ถ้าต้องเลือกโฟกัสเพียง 1 อย่างให้คุ้มแรงที่สุด ควรทำอะไร', drawCount: 0 },
-        { label: '🌿 พลังกายใจและคนรอบข้าง', question: 'ตอนนี้สมดุลชีวิต พลังงานส่วนตัว และสิ่งแวดล้อมรอบข้างเป็นยังไง มีอะไรต้องรีบปรับ', drawCount: 0 },
-        { label: '🔮 แนวโน้มและวิธีรับมือตรงหน้า', question: 'ภาพรวมสถานการณ์ตรงหน้า แนวโน้มที่จะเกิด และวิธีรับมือที่ดีที่สุดคืออะไร', drawCount: 0 }
+        { label: 'เรื่องสำคัญสุดที่ไพ่เตือน', question: 'จากไพ่ทั้งหมดตอนนี้ เรื่องไหนเร่งด่วนและสำคัญที่สุดที่ฉันต้องรีบจัดการ', drawCount: 0 },
+        { label: 'สิ่งที่ควรทำภายในสัปดาห์นี้', question: 'ในสัปดาห์นี้ ถ้าต้องเลือกโฟกัสเพียง 1 อย่างให้คุ้มแรงที่สุด ควรทำอะไร', drawCount: 0 },
+        { label: 'พลังกายใจและคนรอบข้าง', question: 'ตอนนี้สมดุลชีวิต พลังงานส่วนตัว และสิ่งแวดล้อมรอบข้างเป็นยังไง มีอะไรต้องรีบปรับ', drawCount: 0 },
+        { label: 'แนวโน้มและวิธีรับมือตรงหน้า', question: 'ภาพรวมสถานการณ์ตรงหน้า แนวโน้มที่จะเกิด และวิธีรับมือที่ดีที่สุดคืออะไร', drawCount: 0 }
       ]
     },
 
@@ -336,20 +343,27 @@ export const UI_TEXT = {
     placeholderYear: 'Year',
     btnSubmitLedger: 'Seal Ledger & Begin Reading',
     ledgerModeLabel: 'Choose Your Opening Spread',
-    ledgerMode3Title: '🃏 Quick 3 Cards',
+    ledgerMode3Title: 'Quick 3 Cards',
     ledgerMode3Sub: 'Daily flow or a specific question',
-    ledgerMode10Title: '🔮 Full 10-Card Natal',
+    ledgerMode10Title: 'Full 10-Card Natal',
     ledgerMode10Sub: 'Deep Celtic Cross + birth chart (Recommended)',
     ledgerQuestionLabel: 'Specific question (optional)',
     ledgerQuestionPlaceholder: 'e.g., How will my week go? Or tap Daily Check-in below',
-    btnLedgerDailyNow: '☀️ Set to Today’s Daily Reading',
+    btnLedgerDailyNow: 'Set to Today’s Daily Reading',
     modalSpread3Title: '3-Card Spread · Choose Your Layout',
     modalSpread3Sub: 'Pick how the 3 cards should frame your question',
     spread3QuestionLabel: 'Specific Question (optional)',
     spread3QuestionPlaceholder: 'Type a specific question, or tap Daily Check-in below',
-    btnSpread3DailyNow: '☀️ Daily Check-In Now',
-    btnSpread3Confirm: '🃏 Pick 3 Cards',
+    btnSpread3DailyNow: 'Daily Check-In Now',
+    btnSpread3Confirm: 'Pick 3 Cards',
     btnDraw3: 'Open 3 Cards (Spreads)',
+    btnCalibAccurate: 'Spot on',
+    btnCalibInaccurate: 'Not quite, because...',
+    calibReasonPlaceholder: 'Share what differs so Sati can recalibrate...',
+    btnCalibSubmit: 'Save Calibration',
+    btnCalibCancel: 'Cancel',
+    calibSavedAccurate: 'Confirmed point recorded',
+    calibSavedInaccurate: 'Correction saved for next readings',
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     formatYear: (beYear) => `${beYear - 543}`,
 
@@ -406,7 +420,7 @@ export const UI_TEXT = {
     guideStep1Title: '1. Seal Your Natal Profile & Pick 10 Cards',
     guideStep1Desc: 'Enter your name and birth date so Sati aligns Thai Thaksa astrology, then pull 10 cards on the 3D table to map your past, present, and future.',
     guideStep2Title: '2. Tap 3D Cards, Reversed Orientation & "More Details"',
-    guideStep2Desc: 'Click any open card on the 3D table to inspect it up close—including Reversed cards reflecting inner blocks or timing (toggleable in Settings ⚙)—or tap "More Details" to view card-to-card synergy.',
+    guideStep2Desc: 'Click any open card on the 3D table to inspect it up close—including Reversed cards reflecting inner blocks or timing (toggleable in Settings)—or tap "More Details" to view card-to-card synergy.',
     guideStep3Title: '3. Preset Questions, Hand Self-Shuffle & Deck Reset',
     guideStep3Desc: 'Switch between Love, Work, Money, or General presets, shuffle remaining deck cards yourself with your 3D hands (discarded cards stay separate), and reset the full 78-card deck once 0–9 unused cards remain.',
     guideStep4Title: '4. Save Reading Image & Leave Table to Archive',
@@ -436,10 +450,10 @@ export const UI_TEXT = {
     btnViewArchiveSession: 'Open / Save Card Image',
     btnBackArchiveList: '← Back to All Archived Sessions',
 
-    presetCatLove: '❤️ Love',
-    presetCatWork: '💼 Work',
-    presetCatMoney: '💰 Money',
-    presetCatGeneral: '✨ Life & Other',
+    presetCatLove: 'Love',
+    presetCatWork: 'Work',
+    presetCatMoney: 'Money',
+    presetCatGeneral: 'Life & Other',
     btnSelfShuffle: 'Self-Shuffle Deck',
     btnResetDeck9: (rem) => (rem <= 9 ? 'Reset Full 78 Deck (Ready)' : 'Reset 78 Deck (0–9 Left)'),
     toastResetLocked: 'Deck reset unlocks only when 0 to 9 unused cards remain.',
@@ -515,8 +529,8 @@ export const UI_TEXT = {
     supportQrPendingHint: 'The developer’s PromptPay QR will be added here shortly — playing and sharing honest feedback already means the world!',
     btnSaveSupportQr: 'Save QR Image for Banking App',
     supportFooterNote: 'All readings and features stay completely free regardless of tipping.',
-    supportGentleLink: '☕ Buy the developer a coffee / server tip (optional)',
-    supportExitGentleCta: '☕ Enjoyed today’s reading? Support the developer (optional)',
+    supportGentleLink: 'Buy the developer a coffee / server tip (optional)',
+    supportExitGentleCta: 'Enjoyed today’s reading? Support the developer (optional)',
 
     activeCardLabel: (idx) => `Card ${idx + 1}`,
     pickOrderPos: (count, pos) => (pos ? `Card ${count}: ${pos}` : `Card ${count}`),
@@ -562,29 +576,29 @@ export const UI_TEXT = {
 
     smartPromptsByTopic: {
       work: [
-        { label: '⚡ 3-Month Career Shift', question: 'What key career shift awaits in the next 3 months, and what move should I make?', drawCount: 0 },
-        { label: '🧭 Stay or Pivot Path?', question: 'Should I double down on this current project/job or start pivoting to something new?', drawCount: 0 },
-        { label: '🔮 Career Path & Hidden Risks', question: 'What is my career trajectory, hidden opportunity, and main risk ahead?', drawCount: 0 }
+        { label: '3-Month Career Shift', question: 'What key career shift awaits in the next 3 months, and what move should I make?', drawCount: 0 },
+        { label: 'Stay or Pivot Path?', question: 'Should I double down on this current project/job or start pivoting to something new?', drawCount: 0 },
+        { label: 'Career Path & Hidden Risks', question: 'What is my career trajectory, hidden opportunity, and main risk ahead?', drawCount: 0 }
       ],
       money: [
-        { label: '💰 Hidden Money Leak', question: 'Where is the blind spot or financial leak the cards warn me to plug right now?', drawCount: 0 },
-        { label: '📈 Best Income Channel', question: 'Which channel or strategy brings the clearest cash-flow breakthrough next?', drawCount: 0 },
-        { label: '🪙 Income Traps & Opportunities', question: 'What is ahead for my upcoming income, cash traps, and smartest financial move?', drawCount: 0 }
+        { label: 'Hidden Money Leak', question: 'Where is the blind spot or financial leak the cards warn me to plug right now?', drawCount: 0 },
+        { label: 'Best Income Channel', question: 'Which channel or strategy brings the clearest cash-flow breakthrough next?', drawCount: 0 },
+        { label: 'Income Traps & Opportunities', question: 'What is ahead for my upcoming income, cash traps, and smartest financial move?', drawCount: 0 }
       ],
       love: [
-        { label: '❤️ What They Truly Feel', question: 'How does the other person genuinely feel about me beneath the surface right now?', drawCount: 0 },
-        { label: '⏳ Lean In or Step Back?', question: 'In this connection, should I open up and move closer or step back for clarity?', drawCount: 0 },
-        { label: '💞 Unspoken Block & Direction', question: 'What are their real feelings, the unspoken block, and where is this bond heading?', drawCount: 0 }
+        { label: 'What They Truly Feel', question: 'How does the other person genuinely feel about me beneath the surface right now?', drawCount: 0 },
+        { label: 'Lean In or Step Back?', question: 'In this connection, should I open up and move closer or step back for clarity?', drawCount: 0 },
+        { label: 'Unspoken Block & Direction', question: 'What are their real feelings, the unspoken block, and where is this bond heading?', drawCount: 0 }
       ],
       self: [
-        { label: '🎯 First Concrete Step Now', question: 'Based on these cards, what is the single most impactful action I must take this week?', drawCount: 0 },
-        { label: '⚠️ Inner Block Holding Me Back', question: 'What subtle fear or old habit is quietly holding me back right now?', drawCount: 0 },
-        { label: '🌅 Blind Spot & Next Leverage', question: 'What is my blind spot, strongest leverage, and practical next move right now?', drawCount: 0 }
+        { label: 'First Concrete Step Now', question: 'Based on these cards, what is the single most impactful action I must take this week?', drawCount: 0 },
+        { label: 'Inner Block Holding Me Back', question: 'What subtle fear or old habit is quietly holding me back right now?', drawCount: 0 },
+        { label: 'Blind Spot & Next Leverage', question: 'What is my blind spot, strongest leverage, and practical next move right now?', drawCount: 0 }
       ],
       general: [
-        { label: '🔎 Most Urgent Warning', question: 'Across all cards on the table, what is the single most urgent priority I should handle now?', drawCount: 0 },
-        { label: '🚀 Best Focus This Week', question: 'If I can focus on just one decisive move this week, what gives the highest payoff?', drawCount: 0 },
-        { label: '🔮 Unseen Resistance & Path', question: 'What happens next, what unseen resistance exists, and what is the best approach?', drawCount: 0 }
+        { label: 'Most Urgent Warning', question: 'Across all cards on the table, what is the single most urgent priority I should handle now?', drawCount: 0 },
+        { label: 'Best Focus This Week', question: 'If I can focus on just one decisive move this week, what gives the highest payoff?', drawCount: 0 },
+        { label: 'Unseen Resistance & Path', question: 'What happens next, what unseen resistance exists, and what is the best approach?', drawCount: 0 }
       ]
     },
 
@@ -637,20 +651,27 @@ export const UI_TEXT = {
     placeholderYear: '年份',
     btnSubmitLedger: '盖印启盘占卜',
     ledgerModeLabel: '选择首次开牌方式',
-    ledgerMode3Title: '🃏 快捷 3 张牌',
+    ledgerMode3Title: '快捷 3 张牌',
     ledgerMode3Sub: '日常运势或具体单项提问',
-    ledgerMode10Title: '🔮 10 张完整本命盘',
+    ledgerMode10Title: '10 张完整本命盘',
     ledgerMode10Sub: '凯尔特十字深度全盘解读（推荐）',
     ledgerQuestionLabel: '想具体询问的事情（选填）',
     ledgerQuestionPlaceholder: '如：本周工作运势如何？或点下方直接看今日状态',
-    btnLedgerDailyNow: '☀️ 设为今日日常速览',
+    btnLedgerDailyNow: '设为今日日常速览',
     modalSpread3Title: '开启 3 张牌 · 选择牌阵角度',
     modalSpread3Sub: '选择最贴合你当下问题的三位置解牌视角',
     spread3QuestionLabel: '具体问题（选填）',
     spread3QuestionPlaceholder: '输入想问的具体事情，或直接点击下方今日速览',
-    btnSpread3DailyNow: '☀️ 立即看今日状态',
-    btnSpread3Confirm: '🃏 开始挑选 3 张牌',
+    btnSpread3DailyNow: '立即看今日状态',
+    btnSpread3Confirm: '开始挑选 3 张牌',
     btnDraw3: '开启 3 张（选阵型）',
+    btnCalibAccurate: '说得很准',
+    btnCalibInaccurate: '不太准，因为...',
+    calibReasonPlaceholder: '补充真实情况，以便思谛校准后续解读...',
+    btnCalibSubmit: '保存校准',
+    btnCalibCancel: '取消',
+    calibSavedAccurate: '已记录吻合重点',
+    calibSavedInaccurate: '已记录修正信息，后续解读将据此调整',
     months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
     formatYear: (beYear) => `${beYear - 543} 年`,
 
@@ -707,7 +728,7 @@ export const UI_TEXT = {
     guideStep1Title: '1. 绑定生辰命盘并先抽 10 张本命牌',
     guideStep1Desc: '填好姓名与出生日期后，从桌上的牌扇亲手挑出 10 张牌，建立属于你的过去—现在—未来基准盘。',
     guideStep2Title: '2. 点击 3D 牌面、逆位解读与“更多详情”',
-    guideStep2Desc: '点击桌面展开的任意立体牌面即可放大查看含义（含提示内在阻碍与时机延迟的逆位牌，可在右上角设置 ⚙ 开关）；或点击“更多详情”查看牌阵连结解析。',
+    guideStep2Desc: '点击桌面展开的任意立体牌面即可放大查看含义（含提示内在阻碍与时机延迟的逆位牌，可在右上角设置 开关）；或点击“更多详情”查看牌阵连结解析。',
     guideStep3Title: '3. 分类预设提问 / 亲手洗牌 / 残局重洗 78 张',
     guideStep3Desc: '按感情、事业、财运与生活分类一键挑选问题，也可点击“亲手洗牌”用自己的 3D 双手洗匀剩余未开之牌（绝不混入弃牌堆）。当未用牌剩下 0–9 张时可重置全副 78 张。',
     guideStep4Title: '4. 保存带牌面的解读图，聊完从设置离开牌桌',
@@ -737,10 +758,10 @@ export const UI_TEXT = {
     btnViewArchiveSession: '打开查看 / 生成保存图',
     btnBackArchiveList: '← 返回时间存档列表',
 
-    presetCatLove: '❤️ 感情',
-    presetCatWork: '💼 事业',
-    presetCatMoney: '💰 财运',
-    presetCatGeneral: '✨ 生活 / 其他',
+    presetCatLove: '感情',
+    presetCatWork: '事业',
+    presetCatMoney: '财运',
+    presetCatGeneral: '生活 / 其他',
     btnSelfShuffle: '亲手洗牌',
     btnResetDeck9: (rem) => (rem <= 9 ? '重置 78 张新牌（已就绪）' : '重置 78 张（剩 0–9 张解锁）'),
     toastResetLocked: '仅当未使用的牌剩下 0 至 9 张时才可重置整副 78 张牌。',
@@ -816,8 +837,8 @@ export const UI_TEXT = {
     supportQrPendingHint: '开发者稍后会补充真实收款二维码——你来体验并留下反馈就已经是最好的鼓励！',
     btnSaveSupportQr: '保存赞赏二维码图片',
     supportFooterNote: '无论是否打赏，所有占卜与牌阵功能都可无限免费使用。',
-    supportGentleLink: '☕ 请开发者喝杯咖啡 / 支持服务器费用（自愿）',
-    supportExitGentleCta: '☕ 今天的解牌有帮到你吗？可随心支持开发者（自愿）',
+    supportGentleLink: '请开发者喝杯咖啡 / 支持服务器费用（自愿）',
+    supportExitGentleCta: '今天的解牌有帮到你吗？可随心支持开发者（自愿）',
 
     activeCardLabel: (idx) => `第 ${idx + 1} 张牌`,
     pickOrderPos: (count, pos) => (pos ? `第 ${count} 张：${pos}` : `第 ${count} 张`),
@@ -863,29 +884,29 @@ export const UI_TEXT = {
 
     smartPromptsByTopic: {
       work: [
-        { label: '⚡ 未来 3 个月事业转折', question: '未来 3 个月我的事业会迎来什么关键转折，现在该如何抉择？', drawCount: 0 },
-        { label: '🧭 坚持现职还是换赛道？', question: '目前的工作或项目应该继续深耕，还是准备转向新赛道更划算？', drawCount: 0 },
-        { label: '🔮 深挖事业前景与风险', question: '我的事业前景、隐藏机会以及必须避开的坑是什么？', drawCount: 0 }
+        { label: '未来 3 个月事业转折', question: '未来 3 个月我的事业会迎来什么关键转折，现在该如何抉择？', drawCount: 0 },
+        { label: '坚持现职还是换赛道？', question: '目前的工作或项目应该继续深耕，还是准备转向新赛道更划算？', drawCount: 0 },
+        { label: '深挖事业前景与风险', question: '我的事业前景、隐藏机会以及必须避开的坑是什么？', drawCount: 0 }
       ],
       money: [
-        { label: '💰 看不见的财务漏洞', question: '牌面上有没有提醒我必须立刻堵住的漏财点或资金风险？', drawCount: 0 },
-        { label: '📈 近期最清晰的进账突破', question: '接下来哪条路最有机会帮我明显提升现金流与收入？', drawCount: 0 },
-        { label: '🪙 财运走势与机遇契机', question: '接下来财运走势、进账契机与财务禁忌在哪里？', drawCount: 0 }
+        { label: '看不见的财务漏洞', question: '牌面上有没有提醒我必须立刻堵住的漏财点或资金风险？', drawCount: 0 },
+        { label: '近期最清晰的进账突破', question: '接下来哪条路最有机会帮我明显提升现金流与收入？', drawCount: 0 },
+        { label: '财运走势与机遇契机', question: '接下来财运走势、进账契机与财务禁忌在哪里？', drawCount: 0 }
       ],
       love: [
-        { label: '❤️ 对方心底真实想法', question: '对方现在心底对我的真实感受和顾虑究竟是什么？', drawCount: 0 },
-        { label: '⏳ 主动推进还是先观望？', question: '这段关系我该主动跨前一步，还是先退后看清局势再决定？', drawCount: 0 },
-        { label: '💞 感情心结与未来走向', question: '双方真实心意、卡住的结以及感情未来会往哪走？', drawCount: 0 }
+        { label: '对方心底真实想法', question: '对方现在心底对我的真实感受和顾虑究竟是什么？', drawCount: 0 },
+        { label: '主动推进还是先观望？', question: '这段关系我该主动跨前一步，还是先退后看清局势再决定？', drawCount: 0 },
+        { label: '感情心结与未来走向', question: '双方真实心意、卡住的结以及感情未来会往哪走？', drawCount: 0 }
       ],
       self: [
-        { label: '🎯 本周最该立刻做的事', question: '结合桌上的牌，这周我最应该立刻落地改变的一件事是什么？', drawCount: 0 },
-        { label: '⚠️ 暗中拖住我的心态', question: '现在有什么习惯或担忧正在悄悄拖慢我的行动与状态？', drawCount: 0 },
-        { label: '🌅 当前盲点与破局之法', question: '我现在最大的盲点、核心优势和实际破局方法是什么？', drawCount: 0 }
+        { label: '本周最该立刻做的事', question: '结合桌上的牌，这周我最应该立刻落地改变的一件事是什么？', drawCount: 0 },
+        { label: '暗中拖住我的心态', question: '现在有什么习惯或担忧正在悄悄拖慢我的行动与状态？', drawCount: 0 },
+        { label: '当前盲点与破局之法', question: '我现在最大的盲点、核心优势和实际破局方法是什么？', drawCount: 0 }
       ],
       general: [
-        { label: '🔎 牌阵里最紧迫的提醒', question: '结合全部牌面来看，眼下最紧急、最需要优先处理的问题是什么？', drawCount: 0 },
-        { label: '🚀 本周最值得专注的一步', question: '如果本周只集中精力做一件事来扭转局面，最该选哪一步？', drawCount: 0 },
-        { label: '🔮 后续走势与最佳应对', question: '后续走势、暗藏阻力与眼下最佳应对方法是什么？', drawCount: 0 }
+        { label: '牌阵里最紧迫的提醒', question: '结合全部牌面来看，眼下最紧急、最需要优先处理的问题是什么？', drawCount: 0 },
+        { label: '本周最值得专注的一步', question: '如果本周只集中精力做一件事来扭转局面，最该选哪一步？', drawCount: 0 },
+        { label: '后续走势与最佳应对', question: '后续走势、暗藏阻力与眼下最佳应对方法是什么？', drawCount: 0 }
       ]
     },
 

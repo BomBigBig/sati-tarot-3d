@@ -2,6 +2,8 @@
  * Complete 78-Card Rider-Waite Tarot Dataset & Stylized Low-Poly Tarot Artwork Engine
  */
 import * as THREE from 'three';
+import { resolveCardGoldenDawn } from './tarot78I18n.js';
+export { resolveCardGoldenDawn as getCardGoldenDawnMeta } from './tarot78I18n.js';
 
 // Schema per card: [core, work, money, love, advice, tone] ('good' | 'warn' | 'neutral')
 export const MAJOR_ARCANA = [
@@ -234,8 +236,9 @@ export const RANKS = [
 export function buildFullDeck78() {
   const deck = [];
   MAJOR_ARCANA.forEach((m) => {
+    const uid = `M_${m.id}`;
     deck.push({
-      uid: `M_${m.id}`,
+      uid,
       name: m.en,
       th: m.th,
       suit: 'Major',
@@ -245,15 +248,17 @@ export function buildFullDeck78() {
       money: m.money,
       love: m.love,
       advice: m.advice,
-      tone: m.tone
+      tone: m.tone,
+      gd: resolveCardGoldenDawn(uid)
     });
   });
   SUITS.forEach((s) => {
     const suitSpec = MINOR_SPECIFICS[s.key];
     RANKS.forEach((rk) => {
+      const uid = `${s.key}_${rk.r}`;
       const [core, work, money, love, advice, tone] = suitSpec[rk.r];
       deck.push({
-        uid: `${s.key}_${rk.r}`,
+        uid,
         name: `${rk.r} of ${s.key}`,
         th: `${rk.th}${s.th}`,
         suit: s.key,
@@ -263,7 +268,8 @@ export function buildFullDeck78() {
         money,
         love,
         advice,
-        tone
+        tone,
+        gd: resolveCardGoldenDawn(uid)
       });
     });
   });
