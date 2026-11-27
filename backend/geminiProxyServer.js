@@ -21,13 +21,14 @@ const DB_FILE = path.join(DB_DIR, 'users_db.json');
 const FEEDBACK_FILE = path.join(DB_DIR, 'feedback_db.json');
 const DIST_DIR = path.join(__dirname, '..', 'dist');
 const ENV_FILE = path.join(__dirname, '..', '.env');
-const PRIMARY_GEMINI_MODEL = 'gemini-4-hydrogen';
-const GEMINI_MODEL_ORDER = [
+export const PRIMARY_GEMINI_MODEL = 'gemini-3.5-flash-lite';
+export const GEMINI_MODEL_ORDER = [
+  'gemini-3.5-flash-lite',
+  'gemini-3.8-flash',
   'gemini-4-hydrogen',
-  'gemini-3.6-flash',
-  'gemini-2.5-flash',
-  'gemini-3.5-flash-lite'
+  'gemini-3.6-flash'
 ];
+const COOLDOWN_ERROR_RE = /429|RESOURCE_EXHAUSTED|quota|503|UNAVAILABLE|DEADLINE_EXCEEDED|high[\s-]+demand/i;
 const modelCooldownUntil = new Map();
 
 export function resolveThinkingConfigForRequest(body = {}, model = PRIMARY_GEMINI_MODEL) {
@@ -47,8 +48,14 @@ export function resolveThinkingConfigForRequest(body = {}, model = PRIMARY_GEMIN
   const thinkingLevel = (isTenCard || isDecision || hasCalibCorrection || isComplexQuery) ? 'medium' : 'low';
   const isMedium = thinkingLevel === 'medium';
   const m = String(model || PRIMARY_GEMINI_MODEL);
-  const maxOutputTokens = /^gemini-4/i.test(m) ? (isMedium ? 4096 : 2600) : (isMedium ? 3200 : 1800);
-  const thinkingBudget = /flash-lite/i.test(m) ? undefined : (isMedium ? 1024 : 384);
+  const isGemini4 = /^gemini-4/i.test(m);
+  const isFlashLite = /flash-lite/i.test(m);
+  const maxOutputTokens = isGemini4
+    ? (isMedium ? 4096 : 2600)
+    : isFlashLite
+      ? (isMedium ? 3600 : 2400)
+      : (isMedium ? 3200 : 1800);
+  const thinkingBudget = isGemini4 ? undefined : (isMedium ? 1024 : 384);
   const reason = isTenCard
     ? '10_card_spread'
     : isDecision
@@ -68,8 +75,8 @@ export function resolveThinkingConfigForRequest(body = {}, model = PRIMARY_GEMIN
   };
 }
 
-export function buildModelGenerateConfig(model, systemInstruction = SATI_SYSTEM_PROMPT, routingOptions = undefined) {
-  const m = String(model || '');
+export function buildModelGenerateConfig(model = PRIMARY_GEMINI_MODEL, systemInstruction = SATI_SYSTEM_PROMPT, routingOptions = undefined) {
+  const m = String(model || PRIMARY_GEMINI_MODEL);
   const config = { systemInstruction };
   const hasRouting = Boolean(routingOptions && typeof routingOptions === 'object');
   const level = hasRouting && (routingOptions.thinkingLevel === 'high' || routingOptions.thinkingLevel === 'medium')
@@ -83,19 +90,21 @@ export function buildModelGenerateConfig(model, systemInstruction = SATI_SYSTEM_
       : 2600;
     config.thinkingConfig = { thinkingLevel: level };
   } else {
+    const isFlashLite = /flash-lite/i.test(m);
+    const defaultMaxTokens = isFlashLite
+      ? (isDeep ? 3600 : 2400)
+      : (isDeep ? 3200 : 1800);
     config.maxOutputTokens = hasRouting
-      ? (Number(routingOptions.maxOutputTokens) || (isDeep ? 3200 : 1800))
-      : 1800;
-    if (!/^gemini-3\.[6-9]/i.test(m)) {
+      ? (Number(routingOptions.maxOutputTokens) || defaultMaxTokens)
+      : defaultMaxTokens;
+    if (!/^gemini-3\.[5-9]/i.test(m)) {
       config.temperature = 0.8;
     }
-    if (!/flash-lite/i.test(m)) {
-      config.thinkingConfig = {
-        thinkingBudget: hasRouting
-          ? (Number(routingOptions.thinkingBudget) || (isDeep ? 1024 : 384))
-          : 384
-      };
-    }
+    config.thinkingConfig = {
+      thinkingBudget: hasRouting
+        ? (Number(routingOptions.thinkingBudget) || (isDeep ? 1024 : 384))
+        : 384
+    };
   }
   return config;
 }
@@ -108,8 +117,10 @@ export function isModelOnCooldown(model, now = Date.now()) {
 }
 
 export function markModelQuotaCooldown(model, errMsg = '', now = Date.now()) {
-  const isDaily = /perday|daily|rpd/i.test(String(errMsg || ''));
-  const ttlMs = isDaily ? 15 * 60_000 : 60_000;
+  const msg = String(errMsg || '');
+  const isDaily = /perday|daily|rpd/i.test(msg);
+  const isTransient = /503|UNAVAILABLE|DEADLINE_EXCEEDED|high[\s-]+demand/i.test(msg);
+  const ttlMs = isDaily ? 15 * 60_000 : (isTransient ? 30_000 : 60_000);
   modelCooldownUntil.set(model, now + ttlMs);
   return now + ttlMs;
 }
@@ -176,7 +187,7 @@ function createGeminiClient(apiKey, options = {}) {
   if (typeof options?.createAiClient === 'function') {
     return options.createAiClient(apiKey);
   }
-  return new GoogleGenAI({ apiKey, httpOptions: { timeout: 22000 } });
+  return new GoogleGenAI({ apiKey, httpOptions: { timeout: 16000 } });
 }
 
 function getCandidateGeminiModels() {
@@ -338,6 +349,7 @@ export const SATI_SYSTEM_PROMPT = `คุณคือ "สติ" นักอ�
 - กรณีแจ้งว่าเปลี่ยนประเด็น (topicSwitchedFrom): ให้อธิบายสั้นๆ ว่าไพ่บนโต๊ะรอบก่อนเป็นคนละหัวข้อ ระบบจึงดึงไพ่พื้นดวง 10 ใบมาอ่านให้แทน และชวนกดจั่วเพิ่ม 1-3 ใบหากอยากเจาะเรื่องใหม่นี้ให้ลึกขึ้น
 - กรณีไพ่กลับหัว (Reversed): เมื่อหน้าไพ่ระบุ [กลับหัว / Reversed] ให้อ่านอย่างสร้างสรรค์ว่าเป็นพลังงานที่ติดขัดหรือเก็บไว้ภายใน จังหวะที่ถูกหน่วง/เลื่อนเวลา หรือจุดบอดที่เจ้าชะตาลงมือปรับแก้ได้ ห้ามทำนายแบบโชคร้ายตายตัวหรือขู่ให้หมดหวังเด็ดขาด
 - หากมีข้อมูลโครงสร้างไพ่ทั้งชุด (Spread Patterns) หรือความต่อเนื่องจากรอบก่อน (Cross-Session Memory) ให้ร้อยเรียงเข้ากับการอ่านอย่างเป็นธรรมชาติโดยไม่ทวนรายงานเป็นข้อๆ
+- กรณีเปิดไพ่ 3 ใบสำหรับคำถามเฉพาะของผู้ถาม (Direct 3-Card Spread): ให้ปรับมุมมองไพ่ 3 ใบให้สอดคล้องกับคำถามนั้นโดยตรง ถ่ายทอดด้วยภาษาที่อบอุ่น เข้าใจความรู้สึกอย่างเป็นธรรมชาติ (เช่น ภาษาไทยที่สุภาพอบอุ่นเมื่อ Target Language เป็นภาษาไทย) พร้อมแนวทางและก้าวถัดไปที่ลงมือทำได้จริง
 รูปแบบการตอบ: คงโครงสร้าง 3 ย่อหน้าสั้นๆ อ่านจบไว อ่านทะลุใจ และตรงประเด็นโดยไม่เกริ่นน้ำท่วมทุ่ง:
 1. ย่อหน้าแรก (อ่านใจ Subtext + ฟันธงตรงคำถาม): จับความรู้สึกหรือปมลึกๆ หลังคำถามทันที แล้วฟันธงคำตอบตรงรูปคำถามตั้งแต่ย่อหน้านี้ ทักว่าถามซ้ำเฉพาะเมื่อถามคำถามเดิมแทบจะเหมือนกันภายในสำรับเดียวกันโดยไม่ได้กดขยายคำถามเดิมเท่านั้น ห้ามทักว่าถามซ้ำเมื่อขึ้นสำรับใหม่หรือเปลี่ยนประเด็น
 2. ย่อหน้ากลาง (ผูกหน้าไพ่ + พื้นดวง + Golden Dawn Elemental Dignity เป็นภาพชีวิตจริง): ห้ามไล่ชื่อไพ่ทั้ง 10 ใบเรียงข้อเหมือนท่องตำรา ให้คัดเฉพาะไพ่แกนหลัก 2–5 ใบที่ปะทะหรือเสริมแรงกันมากที่สุด ร้อยเรียงเป็นเรื่องเดียวเชื่อมกับธาตุทักษา ช่วงวัย/ข้อเท็จจริงชีวิตจริงที่ผู้ถามเล่า (userFacts) และกำลังธาตุไพ่ (ไฟ+ลมเสริมแรงไว / น้ำ+ดินปั้นผลมั่นคง / ไฟ+น้ำขัดกันในใจ / ลม+ดินคิดชนข้อจำกัดจริง) แปลเป็นพฤติกรรมจริงที่จับต้องได้ ห้ามพูดประโยคหว่านแหแบบ Barnum ที่ใช้ได้กับทุกคน ห้ามขึ้นบุลเล็ต (• หรือ 1) 2)) และห้ามก๊อปคำซ้ำ
@@ -719,7 +731,7 @@ export async function handleSatiReadRequest(body, options = {}) {
     } catch (err) {
       lastErr = err;
       const msg = String(err?.message || err || '');
-      if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg)) {
+      if (COOLDOWN_ERROR_RE.test(msg)) {
         markModelQuotaCooldown(model, msg);
       }
     }
@@ -921,7 +933,7 @@ export function createSatiExpressApp(options = {}) {
           }
           lastErr = err;
           const msg = String(err?.message || err || '');
-          if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg)) {
+          if (COOLDOWN_ERROR_RE.test(msg)) {
             markModelQuotaCooldown(model, msg);
           }
           if (streamedToClient) {

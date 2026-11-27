@@ -11,8 +11,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/three') || id.includes('node_modules\\three')) {
+          const norm = id.replace(/\\/g, '/');
+          if (norm.includes('node_modules/three')) {
             return 'three-vendor';
+          }
+          if (norm.includes('/src/i18n/')) {
+            return 'sati-i18n';
           }
         }
       }

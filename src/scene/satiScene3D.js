@@ -38,6 +38,7 @@ export function createSati3DEngine(options = {}) {
   const {
     canvas,
     state,
+    qualityMode: initialQualityOption,
     onCardPicked,
     onSpreadCardInspect,
     onCrystalInspect,
@@ -54,17 +55,114 @@ export function createSati3DEngine(options = {}) {
   scene.fog = new THREE.FogExp2('#130b16', 0.032);
 
   const isCompactDevice = () =>
-    window.innerWidth < 820 ||
+    (typeof window !== 'undefined' && window.innerWidth < 820) ||
     (typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent));
 
-  let useTransmissionCrystal = !isCompactDevice();
-  let useBloomComposer = true;
+  const normalizeQualityMode = (mode) =>
+    mode === 'high' || mode === 'low' || mode === 'auto' ? mode : 'auto';
+
+  const setDocumentPerfDataset = (val) => {
+    if (typeof document !== 'undefined' && document.documentElement && document.documentElement.dataset) {
+      document.documentElement.dataset.satiPerf = val;
+    }
+  };
+
+  let qualityMode = normalizeQualityMode(initialQualityOption ?? state?.graphicsQuality);
+  let adaptiveDprCapOverride = null;
+  let adaptiveShadowsDisabled = false;
   let slowFrameCount = 0;
 
-  const getCappedDpr = () => {
-    const cap = isCompactDevice() ? 1.35 : 1.75;
-    return Math.min(window.devicePixelRatio || 1, cap);
+  const resolveQualityConfig = (mode) => {
+    const normalized = normalizeQualityMode(mode);
+    const compact = isCompactDevice();
+    if (normalized === 'high') {
+      return {
+        mode: 'high',
+        useTransmission: true,
+        useBloom: true,
+        shadowMapSize: 1536,
+        shadowsEnabled: true,
+        dprCap: 1.75,
+        particlesVisible: true,
+        perfTag: 'high'
+      };
+    }
+    if (normalized === 'low') {
+      return {
+        mode: 'low',
+        useTransmission: false,
+        useBloom: false,
+        shadowMapSize: 512,
+        shadowsEnabled: false,
+        dprCap: 1.0,
+        particlesVisible: false,
+        perfTag: 'low'
+      };
+    }
+    return {
+      mode: 'auto',
+      useTransmission: false,
+      useBloom: !compact,
+      shadowMapSize: compact ? 512 : 1024,
+      shadowsEnabled: true,
+      dprCap: compact ? 1.25 : 1.5,
+      particlesVisible: true,
+      perfTag: compact ? 'low' : 'auto'
+    };
   };
+
+  const initialQualityCfg = resolveQualityConfig(qualityMode);
+  let useTransmissionCrystal = initialQualityCfg.useTransmission;
+  let useBloomComposer = initialQualityCfg.useBloom;
+
+  const getCappedDpr = () => {
+    let cap = resolveQualityConfig(qualityMode).dprCap;
+    if (qualityMode === 'auto' && adaptiveDprCapOverride !== null) {
+      cap = Math.min(cap, adaptiveDprCapOverride);
+    }
+    const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+    return Math.min(rawDpr, cap);
+  };
+
+  let cachedViewport = null;
+  function updateCachedViewport(fallbackW = 0, fallbackH = 0) {
+    let rect = null;
+    if (typeof canvas?.getBoundingClientRect === 'function') {
+      rect = canvas.getBoundingClientRect();
+    }
+    const left = Number.isFinite(Number(rect?.left)) ? Number(rect.left) : 0;
+    const top = Number.isFinite(Number(rect?.top)) ? Number(rect.top) : 0;
+    const winW = typeof window !== 'undefined' ? Number(window.innerWidth) : 0;
+    const winH = typeof window !== 'undefined' ? Number(window.innerHeight) : 0;
+    const rectW = Number(rect?.width) || 0;
+    const rectH = Number(rect?.height) || 0;
+    let width = rectW || Number(canvas?.clientWidth) || Number(fallbackW) || winW || Number(canvas?.width) || 0;
+    let height = rectH || Number(canvas?.clientHeight) || Number(fallbackH) || winH || Number(canvas?.height) || 0;
+    if (
+      Number.isFinite(fallbackW) &&
+      Number.isFinite(fallbackH) &&
+      fallbackW > 0 &&
+      fallbackH > 0 &&
+      winW > 0 &&
+      winH > 0 &&
+      (Math.abs(width - fallbackW) > 1 || Math.abs(height - fallbackH) > 1)
+    ) {
+      width = fallbackW;
+      height = fallbackH;
+    }
+    if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+      cachedViewport = { left, top, width, height };
+    } else {
+      cachedViewport = null;
+    }
+    return cachedViewport;
+  }
+
+  const initViewport = updateCachedViewport();
+  const winW0 = typeof window !== 'undefined' ? Number(window.innerWidth) : 0;
+  const winH0 = typeof window !== 'undefined' ? Number(window.innerHeight) : 0;
+  const initWidth = initViewport ? initViewport.width : Math.max(1, winW0 || 1);
+  const initHeight = initViewport ? initViewport.height : Math.max(1, winH0 || 1);
 
   const currentCamPos = CAM_POS.login.clone();
   const currentCamLook = CAM_POS.loginLook.clone();
@@ -73,20 +171,22 @@ export function createSati3DEngine(options = {}) {
   let animFrameId = null;
   let isDisposed = false;
   let contextLost = false;
-  let currentAspect = window.innerWidth / Math.max(1, window.innerHeight);
+  let currentAspect = initWidth / Math.max(1, initHeight);
   let camAspectZOffset = 0;
   let camAspectYOffset = 0;
 
-  const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 50);
+  const camera = new THREE.PerspectiveCamera(48, currentAspect, 0.1, 50);
   camera.position.copy(currentCamPos);
   camera.lookAt(currentCamLook);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(initWidth, initHeight);
   renderer.setPixelRatio(getCappedDpr());
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.08;
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = initialQualityCfg.shadowsEnabled;
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   if ('transmissionResolutionScale' in renderer) {
     renderer.transmissionResolutionScale = isCompactDevice() ? 0.35 : 0.55;
@@ -103,7 +203,7 @@ export function createSati3DEngine(options = {}) {
   composer.setPixelRatio(getCappedDpr());
   composer.addPass(new RenderPass(scene, camera));
   const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(Math.max(1, Math.floor(window.innerWidth * 0.5)), Math.max(1, Math.floor(window.innerHeight * 0.5))),
+    new THREE.Vector2(Math.max(1, Math.floor(initWidth * 0.5)), Math.max(1, Math.floor(initHeight * 0.5))),
     0.26,
     0.4,
     0.95
@@ -113,6 +213,10 @@ export function createSati3DEngine(options = {}) {
 
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2(0, 0);
+  let pointerMoved = false;
+  let pointerValid = false;
+  let pointerBlockedByUI = false;
+  let frameCounter = 0;
   const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy() || 1);
   const cardBackTex = createCardBackTexture();
   cardBackTex.anisotropy = maxAniso;
@@ -175,6 +279,14 @@ export function createSati3DEngine(options = {}) {
   let handRigR = null;
   let lastProjectedSpread = [];
 
+  function applyCrystalMaterialQuality(mat) {
+    if (!mat) return;
+    mat.emissiveIntensity = useTransmissionCrystal ? 0.14 : 0.24;
+    mat.transmission = useTransmissionCrystal ? 0.92 : 0;
+    mat.opacity = useTransmissionCrystal ? 0.92 : 0.72;
+    mat.needsUpdate = true;
+  }
+
   function createFacetedCrystalMaterial(hasVertexColors = false) {
     const mat = new THREE.MeshPhysicalMaterial({
       name: 'CrystalOrbIridescent',
@@ -217,19 +329,35 @@ export function createSati3DEngine(options = {}) {
   let spreadCardMeshes = [];
   let discardCardMeshes = [];
   let hoveredCardMesh = null;
+  let isFanSettled = false;
+  let wasPickingForFan = Boolean(state?.isPicking);
+  let lastShadowUpdateAt = 0;
   let playerShuffleGatherUntil = 0;
   let playerShuffleUntil = 0;
   const activeTimers = new Set();
 
-  // Warm Fortune-Teller Tent Lighting + Soft Shadow Key Light + Crystal Rim Lights
-  const hemiLight = new THREE.HemisphereLight('#ffd8b0', '#1a0816', 0.58);
+  function requestShadowUpdate(immediate = true) {
+    if (isDisposed || !renderer.shadowMap.enabled) return;
+    renderer.shadowMap.needsUpdate = true;
+    if (immediate) {
+      lastShadowUpdateAt = elapsedTime;
+    }
+  }
+
+  function syncPixelRatio() {
+    const dpr = getCappedDpr();
+    renderer.setPixelRatio(dpr);
+    composer.setPixelRatio(dpr);
+  }
+
+  // Warm Fortune-Teller Tent Lighting (<= 4 Active Real-Time Lights: hemiLight, keyLight, warmTableSpot, tabletopCrystalLight)
+  const hemiLight = new THREE.HemisphereLight('#ffd8b0', '#1a0816', 0.82);
   scene.add(hemiLight);
 
   const keyLight = new THREE.DirectionalLight('#ffe4c4', 1.48);
   keyLight.position.set(2.4, 6.2, 4.6);
   keyLight.castShadow = true;
-  const shadowSize = isCompactDevice() ? 1024 : 1536;
-  keyLight.shadow.mapSize.set(shadowSize, shadowSize);
+  keyLight.shadow.mapSize.set(initialQualityCfg.shadowMapSize, initialQualityCfg.shadowMapSize);
   keyLight.shadow.camera.near = 1.0;
   keyLight.shadow.camera.far = 16;
   keyLight.shadow.camera.left = -4.5;
@@ -240,21 +368,42 @@ export function createSati3DEngine(options = {}) {
   keyLight.shadow.normalBias = 0.02;
   scene.add(keyLight);
 
-  const warmTableSpot = new THREE.SpotLight('#ffb866', 5.2, 11, Math.PI / 3.4, 0.58, 1.4);
+  const warmTableSpot = new THREE.SpotLight('#ffb866', 6.2, 11, Math.PI / 3.4, 0.58, 1.4);
   warmTableSpot.position.set(0, 4.2, 1.4);
   warmTableSpot.target.position.set(0, 0.95, 0.2);
   scene.add(warmTableSpot, warmTableSpot.target);
 
-  const satiFaceLight = new THREE.PointLight('#ffdcb0', 2.45, 7.0, 1.35);
-  satiFaceLight.position.set(0, 2.38, -0.92);
-  scene.add(satiFaceLight);
+  function applyQualityMode(nextMode) {
+    const cfg = resolveQualityConfig(nextMode);
+    qualityMode = cfg.mode;
+    slowFrameCount = 0;
+    adaptiveDprCapOverride = null;
+    adaptiveShadowsDisabled = false;
+    useTransmissionCrystal = cfg.useTransmission;
+    useBloomComposer = cfg.useBloom;
 
-  // Warm Tent Wall & Tapestry Wash Lights
-  [-3.2, 3.2].forEach((lx) => {
-    const sconceLight = new THREE.PointLight('#ff9840', 1.45, 9.5, 1.5);
-    sconceLight.position.set(lx, 3.5, -3.2);
-    scene.add(sconceLight);
-  });
+    crystalMaterials.forEach(applyCrystalMaterialQuality);
+    if (arcaneParticles) {
+      arcaneParticles.visible = cfg.particlesVisible;
+    }
+
+    renderer.shadowMap.enabled = cfg.shadowsEnabled;
+    renderer.shadowMap.autoUpdate = false;
+    if (cfg.shadowsEnabled) {
+      if (keyLight.shadow.mapSize.x !== cfg.shadowMapSize || keyLight.shadow.mapSize.y !== cfg.shadowMapSize) {
+        keyLight.shadow.mapSize.set(cfg.shadowMapSize, cfg.shadowMapSize);
+        if (keyLight.shadow.map) {
+          keyLight.shadow.map.dispose();
+          keyLight.shadow.map = null;
+        }
+      }
+      requestShadowUpdate(true);
+    }
+
+    syncPixelRatio();
+    setDocumentPerfDataset(cfg.perfTag);
+    return qualityMode;
+  }
 
   function enhanceStudioLowPolyGLB(rootObj) {
     rootObj.traverse((child) => {
@@ -302,16 +451,15 @@ export function createSati3DEngine(options = {}) {
     });
   }
 
-  function registerFlickerFlame(parentObj, nodeName, baseIntensity, distance) {
+  function registerFlickerFlame(parentObj, nodeName, baseIntensity) {
     const flameObj = parentObj.getObjectByName(nodeName);
     if (!flameObj) return;
-    const cLight = new THREE.PointLight('#ff9d3b', baseIntensity, distance, 1.5);
-    cLight.position.copy(flameObj.position).add(new THREE.Vector3(0, 0.08, 0));
-    parentObj.add(cLight);
     candleLights.push({
-      light: cLight,
       flame: flameObj,
       baseY: flameObj.position.y,
+      baseScaleX: flameObj.scale.x || 1,
+      baseScaleY: flameObj.scale.y || 1,
+      baseScaleZ: flameObj.scale.z || 1,
       baseIntensity
     });
   }
@@ -334,6 +482,7 @@ export function createSati3DEngine(options = {}) {
       opacity: 0.58
     });
     arcaneParticles = new THREE.Points(geo, mat);
+    arcaneParticles.visible = resolveQualityConfig(qualityMode).particlesVisible;
     scene.add(arcaneParticles);
   }
 
@@ -534,23 +683,31 @@ export function createSati3DEngine(options = {}) {
     handRigR = extractHandRig(playerRightHand, 'R');
     scene.add(handsScene);
 
+    if (!isDisposed) {
+      requestShadowUpdate(true);
+    }
     state.modelsLoaded = true;
     if (onModelsLoaded) onModelsLoaded();
   }
 
   function getViewportDimensions() {
-    let rect = null;
-    if (typeof canvas?.getBoundingClientRect === 'function') {
-      rect = canvas.getBoundingClientRect();
+    if (
+      cachedViewport &&
+      Number.isFinite(cachedViewport.width) &&
+      Number.isFinite(cachedViewport.height) &&
+      cachedViewport.width > 0 &&
+      cachedViewport.height > 0
+    ) {
+      return cachedViewport;
     }
     const winW = typeof window !== 'undefined' ? Number(window.innerWidth) : 0;
     const winH = typeof window !== 'undefined' ? Number(window.innerHeight) : 0;
-    const width = Number(rect?.width) || Number(canvas?.clientWidth) || winW || Number(canvas?.width) || 0;
-    const height = Number(rect?.height) || Number(canvas?.clientHeight) || winH || Number(canvas?.height) || 0;
+    const width = winW || Number(canvas?.width) || 0;
+    const height = winH || Number(canvas?.height) || 0;
     if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
       return null;
     }
-    return { width, height };
+    return { left: 0, top: 0, width, height };
   }
 
   function hasSpreadProjectionChanged(nextItems) {
@@ -673,8 +830,12 @@ export function createSati3DEngine(options = {}) {
   }
 
   function updateCameraForAspect() {
-    const w = window.innerWidth;
-    const h = Math.max(1, window.innerHeight);
+    const rawW = typeof window !== 'undefined' ? Number(window.innerWidth) : 0;
+    const rawH = typeof window !== 'undefined' ? Number(window.innerHeight) : 0;
+    const fallbackW = Number(canvas?.clientWidth) || Number(canvas?.width) || cachedViewport?.width || 1;
+    const fallbackH = Number(canvas?.clientHeight) || Number(canvas?.height) || cachedViewport?.height || 1;
+    const w = Math.max(1, Number.isFinite(rawW) && rawW > 0 ? rawW : fallbackW);
+    const h = Math.max(1, Number.isFinite(rawH) && rawH > 0 ? rawH : fallbackH);
     const aspect = w / h;
     currentAspect = aspect;
     camera.aspect = aspect;
@@ -703,13 +864,26 @@ export function createSati3DEngine(options = {}) {
       }
     });
 
+    isFanSettled = false;
     camera.updateProjectionMatrix();
-    const dpr = getCappedDpr();
-    renderer.setPixelRatio(dpr);
+    if (qualityMode === 'auto' && !adaptiveShadowsDisabled && adaptiveDprCapOverride === null) {
+      const cfg = resolveQualityConfig('auto');
+      useBloomComposer = cfg.useBloom;
+      setDocumentPerfDataset(cfg.perfTag);
+      if (renderer.shadowMap.enabled && (keyLight.shadow.mapSize.x !== cfg.shadowMapSize || keyLight.shadow.mapSize.y !== cfg.shadowMapSize)) {
+        keyLight.shadow.mapSize.set(cfg.shadowMapSize, cfg.shadowMapSize);
+        if (keyLight.shadow.map) {
+          keyLight.shadow.map.dispose();
+          keyLight.shadow.map = null;
+        }
+        requestShadowUpdate(true);
+      }
+    }
+    syncPixelRatio();
     renderer.setSize(w, h);
-    composer.setPixelRatio(dpr);
     composer.setSize(w, h);
     bloomPass.setSize(Math.max(1, Math.floor(w * 0.5)), Math.max(1, Math.floor(h * 0.5)));
+    updateCachedViewport(w, h);
     emitSpreadProjection();
   }
 
@@ -762,6 +936,11 @@ export function createSati3DEngine(options = {}) {
     const disposedMats = new Set();
     fanCardMeshes.forEach((m) => disposeCardMesh(m, disposedGeos, disposedMats));
     fanCardMeshes = [];
+    if (hoveredCardMesh?.userData?.isFanCard) {
+      hoveredCardMesh = null;
+    }
+    isFanSettled = false;
+    requestShadowUpdate(true);
   }
 
   function clear3DCards() {
@@ -771,6 +950,9 @@ export function createSati3DEngine(options = {}) {
     spreadCardMeshes.forEach((m) => disposeCardMesh(m, disposedGeos, disposedMats));
     fanCardMeshes = [];
     spreadCardMeshes = [];
+    hoveredCardMesh = null;
+    isFanSettled = false;
+    requestShadowUpdate(true);
     emitSpreadProjection();
   }
 
@@ -779,6 +961,7 @@ export function createSati3DEngine(options = {}) {
     const disposedMats = new Set();
     discardCardMeshes.forEach((m) => disposeCardMesh(m, disposedGeos, disposedMats));
     discardCardMeshes = [];
+    requestShadowUpdate(true);
   }
 
   function syncDiscardPile3D(discardList = state.discardPile) {
@@ -804,7 +987,7 @@ export function createSati3DEngine(options = {}) {
 
     for (let i = 0; i < layers; i++) {
       const mesh = new THREE.Mesh(geo, mats);
-      mesh.castShadow = true;
+      mesh.castShadow = false;
       mesh.receiveShadow = true;
       const jitterX = Math.sin(i * 1.7) * 0.012;
       const jitterZ = Math.cos(i * 2.1) * 0.012;
@@ -818,6 +1001,7 @@ export function createSati3DEngine(options = {}) {
       scene.add(mesh);
       discardCardMeshes.push(mesh);
     }
+    requestShadowUpdate(true);
   }
 
   function spawn78CardFan(preserveSpread = false) {
@@ -854,7 +1038,7 @@ export function createSati3DEngine(options = {}) {
       // Lazy front-face material: render face-down cards with shared backMat on fan spawn for zero hitch!
       const mats = [edgeMat, edgeMat, backMat, backMat, edgeMat, edgeMat];
       const mesh = new THREE.Mesh(geo, mats);
-      mesh.castShadow = true;
+      mesh.castShadow = false;
       mesh.receiveShadow = true;
 
       const t = total > 1 ? idx / (total - 1) : 0.5;
@@ -876,6 +1060,9 @@ export function createSati3DEngine(options = {}) {
       scene.add(mesh);
       fanCardMeshes.push(mesh);
     });
+    hoveredCardMesh = null;
+    isFanSettled = false;
+    requestShadowUpdate(true);
   }
 
   function applySpreadCardPose(mesh, slotIdx, totalSlots) {
@@ -916,8 +1103,14 @@ export function createSati3DEngine(options = {}) {
   function placeSpreadCardIn3D(mesh, cardData, slotIdx, totalSlots) {
     if (!mesh || !mesh.userData) return;
     fanCardMeshes = fanCardMeshes.filter((m) => m !== mesh);
+    if (hoveredCardMesh === mesh) {
+      hoveredCardMesh = null;
+      isFanSettled = false;
+    }
     mesh.userData.isFanCard = false;
     mesh.userData.isSpreadCard = true;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
     // Lazily generate & attach high-res Tarot Card Front only for actually drawn cards
     const activeData = cardData || mesh.userData.cardData;
@@ -938,13 +1131,16 @@ export function createSati3DEngine(options = {}) {
 
     applySpreadCardPose(mesh, slotIdx, totalSlots);
     spreadCardMeshes.push(mesh);
+    requestShadowUpdate(true);
     emitSpreadProjection();
   }
 
   function playPlayerHandShuffle3D(onDone) {
     state.isPlayerShuffling = true;
+    isFanSettled = false;
     playerShuffleGatherUntil = elapsedTime + 0.86;
     playerShuffleUntil = elapsedTime + 1.55;
+    requestShadowUpdate(true);
 
     const midTimer = setTimeout(() => {
       activeTimers.delete(midTimer);
@@ -955,15 +1151,19 @@ export function createSati3DEngine(options = {}) {
         m.position.set(idx % 2 === 0 ? -0.10 : 0.10, m.userData.baseY + 0.05, 1.30);
         m.rotation.y = 0;
       });
+      isFanSettled = false;
       syncDiscardPile3D(state.discardPile);
+      requestShadowUpdate(true);
     }, 880);
     activeTimers.add(midTimer);
 
     const endTimer = setTimeout(() => {
       activeTimers.delete(endTimer);
       state.isPlayerShuffling = false;
+      isFanSettled = false;
       playerShuffleGatherUntil = 0;
       playerShuffleUntil = 0;
+      requestShadowUpdate(true);
       if (!isDisposed && onDone) onDone();
     }, 1580);
     activeTimers.add(endTimer);
@@ -974,42 +1174,69 @@ export function createSati3DEngine(options = {}) {
     const disposedMats = new Set();
     spreadCardMeshes.forEach((m) => disposeCardMesh(m, disposedGeos, disposedMats));
     spreadCardMeshes = [];
+    if (hoveredCardMesh?.userData?.isSpreadCard) {
+      hoveredCardMesh = null;
+    }
+    requestShadowUpdate(true);
     emitSpreadProjection();
   }
 
-  function onPointerMove(e) {
-    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  function updatePointerFromEvent(e, forceFresh = false) {
+    let vp = forceFresh ? updateCachedViewport() : getViewportDimensions();
+    if (!forceFresh) {
+      const winW = typeof window !== 'undefined' ? Number(window.innerWidth) : 0;
+      const winH = typeof window !== 'undefined' ? Number(window.innerHeight) : 0;
+      if (
+        winW > 0 &&
+        winH > 0 &&
+        cachedViewport &&
+        cachedViewport.left === 0 &&
+        cachedViewport.top === 0 &&
+        (cachedViewport.width !== winW || cachedViewport.height !== winH)
+      ) {
+        vp = updateCachedViewport();
+      }
+    }
+    const fallbackW = typeof window !== 'undefined' ? Number(window.innerWidth) : 0;
+    const fallbackH = typeof window !== 'undefined' ? Number(window.innerHeight) : 0;
+    const left = vp && Number.isFinite(vp.left) ? vp.left : 0;
+    const top = vp && Number.isFinite(vp.top) ? vp.top : 0;
+    const vw = vp ? vp.width : Math.max(1, fallbackW || 1);
+    const vh = vp ? vp.height : Math.max(1, fallbackH || 1);
+    const nx = ((e.clientX - left) / vw) * 2 - 1;
+    const ny = -((e.clientY - top) / vh) * 2 + 1;
+    if (!Number.isFinite(nx) || !Number.isFinite(ny)) return false;
+    pointer.x = nx;
+    pointer.y = ny;
+    pointerValid = true;
+    return true;
+  }
 
-    if (state.screen !== 'game') {
+  function onPointerMove(e) {
+    const blocked = Boolean(e.target?.closest?.('.pointer-auto') || e.target?.closest?.('dialog'));
+    pointerBlockedByUI = blocked;
+    if (blocked) {
+      if (hoveredCardMesh) {
+        hoveredCardMesh = null;
+        isFanSettled = false;
+      }
       state.isHoveringCrystal = false;
+      pointerMoved = false;
+      if (typeof document !== 'undefined' && document.body?.style && document.body.style.cursor !== 'default') {
+        document.body.style.cursor = 'default';
+      }
       return;
     }
-    raycaster.setFromCamera(pointer, camera);
-    const targets = state.isPicking ? fanCardMeshes : spreadCardMeshes;
-    const hits = raycaster.intersectObjects(targets, false);
-    hoveredCardMesh = hits.length > 0 ? hits[0].object : null;
-
-    let hoveringCrystal = false;
-    let hoveringDiscard = false;
-    if (!hoveredCardMesh && tabletopCrystalMeshes.length > 0) {
-      const crystalHits = raycaster.intersectObjects(tabletopCrystalMeshes, false);
-      hoveringCrystal = crystalHits.length > 0;
+    if (updatePointerFromEvent(e, false)) {
+      pointerMoved = true;
     }
-    if (!hoveredCardMesh && !hoveringCrystal && discardCardMeshes.length > 0) {
-      const discardHits = raycaster.intersectObjects(discardCardMeshes, false);
-      hoveringDiscard = discardHits.length > 0;
-    }
-    state.isHoveringCrystal = hoveringCrystal;
-    document.body.style.cursor = (hoveredCardMesh || hoveringCrystal || hoveringDiscard) ? 'pointer' : 'default';
   }
 
   function onPointerDown(e) {
     if (state.screen !== 'game' || state.isAnimatingShuffle || state.isPlayerShuffling) return;
-    if (e.target.closest('.pointer-auto') || e.target.closest('dialog')) return;
-
-    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    if (e.target?.closest?.('.pointer-auto') || e.target?.closest?.('dialog')) return;
+    if (!updatePointerFromEvent(e, true)) return;
+    camera.updateMatrixWorld?.();
     raycaster.setFromCamera(pointer, camera);
 
     if (state.isPicking) {
@@ -1065,6 +1292,7 @@ export function createSati3DEngine(options = {}) {
     contextLost = false;
     clock.start();
     updateCameraForAspect();
+    requestShadowUpdate(true);
   }
 
   function animate3D() {
@@ -1072,29 +1300,32 @@ export function createSati3DEngine(options = {}) {
     animFrameId = requestAnimationFrame(animate3D);
     if (contextLost || (typeof document !== 'undefined' && document.hidden)) return;
 
+    frameCounter = (frameCounter + 1) | 0;
     const dt = Math.min(clock.getDelta(), 0.05);
     elapsedTime += dt;
     const t = elapsedTime;
 
-    // Adaptive FPS Quality Guard: auto-step down double-pass transmission / bloom on slow GPUs
-    if (dt > 0.042) {
-      slowFrameCount++;
-      if (slowFrameCount > 24) {
-        if (useTransmissionCrystal) {
-          useTransmissionCrystal = false;
-          crystalMaterials.forEach((m) => {
-            m.transmission = 0;
-            m.opacity = 0.72;
-            m.emissiveIntensity = 0.24;
-            m.needsUpdate = true;
-          });
-        } else if (useBloomComposer) {
-          useBloomComposer = false;
+    // Faster Adaptive FPS Quality Guard in 'auto' mode:
+    // 12 slow frames (dt > 0.036) -> disable bloom -> cap DPR to 1.0 -> disable shadows + set satiPerf='low'
+    if (qualityMode === 'auto') {
+      if (dt > 0.036) {
+        slowFrameCount += 1;
+        if (slowFrameCount >= 12) {
+          if (useBloomComposer) {
+            useBloomComposer = false;
+          } else if (adaptiveDprCapOverride === null || adaptiveDprCapOverride > 1.0) {
+            adaptiveDprCapOverride = 1.0;
+            syncPixelRatio();
+          } else if (renderer.shadowMap.enabled || !adaptiveShadowsDisabled) {
+            renderer.shadowMap.enabled = false;
+            adaptiveShadowsDisabled = true;
+            setDocumentPerfDataset('low');
+          }
+          slowFrameCount = 0;
         }
-        slowFrameCount = 0;
+      } else {
+        slowFrameCount = Math.max(0, slowFrameCount - 1);
       }
-    } else {
-      slowFrameCount = Math.max(0, slowFrameCount - 1);
     }
 
     const camDamp = 1 - Math.exp(-3.8 * dt);
@@ -1129,12 +1360,55 @@ export function createSati3DEngine(options = {}) {
       camera.lookAt(CAM_POS.loginLook);
     }
 
-    // Candle flicker (table & side shelf)
-    candleLights.forEach((c, idx) => {
+    // rAF-throttled pointer hover raycasting (skip when stale or outside game screen; every 2nd frame in 'low' mode)
+    if (state.screen !== 'game') {
+      if (state.isHoveringCrystal) state.isHoveringCrystal = false;
+      if (hoveredCardMesh) {
+        hoveredCardMesh = null;
+        isFanSettled = false;
+      }
+      if (pointerMoved) {
+        pointerMoved = false;
+        if (typeof document !== 'undefined' && document.body?.style && document.body.style.cursor !== 'default') {
+          document.body.style.cursor = 'default';
+        }
+      }
+    } else if (!pointerBlockedByUI && pointerMoved && pointerValid && (qualityMode !== 'low' || (frameCounter & 1) === 0)) {
+      pointerMoved = false;
+      raycaster.setFromCamera(pointer, camera);
+      const targets = state.isPicking ? fanCardMeshes : spreadCardMeshes;
+      const hits = targets.length > 0 ? raycaster.intersectObjects(targets, false) : [];
+      const nextHovered = hits.length > 0 ? hits[0].object : null;
+      if (nextHovered !== hoveredCardMesh) {
+        hoveredCardMesh = nextHovered;
+        isFanSettled = false;
+      }
+
+      let hoveringCrystal = false;
+      let hoveringDiscard = false;
+      if (!hoveredCardMesh && tabletopCrystalMeshes.length > 0) {
+        const crystalHits = raycaster.intersectObjects(tabletopCrystalMeshes, false);
+        hoveringCrystal = crystalHits.length > 0;
+      }
+      if (!hoveredCardMesh && !hoveringCrystal && discardCardMeshes.length > 0) {
+        const discardHits = raycaster.intersectObjects(discardCardMeshes, false);
+        hoveringDiscard = discardHits.length > 0;
+      }
+      state.isHoveringCrystal = hoveringCrystal;
+      if (typeof document !== 'undefined' && document.body?.style) {
+        document.body.style.cursor = (hoveredCardMesh || hoveringCrystal || hoveringDiscard) ? 'pointer' : 'default';
+      }
+    }
+
+    // Candle flicker (emissive flame position + subtle scale pulse; no per-flame PointLight)
+    for (let idx = 0; idx < candleLights.length; idx += 1) {
+      const c = candleLights[idx];
       const flick = Math.sin(t * 9 + idx * 2) * 0.1 + Math.cos(t * 14 + idx) * 0.06;
-      c.light.intensity = c.baseIntensity + flick;
       c.flame.position.y = c.baseY + flick * 0.08;
-    });
+      const pulseY = 1 + flick * 0.55;
+      const pulseXZ = 1 - flick * 0.22;
+      c.flame.scale.set(c.baseScaleX * pulseXZ, c.baseScaleY * pulseY, c.baseScaleZ * pulseXZ);
+    }
 
     const isCrystalSurging = Boolean(state.isHoveringCrystal) || t < crystalTapBoostUntil;
 
@@ -1167,7 +1441,7 @@ export function createSati3DEngine(options = {}) {
       tabletopCrystalLight.color.copy(TABLE_CRYSTAL_LIGHT_COLOR).lerp(CORE_COLOR_CYAN, breathe * 0.35 + (isCrystalSurging ? 0.35 : 0));
     }
 
-    if (arcaneParticles) {
+    if (arcaneParticles && arcaneParticles.visible) {
       arcaneParticles.rotation.y = t * 0.03;
     }
 
@@ -1233,7 +1507,7 @@ export function createSati3DEngine(options = {}) {
       }
     }
 
-    // Fan cards hover lift & mobile portrait scale ergonomics (plus player riffle gather when self-shuffling)
+    // Fan cards hover lift & mobile portrait scale ergonomics (skip transform writes once settled)
     const cardDamp = 1 - Math.exp(-11.0 * dt);
     const spreadDamp = 1 - Math.exp(-8.5 * dt);
     const fanPortraitScale = currentAspect < 0.75
@@ -1241,27 +1515,74 @@ export function createSati3DEngine(options = {}) {
       : 1.0;
     const isPlayerShufflingNow = Boolean(state.isPlayerShuffling && t < playerShuffleUntil);
     const isGatheringShuffle = Boolean(state.isPlayerShuffling && t < playerShuffleGatherUntil);
-    fanCardMeshes.forEach((m, idx) => {
-      m.scale.setScalar(fanPortraitScale);
-      if (isGatheringShuffle) {
+    const isPickingNow = Boolean(state.isPicking);
+    if (isPickingNow !== wasPickingForFan) {
+      wasPickingForFan = isPickingNow;
+      isFanSettled = false;
+      if (!isPickingNow && hoveredCardMesh?.userData?.isFanCard) {
+        hoveredCardMesh = null;
+      }
+    }
+    const hasFanHover = Boolean(isPickingNow && hoveredCardMesh?.userData?.isFanCard);
+    if (isGatheringShuffle) {
+      isFanSettled = false;
+      for (let idx = 0; idx < fanCardMeshes.length; idx += 1) {
+        const m = fanCardMeshes[idx];
+        m.scale.setScalar(fanPortraitScale);
         const gatherSide = idx % 2 === 0 ? -0.14 : 0.14;
         const weaveWave = Math.sin(t * 22 + idx * 0.5) * 0.05;
         m.position.x += (gatherSide - m.position.x) * cardDamp;
         m.position.z += (1.28 - m.position.z) * cardDamp;
         m.position.y += (1.08 + Math.abs(weaveWave) + (idx % 6) * 0.004 - m.position.y) * cardDamp;
         m.rotation.y += ((gatherSide * 0.8) - m.rotation.y) * cardDamp;
-      } else {
-        if (m.userData.baseX !== undefined) {
-          m.position.x += (m.userData.baseX - m.position.x) * cardDamp;
-          m.position.z += (m.userData.baseZ - m.position.z) * cardDamp;
-          m.rotation.y += (m.userData.baseRotY - m.rotation.y) * cardDamp;
-        }
-        const targetY = m === hoveredCardMesh && state.isPicking ? m.userData.baseY + 0.14 : m.userData.baseY;
-        m.position.y += (targetY - m.position.y) * cardDamp;
       }
-    });
+    } else if (hasFanHover || !isFanSettled) {
+      let allSettled = !hasFanHover;
+      for (let idx = 0; idx < fanCardMeshes.length; idx += 1) {
+        const m = fanCardMeshes[idx];
+        if (Math.abs(m.scale.x - fanPortraitScale) > 0.0005) {
+          m.scale.setScalar(fanPortraitScale);
+          allSettled = false;
+        }
+        if (m.userData.baseX !== undefined) {
+          const dx = m.userData.baseX - m.position.x;
+          const dz = m.userData.baseZ - m.position.z;
+          const dr = m.userData.baseRotY - m.rotation.y;
+          if (Math.abs(dx) > 0.0005) {
+            m.position.x += dx * cardDamp;
+            allSettled = false;
+          } else if (dx !== 0) {
+            m.position.x = m.userData.baseX;
+          }
+          if (Math.abs(dz) > 0.0005) {
+            m.position.z += dz * cardDamp;
+            allSettled = false;
+          } else if (dz !== 0) {
+            m.position.z = m.userData.baseZ;
+          }
+          if (Math.abs(dr) > 0.0005) {
+            m.rotation.y += dr * cardDamp;
+            allSettled = false;
+          } else if (dr !== 0) {
+            m.rotation.y = m.userData.baseRotY;
+          }
+        }
+        const targetY = m === hoveredCardMesh && isPickingNow ? m.userData.baseY + 0.14 : m.userData.baseY;
+        const dy = targetY - m.position.y;
+        if (Math.abs(dy) > 0.0005) {
+          m.position.y += dy * cardDamp;
+          allSettled = false;
+        } else if (dy !== 0) {
+          m.position.y = targetY;
+        }
+      }
+      if (allSettled) {
+        isFanSettled = true;
+      }
+    }
 
     // Spread cards flip & glide animation (arc upward mid-flip so corners never clip table)
+    let hasActiveSpreadMotion = false;
     spreadCardMeshes.forEach((m) => {
       if (m.userData.targetPos) {
         const flipSin = Math.max(0, Math.sin(m.rotation.x));
@@ -1276,6 +1597,13 @@ export function createSati3DEngine(options = {}) {
         m.rotation.y += (m.userData.targetRotY - m.rotation.y) * spreadDamp;
         if (m.userData.targetRotZ !== undefined) {
           m.rotation.z += (m.userData.targetRotZ - m.rotation.z) * spreadDamp;
+        }
+        if (
+          m.position.distanceToSquared(_tmpSpreadTarget) > 1e-6 ||
+          Math.abs(m.rotation.x - m.userData.targetRotX) > 0.001 ||
+          Math.abs(m.rotation.y - m.userData.targetRotY) > 0.001
+        ) {
+          hasActiveSpreadMotion = true;
         }
       }
     });
@@ -1438,6 +1766,20 @@ export function createSati3DEngine(options = {}) {
       }
     }
 
+    const hasAnimatedShadowCasters = Boolean(
+      satiGroup ||
+      (playerLeftHand?.visible && playerRightHand?.visible) ||
+      hasActiveSpreadMotion
+    );
+    if (
+      renderer.shadowMap.enabled &&
+      qualityMode !== 'low' &&
+      hasAnimatedShadowCasters &&
+      t - lastShadowUpdateAt >= 0.12
+    ) {
+      requestShadowUpdate(true);
+    }
+
     if (useBloomComposer) {
       composer.render();
     } else {
@@ -1446,8 +1788,9 @@ export function createSati3DEngine(options = {}) {
     emitSpreadProjection();
   }
 
-  updateCameraForAspect();
   createArcaneParticles();
+  applyQualityMode(qualityMode);
+  updateCameraForAspect();
   window.addEventListener('resize', updateCameraForAspect);
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerdown', onPointerDown);
@@ -1464,10 +1807,20 @@ export function createSati3DEngine(options = {}) {
   });
   animate3D();
 
+  function setQualityMode(mode) {
+    if (isDisposed) return qualityMode;
+    return applyQualityMode(mode);
+  }
+
+  function getQualityMode() {
+    return qualityMode;
+  }
+
   function dispose() {
     if (isDisposed) return;
     isDisposed = true;
     lastProjectedSpread = [];
+    hoveredCardMesh = null;
 
     activeTimers.forEach((tid) => clearTimeout(tid));
     activeTimers.clear();
@@ -1497,6 +1850,7 @@ export function createSati3DEngine(options = {}) {
       tabletopCrystalLight.dispose?.();
       tabletopCrystalLight = null;
     }
+    keyLight.shadow?.dispose?.();
     orbCoreMeshes.forEach((m) => {
       m.geometry?.dispose?.();
       m.material?.dispose?.();
@@ -1513,6 +1867,7 @@ export function createSati3DEngine(options = {}) {
       arcaneParticles = null;
     }
 
+    cardBackTex?.dispose?.();
     Object.values(textureMapByMaterial).forEach((tex) => tex?.dispose?.());
 
     if (scene.environment) {
@@ -1532,6 +1887,8 @@ export function createSati3DEngine(options = {}) {
     getFanCardMeshes: () => fanCardMeshes,
     getDiscardCardMeshes: () => discardCardMeshes,
     setCameraTarget,
+    setQualityMode,
+    getQualityMode,
     spawn78CardFan,
     placeSpreadCardIn3D,
     tuckNatalSpreadAway3D,

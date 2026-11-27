@@ -18,6 +18,8 @@ import {
 } from '../../../src/engine/satiBrain.js';
 import { buildStoragePayload } from '../../../src/engine/storage.js';
 import {
+  PRIMARY_GEMINI_MODEL,
+  GEMINI_MODEL_ORDER,
   SATI_SYSTEM_PROMPT,
   buildModelGenerateConfig,
   checkReadRateLimit,
@@ -379,9 +381,18 @@ describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', (
     }
   });
 
-  it('SC-06-08: Gemini 4 Hydrogen config + 3-tier flash cascade & 429 cooldown logic behave accurately', () => {
+  it('SC-06-08: Gemini 3.5 Flash-Lite primary config, thinkingBudget, temperature omission & 30s/60s/15m cooldown logic behave accurately', () => {
     resetModelCooldownForTest();
     try {
+      assert.equal(PRIMARY_GEMINI_MODEL, 'gemini-3.5-flash-lite');
+      assert.deepEqual(GEMINI_MODEL_ORDER, [
+        'gemini-3.5-flash-lite',
+        'gemini-3.8-flash',
+        'gemini-4-hydrogen',
+        'gemini-3.6-flash'
+      ]);
+      assert.equal(GEMINI_MODEL_ORDER.includes('gemini-2.5-flash'), false);
+
       const h4 = buildModelGenerateConfig('gemini-4-hydrogen');
       assert.equal(h4.maxOutputTokens, 2600);
       assert.deepEqual(h4.thinkingConfig, { thinkingLevel: 'low' });
@@ -391,15 +402,34 @@ describe('Tier 4 - Scenario 06: 12-Point SATI Upgrade Mechanics Verification', (
       assert.deepEqual(g36.thinkingConfig, { thinkingBudget: 384 });
       assert.equal(g36.temperature, undefined, 'Gemini 3.6+ must omit deprecated temperature');
 
+      const g38 = buildModelGenerateConfig('gemini-3.8-flash');
+      assert.deepEqual(g38.thinkingConfig, { thinkingBudget: 384 });
+      assert.equal(g38.temperature, undefined, 'Gemini 3.8 must omit deprecated temperature');
+
       const g25 = buildModelGenerateConfig('gemini-2.5-flash');
       assert.deepEqual(g25.thinkingConfig, { thinkingBudget: 384 });
-      assert.equal(g25.temperature, 0.8);
+      assert.equal(g25.temperature, 0.8, 'Legacy models preserve temperature 0.8');
 
-      const gLite = buildModelGenerateConfig('gemini-3.5-flash-lite');
-      assert.equal(gLite.thinkingConfig, undefined, 'Flash-Lite rejects thinkingConfig and must omit it');
-      assert.equal(gLite.temperature, 0.8);
+      const gLiteDefault = buildModelGenerateConfig('gemini-3.5-flash-lite');
+      assert.deepEqual(gLiteDefault.thinkingConfig, { thinkingBudget: 384 }, 'gemini-3.5-flash-lite enables thinkingBudget 384 by default');
+      assert.equal(gLiteDefault.maxOutputTokens, 2400);
+      assert.equal(gLiteDefault.temperature, undefined, 'gemini-3.5-flash-lite must omit deprecated temperature');
+
+      const gLiteMed = buildModelGenerateConfig('gemini-3.5-flash-lite', undefined, { thinkingLevel: 'medium' });
+      assert.deepEqual(gLiteMed.thinkingConfig, { thinkingBudget: 1024 }, 'gemini-3.5-flash-lite medium tier enables thinkingBudget 1024');
+      assert.equal(gLiteMed.maxOutputTokens, 3600);
+      assert.equal(gLiteMed.temperature, undefined, 'gemini-3.5-flash-lite medium tier must omit deprecated temperature');
 
       const t0 = 1_700_000_000_000;
+      assert.equal(isModelOnCooldown('gemini-3.5-flash-lite', t0), false);
+      markModelQuotaCooldown('gemini-3.5-flash-lite', '503 UNAVAILABLE high demand', t0);
+      assert.equal(isModelOnCooldown('gemini-3.5-flash-lite', t0 + 25_000), true);
+      assert.equal(isModelOnCooldown('gemini-3.5-flash-lite', t0 + 31_000), false, '503 transient outage gives 30s cooldown');
+
+      markModelQuotaCooldown('gemini-3.8-flash', 'DEADLINE_EXCEEDED upstream timeout', t0);
+      assert.equal(isModelOnCooldown('gemini-3.8-flash', t0 + 25_000), true);
+      assert.equal(isModelOnCooldown('gemini-3.8-flash', t0 + 31_000), false, 'DEADLINE_EXCEEDED gives 30s cooldown');
+
       assert.equal(isModelOnCooldown('gemini-4-hydrogen', t0), false);
       markModelQuotaCooldown('gemini-4-hydrogen', '429 RESOURCE_EXHAUSTED PerMinute', t0);
       assert.equal(isModelOnCooldown('gemini-4-hydrogen', t0 + 10_000), true);

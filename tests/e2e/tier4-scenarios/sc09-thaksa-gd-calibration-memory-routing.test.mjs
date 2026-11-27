@@ -707,51 +707,65 @@ describe('Tier 4 - Scenario 09: Annual Thaksa, 78-Card GD, Calibration, Extended
     }
   });
 
-  it('SC-09-05: R5 Smart Thinking Routing routes 1-3 card quick queries to low, 10-card/major decisions/corrections to medium, preserves SC-06-08, and exposes SSE meta thinkingLevel', async () => {
+  it('SC-09-05: R5 Smart Thinking Routing routes 1-3 card quick queries to low (384), 10-card/major decisions/corrections to medium (1024), preserves SC-06-08, and exposes SSE/JSON metadata on gemini-3.5-flash-lite', async () => {
     assert.equal(typeof geminiProxy.resolveThinkingConfigForRequest, 'function', 'resolveThinkingConfigForRequest must be exported from geminiProxyServer.js');
 
-    // 1. Unit checks for resolveThinkingConfigForRequest
+    // 1. Unit checks for resolveThinkingConfigForRequest (primary gemini-3.5-flash-lite + gemini-4-hydrogen)
     const quickRoute = geminiProxy.resolveThinkingConfigForRequest({
       isNatal10: false,
       cards: [deck[0], deck[1], deck[2]],
       question: 'วันนี้พลังโดยรวมเป็นยังไงบ้าง',
       questionProfile: { topic: 'general', intent: 'explain' }
-    }, 'gemini-4-hydrogen');
+    }, 'gemini-3.5-flash-lite');
     assert.equal(quickRoute.thinkingLevel, 'low');
+    assert.equal(quickRoute.thinkingBudget, 384);
+    assert.equal(quickRoute.maxOutputTokens, 2400);
 
     const natal10Route = geminiProxy.resolveThinkingConfigForRequest({
       isNatal10: true,
       cards: deck.slice(0, 10),
       question: 'เปิดไพ่พื้นดวง 10 ใบแรก'
-    }, 'gemini-4-hydrogen');
+    }, 'gemini-3.5-flash-lite');
     assert.equal(natal10Route.thinkingLevel, 'medium');
-    assert.ok(natal10Route.maxOutputTokens >= 4096, `Expected scaled maxOutputTokens >= 4096 for medium, got ${natal10Route.maxOutputTokens}`);
+    assert.equal(natal10Route.thinkingBudget, 1024);
+    assert.ok(natal10Route.maxOutputTokens >= 3600, `Expected scaled maxOutputTokens >= 3600 for flash-lite medium, got ${natal10Route.maxOutputTokens}`);
 
     const cards10NonNatalRoute = geminiProxy.resolveThinkingConfigForRequest({
       isNatal10: false,
       cards: deck.slice(0, 10),
       question: 'เปิดไพ่ 10 ใบ'
-    }, 'gemini-4-hydrogen');
+    }, 'gemini-3.5-flash-lite');
     assert.equal(cards10NonNatalRoute.thinkingLevel, 'medium', '10-card spreads must route to medium even when isNatal10 is false');
+    assert.equal(cards10NonNatalRoute.thinkingBudget, 1024);
 
     const decisionRoute = geminiProxy.resolveThinkingConfigForRequest({
       isNatal10: false,
       cards: [deck[2], deck[3], deck[4]],
       question: 'ควรลาออกจากงานประจำตอนนี้เลย หรืออยู่รอโบนัสปลายปีแล้วค่อยย้ายสายดี',
       questionProfile: { topic: 'work', intent: 'decision' }
-    }, 'gemini-4-hydrogen');
+    }, 'gemini-3.5-flash-lite');
     assert.equal(decisionRoute.thinkingLevel, 'medium');
-    assert.ok(decisionRoute.maxOutputTokens >= 4096);
+    assert.equal(decisionRoute.thinkingBudget, 1024);
+    assert.ok(decisionRoute.maxOutputTokens >= 3600);
 
     const calibCorrectionRoute = geminiProxy.resolveThinkingConfigForRequest({
       isNatal10: false,
       cards: [deck[5]],
       question: 'ช่วยดูใหม่อีกครั้ง',
       calibrationFeedback: [{ verdict: 'inaccurate', note: 'ไม่ได้ทำบัญชีแล้ว ตอนนี้ทำสาย Product' }]
-    }, 'gemini-4-hydrogen');
+    }, 'gemini-3.5-flash-lite');
     assert.equal(calibCorrectionRoute.thinkingLevel, 'medium');
+    assert.equal(calibCorrectionRoute.thinkingBudget, 1024);
 
-    // 2. Preserve SC-06-08 1-arg defaults and flash-lite omission
+    const h4DecisionRoute = geminiProxy.resolveThinkingConfigForRequest({
+      isNatal10: true,
+      cards: deck.slice(0, 10),
+      question: 'เปิดไพ่พื้นดวง 10 ใบแรก'
+    }, 'gemini-4-hydrogen');
+    assert.equal(h4DecisionRoute.thinkingLevel, 'medium');
+    assert.ok(h4DecisionRoute.maxOutputTokens >= 4096);
+
+    // 2. Preserve SC-06-08 1-arg defaults and flash-lite thinkingBudget enablement
     const h4Default = geminiProxy.buildModelGenerateConfig('gemini-4-hydrogen');
     assert.equal(h4Default.maxOutputTokens, 2600);
     assert.deepEqual(h4Default.thinkingConfig, { thinkingLevel: 'low' });
@@ -765,13 +779,21 @@ describe('Tier 4 - Scenario 09: Annual Thaksa, 78-Card GD, Calibration, Extended
     const flash36Medium = geminiProxy.buildModelGenerateConfig('gemini-3.6-flash', undefined, { thinkingLevel: 'medium' });
     assert.equal(flash36Medium.thinkingConfig?.thinkingBudget, 1024, 'gemini-3.6-flash medium tier must scale thinkingBudget to 1024');
     assert.ok(flash36Medium.maxOutputTokens >= 3200, `gemini-3.6-flash medium tier must scale maxOutputTokens >= 3200, got ${flash36Medium.maxOutputTokens}`);
+    assert.equal(flash36Medium.temperature, undefined);
 
     const flash25Medium = geminiProxy.buildModelGenerateConfig('gemini-2.5-flash', undefined, { thinkingLevel: 'medium' });
     assert.equal(flash25Medium.thinkingConfig?.thinkingBudget, 1024, 'gemini-2.5-flash medium tier must scale thinkingBudget to 1024');
     assert.ok(flash25Medium.maxOutputTokens >= 3200, `gemini-2.5-flash medium tier must scale maxOutputTokens >= 3200, got ${flash25Medium.maxOutputTokens}`);
 
+    const flashLiteDefault = geminiProxy.buildModelGenerateConfig('gemini-3.5-flash-lite');
+    assert.deepEqual(flashLiteDefault.thinkingConfig, { thinkingBudget: 384 }, 'gemini-3.5-flash-lite default must enable thinkingBudget 384');
+    assert.equal(flashLiteDefault.maxOutputTokens, 2400);
+    assert.equal(flashLiteDefault.temperature, undefined);
+
     const flashLiteMedium = geminiProxy.buildModelGenerateConfig('gemini-3.5-flash-lite', undefined, { thinkingLevel: 'medium' });
-    assert.equal(flashLiteMedium.thinkingConfig, undefined, 'SC-06-08: gemini-3.5-flash-lite must still omit thinkingConfig even with routing options');
+    assert.deepEqual(flashLiteMedium.thinkingConfig, { thinkingBudget: 1024 }, 'gemini-3.5-flash-lite medium tier must scale thinkingBudget to 1024');
+    assert.ok(flashLiteMedium.maxOutputTokens >= 3600, `gemini-3.5-flash-lite medium tier must scale maxOutputTokens >= 3600, got ${flashLiteMedium.maxOutputTokens}`);
+    assert.equal(flashLiteMedium.temperature, undefined);
 
     // 3. Ephemeral Express SSE & JSON routing verification
     const prevKey = process.env.GEMINI_API_KEY;
@@ -797,7 +819,7 @@ describe('Tier 4 - Scenario 09: Annual Thaksa, 78-Card GD, Calibration, Extended
           }
         })
       }, async (baseUrl) => {
-        // 3a. 3-card quick query -> SSE meta thinkingLevel: 'low'
+        // 3a. 3-card quick query -> SSE meta model gemini-3.5-flash-lite, thinkingLevel: 'low', thinkingBudget: 384
         const quickRes = await fetch(`${baseUrl}/api/sati/read/stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -812,13 +834,14 @@ describe('Tier 4 - Scenario 09: Annual Thaksa, 78-Card GD, Calibration, Extended
         assert.equal(quickRes.status, 200);
         const quickFrames = parseSseFrames(await quickRes.text());
         assert.equal(quickFrames[0]?.event, 'meta');
-        assert.equal(quickFrames[0]?.data?.model, 'gemini-4-hydrogen');
+        assert.equal(quickFrames[0]?.data?.model, 'gemini-3.5-flash-lite');
         assert.equal(quickFrames[0]?.data?.thinkingLevel, 'low');
         assert.ok(quickFrames.some((f) => f.event === 'chunk'));
         assert.ok(quickFrames.some((f) => f.event === 'done' && f.data?.ok === true));
-        assert.equal(recordedCalls[0]?.config?.thinkingConfig?.thinkingLevel, 'low');
+        assert.equal(recordedCalls[0]?.config?.thinkingConfig?.thinkingBudget, 384);
+        assert.equal(recordedCalls[0]?.config?.temperature, undefined);
 
-        // 3b. 10-card natal spread -> SSE meta thinkingLevel: 'medium'
+        // 3b. 10-card natal spread -> SSE meta model gemini-3.5-flash-lite, thinkingLevel: 'medium', thinkingBudget: 1024
         const natalRes = await fetch(`${baseUrl}/api/sati/read/stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -832,14 +855,14 @@ describe('Tier 4 - Scenario 09: Annual Thaksa, 78-Card GD, Calibration, Extended
         assert.equal(natalRes.status, 200);
         const natalFrames = parseSseFrames(await natalRes.text());
         assert.equal(natalFrames[0]?.event, 'meta');
-        assert.equal(natalFrames[0]?.data?.model, 'gemini-4-hydrogen');
+        assert.equal(natalFrames[0]?.data?.model, 'gemini-3.5-flash-lite');
         assert.equal(natalFrames[0]?.data?.thinkingLevel, 'medium');
         assert.ok(natalFrames.some((f) => f.event === 'chunk'));
         assert.ok(natalFrames.some((f) => f.event === 'done' && f.data?.ok === true));
-        assert.equal(recordedCalls[1]?.config?.thinkingConfig?.thinkingLevel, 'medium');
-        assert.ok(recordedCalls[1]?.config?.maxOutputTokens >= 4096);
+        assert.equal(recordedCalls[1]?.config?.thinkingConfig?.thinkingBudget, 1024);
+        assert.ok(recordedCalls[1]?.config?.maxOutputTokens >= 3600);
 
-        // 3c. Major decision query on JSON /api/sati/read -> thinkingLevel: 'medium'
+        // 3c. Major decision query on JSON /api/sati/read -> gemini-3.5-flash-lite, thinkingLevel: 'medium', thinkingBudget: 1024
         const jsonRes = await fetch(`${baseUrl}/api/sati/read`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -854,8 +877,10 @@ describe('Tier 4 - Scenario 09: Annual Thaksa, 78-Card GD, Calibration, Extended
         assert.equal(jsonRes.status, 200);
         const jsonData = await jsonRes.json();
         assert.equal(jsonData.fallback, false);
+        assert.equal(jsonData.model, 'gemini-3.5-flash-lite');
         assert.equal(jsonData.thinkingLevel, 'medium');
-        assert.equal(recordedCalls[2]?.config?.thinkingConfig?.thinkingLevel, 'medium');
+        assert.equal(recordedCalls[2]?.config?.thinkingConfig?.thinkingBudget, 1024);
+        assert.ok(recordedCalls[2]?.config?.maxOutputTokens >= 3600);
       });
     } finally {
       if (prevKey !== undefined) process.env.GEMINI_API_KEY = prevKey;

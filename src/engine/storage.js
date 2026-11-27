@@ -4,6 +4,34 @@
  * เหรียญ (coins), ตั๋วเหมาสำรับ (hasDeckPass) และประวัติการสนทนาเข้ากับบัญชี Gmail
  */
 const STORAGE_PREFIX = 'sati_account_v1_';
+const GRAPHICS_QUALITY_KEY = 'sati_graphics_quality';
+
+export function normalizeGraphicsQuality(mode) {
+  return mode === 'high' || mode === 'low' ? mode : 'auto';
+}
+
+export function readSavedGraphicsQuality() {
+  try {
+    const raw = globalThis.localStorage?.getItem(GRAPHICS_QUALITY_KEY);
+    return normalizeGraphicsQuality(raw);
+  } catch {
+    return 'auto';
+  }
+}
+
+export function persistGraphicsQuality(mode) {
+  const clean = normalizeGraphicsQuality(mode);
+  try {
+    globalThis.localStorage?.setItem(GRAPHICS_QUALITY_KEY, clean);
+  } catch {
+    // ignore storage restriction
+  }
+  return clean;
+}
+
+export function normalizeSessionMode(mode) {
+  return mode === 'quick3' ? 'quick3' : 'natal10';
+}
 
 export function buildStoragePayload(state) {
   return {
@@ -12,6 +40,8 @@ export function buildStoragePayload(state) {
     deckResetAtIndex: typeof state.deckResetAtIndex === 'number' ? state.deckResetAtIndex : 0,
     deckCarryoverSummary: state.deckCarryoverSummary || '',
     sessionActive: Boolean(state.sessionActive),
+    sessionMode: normalizeSessionMode(state.sessionMode),
+    activeSessionId: String(state.activeSessionId || ''),
     remainingDeck: state.remainingDeck,
     discardPile: state.discardPile || [],
     natalCards: state.natalCards,
@@ -26,7 +56,66 @@ export function buildStoragePayload(state) {
     chatHistory: state.chatHistory,
     sessionArchives: state.sessionArchives || [],
     lastTopic: state.lastTopic,
-    allowReversedCards: state.allowReversedCards !== false
+    allowReversedCards: state.allowReversedCards !== false,
+    graphicsQuality: normalizeGraphicsQuality(state.graphicsQuality)
+  };
+}
+
+export function shouldResumeSavedSession(rec) {
+  if (!rec || !rec.sessionActive) return false;
+  if (rec.sessionMode === 'quick3') return false;
+  if (!rec.natalCompleted) return false;
+  return true;
+}
+
+export function archiveQuick3SessionIfNeeded(rec) {
+  if (!rec) return { record: rec, archived: false };
+  const isQuick3OrIncomplete = rec.sessionActive && (rec.sessionMode === 'quick3' || !rec.natalCompleted);
+  if (!isQuick3OrIncomplete) return { record: rec, archived: false };
+
+  const prevArchives = Array.isArray(rec.sessionArchives) ? [...rec.sessionArchives] : [];
+  const hasChat = Array.isArray(rec.chatHistory) && rec.chatHistory.length > 0;
+  let archived = false;
+
+  if (hasChat) {
+    const archiveId = String(rec.activeSessionId || '').trim() || `sess_q3_${Date.now().toString(36)}`;
+    if (!prevArchives.some((a) => a && a.id === archiveId)) {
+      const usedCount =
+        (Array.isArray(rec.discardPile) ? rec.discardPile.length : 0) +
+        (Array.isArray(rec.activeSpread) ? rec.activeSpread.length : 0);
+      prevArchives.unshift({
+        id: archiveId,
+        mode: 'quick3',
+        endedAt: rec.updatedAt || new Date().toISOString(),
+        user: { ...(rec.user || {}) },
+        natalCards: [],
+        chatHistory: [...rec.chatHistory],
+        usedCount
+      });
+      archived = true;
+    }
+  }
+
+  return {
+    archived,
+    record: {
+      ...rec,
+      sessionActive: false,
+      sessionMode: 'natal10',
+      activeSessionId: '',
+      natalCompleted: false,
+      natalCards: [],
+      activeSpread: [],
+      activeSpreadTopic: '',
+      discardPile: [],
+      chatHistory: [],
+      userContextFacts: [],
+      earlierContextDigest: '',
+      deckResetAtIndex: 0,
+      deckCarryoverSummary: '',
+      savedNatalCards: Array.isArray(rec.savedNatalCards) ? [...rec.savedNatalCards] : [],
+      sessionArchives: prevArchives
+    }
   };
 }
 

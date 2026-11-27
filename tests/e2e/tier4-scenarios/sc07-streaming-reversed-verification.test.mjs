@@ -110,7 +110,7 @@ describe('Tier 4 - Scenario 07: SSE Streaming, Reversed Cards, Spread Patterns &
         const body = await res.text();
         const frames = parseSseFrames(body);
         assert.equal(frames[0].event, 'meta');
-        assert.equal(frames[0].data.model, 'gemini-4-hydrogen');
+        assert.equal(frames[0].data.model, 'gemini-3.5-flash-lite');
         const chunks = frames.filter((f) => f.event === 'chunk');
         assert.ok(chunks.length >= 2, 'Expected multiple chunk events');
         const done = frames.find((f) => f.event === 'done');
@@ -128,7 +128,7 @@ describe('Tier 4 - Scenario 07: SSE Streaming, Reversed Cards, Spread Patterns &
         assert.equal(jsonRes.status, 200);
         const jsonData = await jsonRes.json();
         assert.equal(jsonData.fallback, false);
-        assert.equal(jsonData.model, 'gemini-4-hydrogen');
+        assert.equal(jsonData.model, 'gemini-3.5-flash-lite');
         assert.ok(jsonData.reply.length > 0);
       });
 
@@ -139,7 +139,7 @@ describe('Tier 4 - Scenario 07: SSE Streaming, Reversed Cards, Spread Patterns &
           models: {
             async generateContentStream({ model }) {
               calledModels.push(model);
-              if (model === 'gemini-4-hydrogen') {
+              if (model === 'gemini-3.5-flash-lite') {
                 throw new Error('429 RESOURCE_EXHAUSTED quota exceeded');
               }
               async function* gen() {
@@ -156,11 +156,11 @@ describe('Tier 4 - Scenario 07: SSE Streaming, Reversed Cards, Spread Patterns &
           body: JSON.stringify({ question: 'การเงิน', lang: 'th', cards: [deck[1]] })
         });
         const frames = parseSseFrames(await res.text());
-        assert.equal(calledModels[0], 'gemini-4-hydrogen');
-        assert.equal(calledModels[1], 'gemini-3.6-flash');
-        assert.equal(isModelOnCooldown('gemini-4-hydrogen'), true);
+        assert.equal(calledModels[0], 'gemini-3.5-flash-lite');
+        assert.equal(calledModels[1], 'gemini-3.8-flash');
+        assert.equal(isModelOnCooldown('gemini-3.5-flash-lite'), true);
         const done = frames.find((f) => f.event === 'done');
-        assert.equal(done?.data?.model, 'gemini-3.6-flash');
+        assert.equal(done?.data?.model, 'gemini-3.8-flash');
       });
 
       resetModelCooldownForTest();
@@ -325,10 +325,10 @@ describe('Tier 4 - Scenario 07: SSE Streaming, Reversed Cards, Spread Patterns &
     try {
       // 1. Stream split mid-JSON/mid-event across chunks
       const rawSse =
-        'event: meta\ndata: {"model":"gemini-4-hydrogen"}\n\n' +
+        'event: meta\ndata: {"model":"gemini-3.5-flash-lite"}\n\n' +
         'event: chunk\ndata: {"text":"ไพ่บอกว่า "}\n\n' +
         'event: chunk\ndata: {"text":"ค่อยๆ ตัดสินใจ"}\n\n' +
-        'event: done\ndata: {"ok":true,"model":"gemini-4-hydrogen","reply":"ไพ่บอกว่า ค่อยๆ ตัดสินใจอย่างรอบคอบ","fallback":false}\n\n';
+        'event: done\ndata: {"ok":true,"model":"gemini-3.5-flash-lite","reply":"ไพ่บอกว่า ค่อยๆ ตัดสินใจอย่างรอบคอบ","fallback":false}\n\n';
       const cut1 = rawSse.slice(0, 48);
       const cut2 = rawSse.slice(48, 92);
       const cut3 = rawSse.slice(92);
@@ -365,7 +365,7 @@ describe('Tier 4 - Scenario 07: SSE Streaming, Reversed Cards, Spread Patterns &
       assert.ok(progressCalls.length >= 2);
       assert.equal(streamedReply, 'ไพ่บอกว่า ค่อยๆ ตัดสินใจอย่างรอบคอบ');
       assert.equal(st1.lastReadingOffline, false);
-      assert.equal(st1.lastReadingModel, 'gemini-4-hydrogen');
+      assert.equal(st1.lastReadingModel, 'gemini-3.5-flash-lite');
 
       // 2. Fallback from SSE `event: fallback` -> JSON `/api/sati/read`
       let fallbackJsonHit = false;

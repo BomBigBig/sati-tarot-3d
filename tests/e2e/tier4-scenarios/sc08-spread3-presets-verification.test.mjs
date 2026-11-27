@@ -129,19 +129,26 @@ describe('Tier 4 - Scenario 08: Quick 3-Card Mode & 4 Flexible 3-Card Spread Pre
     assert.equal(payload.activeSpreadPreset, 'daily_mindset_guidance');
   });
 
-  it('SC-08-05: index.html and main.js expose Quick 3-Card entry mode, 4-spread chooser modal, and unlocked chat flow', () => {
+  it('SC-08-05: index.html and main.js expose Quick 3-Card entry mode, Stage 2 #ledger-spread3-box presets, and direct #btn-draw-3 from #chat-input without openSpread3Modal', () => {
     const html = fs.readFileSync(path.join(PROJECT_ROOT, 'index.html'), 'utf8');
     assert.ok(html.includes('id="btn-entry-mode-3"'));
     assert.ok(html.includes('id="btn-entry-mode-10"'));
     assert.ok(html.includes('id="ledger-spread3-box"'));
     assert.ok(html.includes('id="ledger-spread3-options"'));
-    assert.ok(html.includes('id="modal-spread3"'));
-    assert.ok(html.includes('id="btn-spread3-daily-now"'));
-    assert.ok(html.includes('id="btn-spread3-confirm"'));
+    assert.ok(html.includes('id="btn-draw-3"'));
+    assert.ok(html.includes('id="chat-input"'));
 
     const mainJs = fs.readFileSync(path.join(PROJECT_ROOT, 'src', 'main.js'), 'utf8');
     assert.ok(mainJs.includes("enterPickingPhase(3, 'quick3')"));
-    assert.ok(mainJs.includes('openSpread3Modal'));
+    assert.ok(mainJs.includes("renderSpreadPresetSelector('ledger-spread3-options'"));
+    assert.ok(mainJs.includes('inferSpread3PresetForQuestion'));
     assert.ok(mainJs.includes('startSpread3DrawWithOptions'));
+    assert.equal(mainJs.includes('openSpread3Modal'), false, '#btn-draw-3 must invoke direct draw rather than openSpread3Modal');
+
+    const draw3SectionIdx = mainJs.indexOf("document.getElementById('btn-draw-3').addEventListener");
+    assert.ok(draw3SectionIdx !== -1, 'Expected #btn-draw-3 click listener in src/main.js');
+    const draw3Block = mainJs.slice(draw3SectionIdx, draw3SectionIdx + 800);
+    assert.ok(draw3Block.includes("document.getElementById('chat-input')"), '#btn-draw-3 must read question from #chat-input');
+    assert.ok(draw3Block.includes('startSpread3DrawWithOptions('), '#btn-draw-3 must call startSpread3DrawWithOptions directly');
   });
 });
