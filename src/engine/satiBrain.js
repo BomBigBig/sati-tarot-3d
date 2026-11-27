@@ -18,6 +18,15 @@ import {
   getLocalizedAstroLabel,
   getLocalizedThaksaRole
 } from '../data/tarot78I18n.js';
+import {
+  normalizeThaiPlanetKey,
+  analyzePositionalElementalDignity,
+  getDecanTimingProfile,
+  diagnoseReversedCard,
+  analyzeSpreadCausalDynamics,
+  evaluateThaiPlanetaryPair,
+  selectDomainThaksaFocus
+} from './divinationScience.js';
 
 export const THAKSA_GROUPS = [
   { name: 'อาทิตย์', planet: 'sun', chars: 'ออะาิีึืุูเแโใไ', elem: 'ไฟ', trait: 'กล้านำ กล้าตัดสินใจ รักศักดิ์ศรี แต่บางจังหวะกดดันตัวเองหนักเกินจำเป็น' },
@@ -236,6 +245,9 @@ export function computeNatalProfile(user, referenceDate = new Date()) {
   user.birthCard = `${birthCard.en} (${birthCard.th})`;
   user.birthCardCore = birthCard.core;
   Object.assign(user, computeExtendedNatalContext(user, referenceDate));
+  user.annualBirthPair = user.planet && user.annualThaksa?.fallingHouse?.planet
+    ? evaluateThaiPlanetaryPair(user.planet, user.annualThaksa.fallingHouse.planet, { lang: 'th' })
+    : null;
   return user;
 }
 
@@ -632,7 +644,7 @@ export function analyzeCardElementalSynergy(cards, lang = 'th') {
 
 const ELEM_TH_TO_GD = { ไฟ: 'fire', ดิน: 'earth', ลม: 'air', น้ำ: 'water' };
 
-export function computeAstroCardIntersection(userProfile, cards, lang = 'th') {
+export function computeAstroCardIntersection(userProfile, cards, lang = 'th', options = {}) {
   const target = normalizeLang(lang);
   const list = hydrateDeckCards(Array.isArray(cards) ? cards : []).filter(
     (c) => c && typeof c === 'object' && (c.uid || c.name)
@@ -663,13 +675,14 @@ export function computeAstroCardIntersection(userProfile, cards, lang = 'th') {
   }
   const birthPlanet = birthGroupIdx >= 0
     ? THAKSA_GROUPS[birthGroupIdx].planet
-    : (u?.planet || annual?.roles?.find((r) => r.role === 'บริวาร' || r.natalRole === 'บริวาร')?.planet || '');
+    : (normalizeThaiPlanetKey(u?.planet || u?.dayName) || annual?.roles?.find((r) => r.role === 'บริวาร' || r.natalRole === 'บริวาร')?.planet || '');
   const userDayGdElem = ELEM_TH_TO_GD[u?.elemShort || (birthGroupIdx >= 0 ? THAKSA_GROUPS[birthGroupIdx].elem : '')] || '';
   const birthDayName = u?.dayName || (birthGroupIdx >= 0 ? `วัน${THAKSA_GROUPS[birthGroupIdx].name}` : '');
 
   const zodiacLinks = [];
   const planetLinks = [];
   const thaksaLinks = [];
+  const thaiPairLinks = [];
   const courtMirrors = [];
   const matches = [];
   const prioritized = [];
@@ -835,6 +848,38 @@ export function computeAstroCardIntersection(userProfile, cards, lang = 'th') {
     }
   });
 
+  const qProfile = options?.questionProfile || { topic: 'general', subDomain: 'general', intent: 'explain' };
+  const domainThaksa = selectDomainThaksaFocus(
+    u ? { ...u, planet: birthPlanet || u.planet, dayName: birthDayName || u.dayName } : {},
+    annual,
+    qProfile,
+    { lang: target, cards: list, isNatal10: Boolean(options?.isNatal10) }
+  );
+
+  if (domainThaksa?.birthVsFallingPair && !['none', 'neutral'].includes(domainThaksa.birthVsFallingPair.primaryRelation)) {
+    const bp = domainThaksa.birthVsFallingPair;
+    const label = bp.summary;
+    thaiPairLinks.push({ type: 'birth_vs_annual', ...bp, label });
+    matches.push({ type: 'thai_pair', relation: bp.primaryRelation, label });
+    prioritized.push({ rank: 4.6, label });
+  }
+
+  (domainThaksa?.cardPlanetPairs || []).forEach((cp) => {
+    const label = target === 'zh'
+      ? `${cp.cardName}（${cp.summary}）`
+      : `${cp.cardName} (${cp.summary})`;
+    thaiPairLinks.push({ type: 'card_vs_thaksa', ...cp, label });
+    matches.push({
+      type: 'thai_pair',
+      cardUid: cp.cardUid,
+      cardName: cp.cardName,
+      relation: cp.primaryRelation,
+      targetType: cp.targetType,
+      label
+    });
+    prioritized.push({ rank: cp.targetType === 'birth' ? 4.2 : 4.8, label });
+  });
+
   prioritized.sort((a, b) => a.rank - b.rank);
   const highlights = [];
   const seenHl = new Set();
@@ -847,6 +892,7 @@ export function computeAstroCardIntersection(userProfile, cards, lang = 'th') {
   }
 
   const hasMatches = zodiacLinks.length > 0 || planetLinks.length > 0 || thaksaLinks.length > 0
+    || thaiPairLinks.length > 0
     || courtMirrors.some((m) => m.elementResonance || m.zodiacSpanMatch);
 
   let summary = '';
@@ -873,18 +919,25 @@ export function computeAstroCardIntersection(userProfile, cards, lang = 'th') {
     zodiacLinks,
     planetLinks,
     thaksaLinks,
+    thaiPairLinks,
+    birthVsAnnualPair: domainThaksa?.birthVsFallingPair || null,
+    domainThaksa,
     courtMirrors,
     highlights,
     summary
   };
 }
 
-export function computeElementalDignityInsight(cards = [], lang = 'th') {
+export function computeElementalDignityInsight(cards = [], lang = 'th', options = {}) {
   const target = normalizeLang(lang);
   const list = hydrateDeckCards(cards);
   if (!list.length) return '';
 
-  const counts = { Major: 0, Wands: 0, Cups: 0, Swords: 0, Pentacles: 0 };
+  const dignity = analyzePositionalElementalDignity(list, {
+    lang: target,
+    isNatal10: Boolean(options?.isNatal10) || list.length >= 10
+  });
+
   let early = 0;
   let mid = 0;
   let late = 0;
@@ -892,7 +945,6 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
   const gdTags = [];
 
   list.forEach((c) => {
-    counts[c.suit] = (counts[c.suit] || 0) + 1;
     const first = (c.name || '').split(' ')[0];
     if (['Ace', 'Two', 'Three'].includes(first)) early += 1;
     else if (['Four', 'Five', 'Six'].includes(first)) mid += 1;
@@ -910,29 +962,11 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
     }
   });
 
-  const hasFire = counts.Wands > 0;
-  const hasAir = counts.Swords > 0;
-  const hasWater = counts.Cups > 0;
-  const hasEarth = counts.Pentacles > 0;
-
-  let pairLine = '';
+  const pairLine = dignity.promptSummary || dignity.legacyTag;
   let cycleLine = '';
   let gdLine = '';
 
   if (target === 'en') {
-    if (hasFire && hasAir && !hasWater && !hasEarth) {
-      pairLine = 'Elemental Dignity (Fire + Air Active Support): sharp clarity feeds bold speed, though impatience can gloss over fine details.';
-    } else if (hasWater && hasEarth && !hasFire && !hasAir) {
-      pairLine = 'Elemental Dignity (Water + Earth Grounded Support): steady emotional commitment builds into real, lasting material stability.';
-    } else if (hasFire && hasWater) {
-      pairLine = 'Elemental Dignity (Fire vs Water Friction): outer urgency and quiet inner hesitation are pulling against each other until feelings settle.';
-    } else if (hasAir && hasEarth) {
-      pairLine = 'Elemental Dignity (Air vs Earth Friction): over-analyzing scenarios collides with practical constraints — verify hard numbers directly.';
-    } else if (counts.Major >= 2) {
-      pairLine = `Elemental Dignity (${counts.Major} Major Arcana Anchor): weighty turning-point cards signal choices now carry longer-term karma and direction.`;
-    } else {
-      pairLine = 'Elemental Dignity (Balanced Temperament): contrasting elements show outcomes bend directly with the deliberate pacing you choose next.';
-    }
     if (courts >= 2) cycleLine = 'Strong Court card presence shows real people or decisive personal stance steer this chapter.';
     else if (late > early && late >= 1) cycleLine = 'High numbered ranks (7–10) mark a culmination phase where finishing loose ends unlocks the next cycle.';
     else if (early > late && early >= 1) cycleLine = 'Early ranks (Ace–3) point to a fresh opening stage where framing clean boundaries early pays off most.';
@@ -941,19 +975,6 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
   }
 
   if (target === 'zh') {
-    if (hasFire && hasAir && !hasWater && !hasEarth) {
-      pairLine = '元素生克（火风相生）：思路与行动力同频加速，但要防着求快而漏掉落地细节。';
-    } else if (hasWater && hasEarth && !hasFire && !hasAir) {
-      pairLine = '元素生克（水土相融）：沉稳的心念正一点点沉淀成真实可感的安全感与收益。';
-    } else if (hasFire && hasWater) {
-      pairLine = '元素生克（火水相冲）：心里既想冲又放不下顾虑，先理顺内在感受再定节奏才不会内耗。';
-    } else if (hasAir && hasEarth) {
-      pairLine = '元素生克（风土相制）：想得太细易撞上现实条件限制，直接核对实际数字比空想有效。';
-    } else if (counts.Major >= 2) {
-      pairLine = `元素生克（${counts.Major} 张大阿卡纳压阵）：大牌密度高，代表眼下抉择带有长线转折分量。`;
-    } else {
-      pairLine = '元素生克（格局均衡）：牌组能量彼此牵制平衡，最终走向看你接下来如何稳住执行。';
-    }
     if (courts >= 2) cycleLine = '宫廷牌偏多，关键变量落在具体当事人态度与你自身的处事姿态。';
     else if (late > early && late >= 1) cycleLine = '高数字牌（7–10）占比偏重，说明此事已走到收官或清理旧结的阶段。';
     else if (early > late && early >= 1) cycleLine = '初阶牌（1–3）起势，重点在于尽早立下清晰规则与起点框架。';
@@ -961,19 +982,6 @@ export function computeElementalDignityInsight(cards = [], lang = 'th') {
     return [pairLine, cycleLine, gdLine].filter(Boolean).join(' ');
   }
 
-  if (hasFire && hasAir && !hasWater && !hasEarth) {
-    pairLine = 'กำลังธาตุไพ่ (ไฟ+ลมเสริมแรงเต็มที่): ความคิดชัดบวกแรงลุยทำให้ขยับไว แต่ต้องเช็กรายละเอียดไม่ให้ใจร้อนเกินจังหวะ';
-  } else if (hasWater && hasEarth && !hasFire && !hasAir) {
-    pairLine = 'กำลังธาตุไพ่ (น้ำ+ดินหนุนมั่นคง): ความจริงใจและความสม่ำเสมอกำลังปั้นผลลัพธ์เป็นชิ้นเป็นอันจับต้องได้';
-  } else if (hasFire && hasWater) {
-    pairLine = 'กำลังธาตุไพ่ (ไฟปะทะน้ำ): แรงอยากเดินหน้ากับความรู้สึกค้างใจกำลังดึงกันอยู่ ต้องเคลียร์ใจให้นิ่งก่อนลงมือ';
-  } else if (hasAir && hasEarth) {
-    pairLine = 'กำลังธาตุไพ่ (ลมปะทะดิน): ความคิดหลายตลบกำลังชนกับข้อจำกัดหรือตัวเลขจริง ให้ยึดหลักฐานตรงหน้ามากกว่าคาดเดา';
-  } else if (counts.Major >= 2) {
-    pairLine = `กำลังธาตุไพ่ (ไพ่ใหญ่ ${counts.Major} ใบคุมเกม): จังหวะนี้เป็นจุดเปลี่ยนระดับวางทิศทางระยะยาว ไม่ใช่เรื่องชั่วคราว`;
-  } else {
-    pairLine = 'กำลังธาตุไพ่ (ธาตุสมดุล): พลังในหน้าไพ่ไม่เทไปทางสุดโต่ง ผลลัพธ์ขึ้นกับวินัยและการวางหมากของเราโดยตรง';
-  }
   if (courts >= 2) cycleLine = 'มีไพ่บุคคล (Court Cards) เด่นชัด ชี้ว่าตัวแปรสำคัญอยู่ที่ท่าทีของคนจริงหรือบทบาทที่เราต้องคุมเอง';
   else if (late > early && late >= 1) cycleLine = 'เลขไพ่ช่วงปลาย (7–10) เด่น สะท้อนว่าเรื่องนี้อยู่ในช่วงสะสางปิดจบรอบเพื่อขึ้นรอบใหม่';
   else if (early > late && early >= 1) cycleLine = 'เลขไพ่ช่วงต้น (1–3) เด่น บอกว่าเพิ่งเปิดประตูเริ่มต้น เหมาะกับการวางกรอบตั้งแต่ก้าวแรก';
@@ -1073,6 +1081,11 @@ export function analyzeSpreadPatterns(cards, lang = 'th') {
     }
   }
 
+  const causal = analyzeSpreadCausalDynamics(list, { lang: target });
+  if (causal?.shortClause && !parts.some((p) => p.includes(causal.shortClause.slice(0, 12)))) {
+    parts.push(causal.shortClause);
+  }
+
   if (parts.length === 0) return '';
   let out = '';
   for (const p of parts) {
@@ -1092,6 +1105,7 @@ function cleanChoiceOption(s, isFirst, lang = 'th') {
   }
   return (s || '')
     .replace(isFirst ? /^(แล้ว|ถ้า|ควร|จะ|เลือก|ระหว่าง|อยากรู้ว่า)\s*/g : /^(ควร|จะ|ค่อย)\s*/g, '')
+    .replace(/(?:ควร)?(?:เลือกทางไหน|เลือกอันไหน|เลือกอะไร|เอาอันไหน|ทำอันไหน)(?:ดี)?[?]*$/g, '')
     .replace(/(ตอนนี้เลย|ดีไหม|ไหม|มั้ย|ดีกว่า|ก่อนดี|ก่อน|มากกว่า|กันแน่|ครับ|ค่ะ|คับ|นะ)+$/g, '')
     .replace(/\s*(ดี|ไหม)$/g, '')
     .trim() || (s || '').trim();
@@ -1129,7 +1143,10 @@ export function extractGenuineBinaryChoices(q, lang = 'th') {
   if ((text.match(/หรือ/g) || []).length > 1) return null;
   if (/,/.test(text.split('หรือ')[0] || '')) return null;
   if (/(?:โฟกัส|เน้น|เริ่มจาก|ลำดับ).{2,30}ก่อน/.test(text)) return null;
-  const m = text.match(/(.+?)\s*หรือ\s*(?!เปล่า|ป่าว|ปล่าว|ไม่|ยัง)(.+?)(\?|$)/);
+  let m = text.match(/(.+?)\s*หรือ\s*(?!เปล่า|ป่าว|ปล่าว|ไม่|ยัง)(.+?)(\?|$)/);
+  if (!m) {
+    m = text.match(/ระหว่าง\s*(.+?)\s*กับ\s*(.+?)(?:ควร|เลือก|อันไหน|ดี|$)/);
+  }
   if (!m || !m[1] || !m[2]) return null;
   const optA = cleanChoiceOption(m[1], true, 'th');
   const optB = cleanChoiceOption(m[2], false, 'th');
@@ -1147,42 +1164,42 @@ export function detectTopicAndIntent(q, prevTopic) {
   const isEllipticalFollowUp = rawQ.length > 0 && rawQ.length < 28 && /^(แล้ว|ส่วน|ต่อ|ขยาย|เรื่องนั้น|เรื่องเขา|แล้วถ้า|and what|what about|then|那|还有)/i.test(rawQ);
   let topic = isEllipticalFollowUp && prevTopic ? prevTopic : 'general';
 
-  if (/ความรัก|แฟน|คนคุย|จีบ|นอกใจ|ง้อ|เลิกกัน|ขอคืนดี|คบกัน|แต่งงาน|มีใจ|คิดถึง|รักเรา|จริงใจ|จริงจัง|เนื้อคู่|คู่รัก|โสด|อกหัก|แอบชอบ|เขารู้สึก|เขาคิด|เธอรู|เค้าคิด|เค้ายัง|เขายัง|มีคนอื่น|love|romance|relationship|partner|crush|dating|marriage|feelings|his heart|her heart|ex\b|感情|爱情|恋爱|对象|另一半|暗恋|前任|分手|复合|喜欢我|在乎|婚姻/i.test(rawQ)) {
+  if (/ความรัก|แฟนเก่า|แฟน|คนคุย|คนเก่า|จีบ|นอกใจ|ง้อ|เลิกกัน|ขอคืนดี|คืนดี|คบกัน|คบต่อ|แต่งงาน|มีใจ|คิดถึง|รักเรา|จริงใจ|จริงจัง|เนื้อคู่|คู่รัก|โสด|อกหัก|แอบชอบ|แอบปลื้ม|มูฟออน|ตัดใจ|อันฟอล|บล็อก|ทักกลับ|ทักมาหา|รักสามเส้า|มือที่สาม|เขารู้สึก|เขาคิด|เธอรู|เค้าคิด|เค้ายัง|เขายัง|มีคนอื่น|ความสัมพันธ์(?!(?:ใน|กับ)?(?:ครอบครัว|ที่บ้าน|พ่อแม่|พี่น้อง|ญาติ|เพื่อนร่วมงาน|ทีม|หัวหน้า|เจ้านาย|ลูกค้า))|love|romance|relationship|partner|crush|dating|marriage|feelings|his heart|her heart|ex\b|感情|爱情|恋爱|对象|另一半|暗恋|前任|分手|复合|喜欢我|在乎|婚姻/i.test(rawQ)) {
     topic = 'love';
-  } else if (/งาน|โปรเจกต์|เจ้านาย|หัวหน้า|ลูกน้อง|ทีม|ลูกค้า|ธุรกิจ|บริษัท|ออฟฟิศ|เรียน|สอบ|สมัครงาน|สัมภาษณ์|ลาออก|ย้ายงาน|เปลี่ยนงาน|เลื่อนขั้น|ทำแอป|ออกแบบ|เขียนโค้ด|รับเหมา|อาชีพ|work|job|career|project|boss|manager|team|client|business|company|office|study|exam|interview|resign|quit|promotion|startup|coding|工作|事业|项目|老板|上司|团队|客户|生意|公司|办公室|学习|考试|面试|辞职|跳槽|转行|升职|创业/i.test(rawQ)) {
+  } else if (/งาน|โปรเจกต์จบ|โปรเจกต์|เจ้านาย|หัวหน้า|ลูกน้อง|ทีม|ลูกค้า|ธุรกิจ|บริษัท|ออฟฟิศ|เรียน|สอบ|ข้อสอบ|ติว|ยื่นพอร์ต|ใบประกอบ|ธีสิส|TCAS|IELTS|TOEIC|ก\.พ\.|สมัครงาน|สัมภาษณ์|ลาออก|ย้ายงาน|เปลี่ยนงาน|ตกงาน|ว่างงาน|หางาน|เลื่อนขั้น|เลื่อนตำแหน่ง|โปรโมต|ทำแอป|ออกแบบ|เขียนโค้ด|รับเหมา|อาชีพ|พาร์ทเนอร์|พรีเซนต์|work|job|career|project|boss|manager|team|client|business|company|office|study|exam|interview|resign|quit|promotion|startup|coding|工作|事业|项目|老板|上司|团队|客户|生意|公司|办公室|学习|考试|面试|辞职|跳槽|转行|升职|创业/i.test(rawQ)) {
     topic = 'work';
-  } else if (/การเงิน|เงิน|รายได้|รายรับ|รายจ่าย|ลงทุน|หนี้|ค้าขาย|ขายของ|ยอดขาย|ขายได้|ขายดี|กำไร|ต้นทุน|เงินทุน|ขาดทุน|ค่าใช้จ่าย|ร่ำรวย|จะรวย|ซื้อ|ผ่อน|เทรด|ทองคำ|ราคาทอง|เล่นหุ้น|หุ้น|เหรียญ|โบนัส|เงินเดือน|ช็อต|ตึงมือ|สภาพคล่อง|ออมเงิน|ดีล|money|income|salary|revenue|expense|invest|debt|sales|profit|cost|capital|loss|wealth|rich|trade|gold|stock|crypto|bonus|cash|finance|budget|钱|财运|收入|工资|支出|花销|投资|负债|债务|销量|利润|成本|本金|亏损|发财|暴富|贷款|交易|黄金|股票|资金/i.test(rawQ)) {
+  } else if (/การเงิน|เงินก้อน|เงินหมุน|เงินเก็บ|เงิน|รายได้|รายรับ|รายจ่าย|ลงทุน|หนี้|ค้าขาย|ขายของ|ยอดขาย|ขายได้|ขายดี|ขายออก|กำไร|ต้นทุน|เงินทุน|ขาดทุน|ค่าใช้จ่าย|ร่ำรวย|จะรวย|ซื้อ|ผ่อน|เทรด|ทองคำ|ราคาทอง|เล่นหุ้น|หุ้น|เหรียญ|คริปโต|บิทคอยน์|ฟอเร็กซ์|โบนัส|เงินเดือน|ค่าคอม|ปันผล|ช็อต|ตึงมือ|สภาพคล่อง|ออม|กู้|สินเชื่อ|รีไฟแนนซ์|บัตรเครดิต|ค่างวด|โชคลาภ|ลาภลอย|ถูกหวย|ดีล|money|income|salary|revenue|expense|invest|debt|sales|profit|cost|capital|loss|wealth|rich|trade|gold|stock|crypto|bonus|cash|finance|budget|钱|财运|收入|工资|支出|花销|投资|负债|债务|销量|利润|成本|本金|亏损|发财|暴富|贷款|交易|黄金|股票|资金/i.test(rawQ)) {
     topic = 'money';
-  } else if (/รัก|เขา|เธอ/.test(rawQ)) {
+  } else if (/รัก|(?<![\u0E00-\u0E7F])เขา(?!ใจ|มา|หา|ถึง|ออก|ร่วม|เรียน|งาน|รอบ|ข้าง|คิว|ตา|ทาง|ท่า|พวก|โหมด|กับ|ไป|ไว้)|เธอ/.test(rawQ)) {
     topic = 'love';
-  } else if (/ครอบครัว|พ่อแม่|พี่น้อง|ญาติ|สุขภาพ|เหนื่อย|ท้อ|เครียด|พักผ่อน|นอนไม่หลับ|หมดไฟ|สับสน|กดดัน|ตัวเอง|ชีวิต|ความฝัน|เป้าหมาย|health|family|tired|stressed|rest|insomnia|burnout|confused|pressure|myself|life\b|dream|goal|健康|家庭|累|疲惫|焦虑|压力|休息|失眠|迷茫|内耗|人生|梦想|目标/i.test(rawQ)) {
+  } else if (/ครอบครัว|ที่บ้าน|ทางบ้าน|คนทางบ้าน|พ่อแม่|พี่น้อง|พี่ชาย|พี่สาว|น้องชาย|น้องสาว|ปู่ย่า|ตายาย|คุณตา|คุณยาย|คุณปู่|คุณย่า|ญาติ|สุขภาพ|ป่วย|ปวดหัว|ไมเกรน|ภูมิแพ้|ตรวจสุขภาพ|พักฟื้น|หลับยาก|เหนื่อย|ท้อ|เครียด|พักผ่อน|นอนไม่หลับ|หมดไฟ|สับสน|กดดัน|ตัวเอง|ชีวิต|ความฝัน|เป้าหมาย|health|family|tired|stressed|rest|insomnia|burnout|confused|pressure|myself|life\b|dream|goal|健康|家庭|累|疲惫|焦虑|压力|休息|失眠|迷茫|内耗|人生|梦想|目标/i.test(rawQ)) {
     topic = 'self';
   }
 
   let subDomain = topic;
   if (/ซื้อบ้าน|เช่าบ้าน|คอนโด|ที่ดิน|ย้ายบ้าน|ย้ายหอ|ซื้อรถ|ออกรถ|ต่อเติม|ขายบ้าน|ขายที่|อสังหา|house|condo|apartment|land|move out|relocate|buy a car|property|real estate|买房|租房|公寓|土地|搬家|买车|房产/i.test(rawQ)) {
     subDomain = 'property';
-  } else if (/เรียน|สอบ|อ่านหนังสือ|เกรด|มหาลัย|คณะ|จบการศึกษา|วิทยานิพนธ์|ทุน|สมัครเรียน|วิชา|study|exam|grade|university|major|thesis|scholarship|学习|考试|大学|专业|成绩|留学/i.test(rawQ)) {
+  } else if (!/สัมภาษณ์งาน|สมัครงาน/.test(rawQ) && /เรียน|สอบ|ข้อสอบ|ติว|อ่านหนังสือ|เกรด|มหาลัย|คณะ|จบการศึกษา|วิทยานิพนธ์|ธีสิส|โปรเจกต์จบ|ใบประกอบ|ก\.พ\.|TCAS|IELTS|TOEIC|(?<!ลง|เงิน|ต้น|ระดม|เพิ่ม|ตั้ง)ทุน|สมัครเรียน|วิชา|study|exam|grade|university|major|thesis|scholarship|学习|考试|大学|专业|成绩|留学/i.test(rawQ)) {
     subDomain = 'study';
-  } else if (/สุขภาพ|ป่วย|โรค|หมอ|โรงพยาบาล|ผ่าตัด|รักษา|หายดีไหม|นอนไม่หลับ|ออฟฟิศซินโดรม|แพนิก|ซึมเศร้า|พักผ่อน|ร่างกาย|health|sick|illness|doctor|hospital|surgery|recover|insomnia|anxiety|mental health|健康|生病|医生|医院|手术|恢复|失眠|焦虑/i.test(rawQ)) {
+  } else if (/สุขภาพ|ป่วย|โรค|หมอ|โรงพยาบาล|ผ่าตัด|รักษา|หายดีไหม|นอนไม่หลับ|หลับยาก|ปวดหัว|ไมเกรน|ภูมิแพ้|ตรวจสุขภาพ|พักฟื้น|ออฟฟิศซินโดรม|แพนิก|ซึมเศร้า|พักผ่อน|ร่างกาย|หมดไฟ|health|sick|illness|doctor|hospital|surgery|recover|insomnia|anxiety|mental health|健康|生病|医生|医院|手术|恢复|失眠|焦虑/i.test(rawQ)) {
     subDomain = 'health';
-  } else if (/ครอบครัว|พ่อแม่|ญาติ|พี่น้อง|ผู้ใหญ่ในบ้าน|คนในบ้าน|ลูกชาย|ลูกสาว|คุณแม่|คุณพ่อ|family|parents|mom|dad|mother|father|sibling|relative|家庭|父母|爸妈|兄弟姐妹|亲戚/i.test(rawQ)) {
+  } else if (/ครอบครัว|ที่บ้าน|ทางบ้าน|คนทางบ้าน|พ่อแม่|ญาติ|พี่น้อง|พี่ชาย|พี่สาว|น้องชาย|น้องสาว|ปู่ย่า|ตายาย|คุณตา|คุณยาย|คุณปู่|คุณย่า|ผู้ใหญ่ในบ้าน|คนในบ้าน|ลูกชาย|ลูกสาว|คุณแม่|คุณพ่อ|family|parents|mom|dad|mother|father|sibling|relative|家庭|父母|爸妈|兄弟姐妹|亲戚/i.test(rawQ)) {
     subDomain = 'family';
   }
 
   let intent = 'explain';
-  if (/คิดยังไง|รู้สึกยังไง|จริงใจ|จริงจัง|มองเรา|เขารู้สึก|กลับมาไหม|มีคนอื่นไหม|รักเรา|ชอบเรา|คิดถึง|how does he feel|how does she feel|feel about me|still love|come back|someone else|sincere|怎么看我|他怎么想|她怎么想|喜欢我吗|还爱我吗|真心吗|会不会回来|有别人吗/i.test(rawQ)) intent = 'other_person';
+  if (/คิดยังไง|รู้สึกยังไง|จริงใจ|จริงจัง|มองเรา|เขารู้สึก|กลับมาไหม|มีคนอื่นไหม|รักเรา|ชอบเรา|คิดถึง|มีใจ|นอกใจ|ซื่อสัตย์|ยังรัก.*?(?:ไหม|มั้ย|เปล่า|ป่าว)|ต้องการอะไร|หวังอะไร|คาดหวังอะไร|อยากได้อะไร|มองหาอะไร|(?:รัก|แคร์|คิด|หวัง|ต้องการ).{0,16}(?:จริง(?:ไหม|ป่าว|เปล่า|มั้ย)|อะไร)|ในใจเขา|ในสายตาเขา|how does he feel|how does she feel|feel about me|still love|come back|someone else|sincere|what does (?:he|she|they) want|怎么看我|他怎么想|她怎么想|喜欢我吗|还爱我吗|真心吗|想要什么|会不会回来|有别人吗/i.test(rawQ)) intent = 'other_person';
   else if (extractGenuineBinaryChoices(rawQ, /[\u4E00-\u9FFF]/.test(rawQ) ? 'zh' : /[a-zA-Z]{4}/.test(rawQ) ? 'en' : 'th')) intent = 'decision';
-  else if (/เมื่อไหร่|นานไหม|อีกนาน|กี่เดือน|กี่วัน|กี่สัปดาห์|ช่วงไหน|เร็วๆ|ตอนไหน|เดือนไหน|วันไหน|when\b|how long|how soon|which month|which week|什么时候|多久|几个月|几天|几周|哪个月/i.test(rawQ)) intent = 'timing';
-  else if (/ดีไหม|ควรไหม|เอาไง|เลือก|ระหว่าง|ไปต่อ|ลาออก|คุ้มไหม|should i|worth it|choose|stay or go|quit|还是选|应该|好不好|值不值得|怎么选|要继续吗/i.test(rawQ)) intent = 'decision';
-  else if (/ทำยังไง|แก้ยังไง|เริ่มยังไง|ควรทำ|แนะนำ|ทางออก|รับมือ|ต้องระวังอะไร|แก้ตรงไหน|ยังไงดี|โฟกัส.*ก่อน|ใส่ใจ.*เป็นพิเศษ|how should i|what should i do|advice|fix|handle|start|怎么办|怎么做|怎么解决|建议|需要注意|如何应对/i.test(rawQ)) intent = 'action';
-  else if (/ทำไม|เพราะอะไร|ติดอะไร|เกิดจาก|สาเหตุ|why\b|what is blocking|reason|cause|为什么|原因|卡在哪里|怎么会这样/i.test(rawQ)) intent = 'why';
-  else if (/สำเร็จไหม|รอดไหม|ได้ไหม|ได้มั้ย|สมหวังไหม|รุ่งหรือเสี่ยง|เสี่ยงไหม|มีโอกาส.*?(?:ไหม|มั้ย|ป่าว|เปล่า|ปล่าว)|ได้หรือ(?:เปล่า|ป่าว|ปล่าว|ไม่)|เป็นไปได้ไหม|จะ.*?(?:ได้ไหม|ได้มั้ย|ได้ป่าว|ได้หรือเปล่า|ได้หรือป่าว|ได้หรือปล่าว)|เก็บเงิน.*?(?:ไหม|มั้ย|ป่าว|เปล่า)|ปังไหม|เวิร์คไหม|ผ่านไหม|ดีขึ้นไหม|จะดีไหม|will it work|will i succeed|chances|possible|achieve|pass|improve|能成吗|顺利吗|有机会吗|做得到吗|实现吗|会变好吗|过得去吗/i.test(rawQ)) intent = 'outcome';
+  else if (/เมื่อไหร่|นานไหม|อีกนาน|นานแค่ไหน|นานมั้ย|กี่เดือน|กี่วัน|กี่สัปดาห์|กี่ปี|ช่วงไหน|เร็วๆ|ตอนไหน|เดือนไหน|วันไหน|จะมาตอนไหน|จังหวะไหน|when\b|how long|how soon|which month|which week|什么时候|多久|几个月|几天|几周|哪个月/i.test(rawQ)) intent = 'timing';
+  else if (/ดีไหม|ดีมั้ย|ดีป่าว|ดีหรือเปล่า|ควรไหม|เอาไง|เลือก|ระหว่าง|ลาออก|คุ้มไหม|คุ้มมั้ย|น่าทำไหม|น่าลองไหม|(?:ควร|จะ).*?ไปต่อ.*?(?:ดี|หรือ)|should i|worth it|choose|stay or go|quit|还是选|应该|好不好|值不值得|怎么选|要继续吗/i.test(rawQ)) intent = 'decision';
+  else if (/ทำยังไง|ทำไง|แก้ยังไง|เริ่มยังไง|ควรทำ|แนะนำ|ทางออก|รับมือ|ต้องระวังอะไร|แก้ตรงไหน|ยังไงดี|วางตัว(?:ยังไง|อย่างไร)|เตรียมตัว|ปรับตรงไหน|ปรับอะไร|คุย.*?ยังไง|บอก.*?ยังไง|โฟกัส.*ก่อน|ใส่ใจ.*เป็นพิเศษ|how should i|what should i do|advice|fix|handle|start|怎么办|怎么做|怎么解决|建议|需要注意|如何应对/i.test(rawQ)) intent = 'action';
+  else if (/ทำไม|เพราะอะไร|ติดอะไร|ติดตรงไหน|ติดขัดอะไร|เกิดจาก|สาเหตุ|อะไร(?:ฉุด|ขวาง|ทำให้)|ปมอยู่ที่|why\b|what is blocking|reason|cause|为什么|原因|卡在哪里|怎么会这样/i.test(rawQ)) intent = 'why';
+  else if (!/^(?:ช่วย)?ดูดวง(?:ให้หน่อย)?(?:ได้ไหม)?[?!.\s]*$/i.test(rawQ) && /สำเร็จไหม|รอดไหม|รอดมั้ย|ได้ไหม|ได้มั้ย|สมหวังไหม|รุ่งหรือเสี่ยง|เสี่ยงไหม|มีโอกาส.*?(?:ไหม|มั้ย|ป่าว|เปล่า|ปล่าว)|ได้หรือ(?:เปล่า|ป่าว|ปล่าว|ไม่|ยัง)|เป็นไปได้ไหม|จะ.*?(?:ได้ไหม|ได้มั้ย|ได้ป่าว|ได้หรือเปล่า|ได้หรือป่าว|ได้หรือปล่าว)|(?:จะได้|จะผ่าน|จะติด|จะรุ่ง|จะปัง|จะรอด|จะทัน|จะคุ้ม|จะสำเร็จ|จะสมหวัง|จะขายได้|จะขายออก|จะกู้ผ่าน|จะทัก|จะติดต่อ|จะตอบ|จะง้อ|จะคืนดี|มีเกณฑ์).*?(?:ไหม|มั้ย|ป่าว|เปล่า|ปล่าว)|เก็บเงิน.*?(?:ไหม|มั้ย|ป่าว|เปล่า)|ปังไหม|เวิร์คไหม|ผ่านไหม|ติดไหม|ทันไหม|ดีขึ้นไหม|จะดีไหม|will it work|will i succeed|chances|possible|achieve|pass|improve|能成吗|顺利吗|有机会吗|做得到吗|实现吗|会变好吗|过得去吗/i.test(rawQ)) intent = 'outcome';
 
   const isSpecificGeneral = /(จุดบอด|บทเรียน|สรุปสำรับ|โอกาส.*เดือน|ความฝัน|ทิศทางชีวิต|blind spot|biggest lesson)/i.test(rawQ);
   const isBroadOpen = rawQ.length > 0 && rawQ.length <= 36 && !isEllipticalFollowUp && !isSpecificGeneral
     && ((subDomain === 'general' && intent === 'explain')
-      || /^(?:ดูดวง(?:ให้หน่อย)?|ช่วยดู(?:ให้หน่อย)?|ช่วงนี้.*(?:เป็นไง|ยังไง)|ชีวิต.*(?:เป็นไง|ยังไง)|ทายให้หน่อย|today|how.?s my life|general reading|看运势|最近怎么样|看看总体)[?!.\s]*$/i.test(rawQ));
+      || /^(?:ดูดวง(?:ให้หน่อย)?|ช่วยดู(?:ให้หน่อย)?|ช่วงนี้.*(?:เป็นไง|ยังไง)(?:บ้าง|มั่ง|นะ)?|ชีวิต.*(?:เป็นไง|ยังไง)(?:บ้าง|มั่ง|นะ)?|ทายให้หน่อย|today|how.?s my life|general reading|看运势|最近怎么样|看看总体)[?!.\s]*$/i.test(rawQ));
 
   return { topic, subDomain, intent, isBroadOpen, isElliptical: isEllipticalFollowUp };
 }
@@ -1224,36 +1241,15 @@ function computeSpreadScore(cards) {
   return score >= 1 ? 'favorable' : score < 0 ? 'caution' : 'balanced';
 }
 
-function estimateTimingFromCard(card, lang = 'th') {
-  const n = card.name || '';
+function estimateTimingFromCard(card, lang = 'th', options = {}) {
+  const prof = getDecanTimingProfile(card, { lang, referenceDate: options?.referenceDate });
+  if (prof?.windowText) return prof.windowText;
   const target = normalizeLang(lang);
-  if (target === 'en') {
-    if (/Ace|Two|Three|Eight of Wands|Knight of Wands|Knight of Swords/.test(n)) return 'fairly soon — early signs or answers tend to show within 1 to 3 weeks.';
-    if (/Eight|Nine|Ten/.test(n)) return 'near the closing stretch of this cycle — roughly 2 to 6 weeks to wrap up or shift phase.';
-    if (card.suit === 'Major') return 'less tied to a calendar date than to your move — things unlock within about a month once you commit clearly.';
-    if (card.suit === 'Pentacles') return 'takes steady grounding over 2 to 4 months before solid numbers appear.';
-    return 'likely becomes noticeably clearer over the next 1 to 2 months as you follow through.';
-  }
-  if (target === 'zh') {
-    if (/Ace|Two|Three|Eight of Wands|Knight of Wands|Knight of Swords/.test(n)) return '节奏比较快，大约 1 到 3 周内就会看到明确信号或回应。';
-    if (/Eight|Nine|Ten/.test(n)) return '已接近这波周期的收官阶段，大约 2 到 6 周会有个落点或转换。';
-    if (card.suit === 'Major') return '重点不只看日历，而在于你什么时候真正改变做法——通常跨出实际一步后的 1 个月内就能松动。';
-    if (card.suit === 'Pentacles') return '属于慢工细活，需要扎实耕耘约 2 到 4 个月才会看见实打实的数字回报。';
-    return '随着你持续沟通推进，大概在 1 到 2 个月内就会越来越明朗。';
-  }
-  if (/Ace|Two|Three|Eight of Wands|Knight of Wands|Knight of Swords/.test(n)) {
-    return 'ค่อนข้างไว ประมาณ 1-3 สัปดาห์นี้เริ่มเห็นสัญญาณหรือคำตอบชัดแล้ว';
-  }
-  if (/Eight|Nine|Ten/.test(n)) {
-    return 'อยู่ในช่วงโค้งสุดท้ายของรอบนี้ ประมาณ 2-6 สัปดาห์จะสรุปจบหรือเปลี่ยนเฟส';
-  }
-  if (card.suit === 'Major') {
-    return 'ไม่ได้ขึ้นกับปฏิทินอย่างเดียว แต่จะปลดล็อกทันทีภายใน 1 เดือนนับจากวันที่กล้าเปลี่ยนวิธีคิดหรือลงมือจริง';
-  }
-  if (card.suit === 'Pentacles') {
-    return 'ต้องใช้เวลาวางฐานจริงจังราว 2-4 เดือนถึงจะเห็นผลลัพธ์ที่เป็นตัวเลขชัดเจน';
-  }
-  return 'ค่อยๆ เห็นชัดภายใน 1-2 เดือนนี้ตามจังหวะที่คุยและลงมือทำ';
+  return target === 'en'
+    ? 'becomes noticeably clearer over the next 1 to 2 months as you follow through.'
+    : target === 'zh'
+      ? '随着持续推进，大约 1 到 2 个月内就会越来越明朗。'
+      : 'ค่อยๆ เห็นชัดภายใน 1-2 เดือนนี้ตามจังหวะที่คุยและลงมือทำ';
 }
 
 function selectRelevantNatalIndices(topic, intent, q) {
@@ -1293,7 +1289,7 @@ function getRecentSatiTexts(state, limit = 2) {
     .map((h) => String(h.text || ''));
 }
 
-function buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed = 0, recentTexts = [], subDomain = '') {
+function buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed = 0, recentTexts = [], subDomain = '', qProfile = null) {
   const lbl = (c) => getLocalizedCardLabelInline(c, lang);
   const mean = (c) => getCardMeaningForTopic(c, topic, lang, subDomain);
   let story = '';
@@ -1403,9 +1399,18 @@ function buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, nata
     else if (lang === 'zh') story += ` 而且${getLocalizedCardShortName(outcomeCard, 'zh')}正好与你最初的本命牌重合，可见这是眼下关键课题。`;
     else story += ` อีกอย่างคือ ${outcomeCard.th} ซ้ำกับไพ่พื้นดวงตอนแรกของ${nick}พอดี แปลว่านี่คือบทเรียนหลักรอบนี้เลย`;
   }
-  const revFocus = outcomeCard?.reversed ? outcomeCard : refCards.find((c) => Boolean(c?.reversed));
+  const revFocusIdx = outcomeCard?.reversed ? refCards.length - 1 : refCards.findIndex((c) => Boolean(c?.reversed));
+  const revFocus = revFocusIdx >= 0 ? refCards[revFocusIdx] : null;
   if (revFocus) {
-    const revNuance = getReversedEnergyNuance(revFocus, lang);
+    const revNeighbors = [refCards[revFocusIdx - 1], refCards[revFocusIdx + 1]].filter(Boolean);
+    const revDiag = diagnoseReversedCard(revFocus, {
+      lang,
+      posIndex: revFocusIdx,
+      totalCards: refCards.length,
+      neighborCards: revNeighbors,
+      questionProfile: qProfile || { topic, subDomain }
+    });
+    const revNuance = revDiag?.constructiveReframe || getReversedEnergyNuance(revFocus, lang);
     if (revNuance) {
       if (lang === 'zh') story += `（逆位提示：${stripZhEnd(revNuance)}）`;
       else if (lang === 'en') story += ` (${stripEnEnd(revNuance)})`;
@@ -1666,12 +1671,22 @@ function buildPsychMirrorClause(user, refCards, spreadTone, nick, lang, turnSeed
   return { short: '', deep: '' };
 }
 
-function assembleBalancedReply(verdict, cardStory, actionAdvice, subtext, psychMirror, fallbackPrefix, isRepeat, lang) {
+function assembleBalancedReply(verdict, cardStory, actionAdvice, subtext, psychMirror, fallbackPrefix, isRepeat, lang, thaiAstroCue = '') {
   const sep = lang === 'zh' ? '——' : ' — ';
   const fullP1 = `${subtext.shortLead}${verdict}`;
-  const fullP3 = psychMirror.short
-    ? `${psychMirror.short}${sep}${actionAdvice}`
+  const cleanAstro = String(thaiAstroCue || '').trim();
+  const baseMirror = psychMirror.short || '';
+  const richMirror = baseMirror && cleanAstro ? `${baseMirror} (${cleanAstro})` : baseMirror;
+  const fullP3Rich = richMirror
+    ? `${richMirror}${sep}${actionAdvice}`
+    : `${fallbackPrefix}${actionAdvice}${cleanAstro ? ` (${cleanAstro})` : ''}`;
+  const fullP3 = baseMirror
+    ? `${baseMirror}${sep}${actionAdvice}`
     : `${fallbackPrefix}${actionAdvice}`;
+
+  if (cleanAstro && `${fullP1}\n\n${cardStory}\n\n${fullP3Rich}`.length <= 542) {
+    return `${fullP1}\n\n${cardStory}\n\n${fullP3Rich}`;
+  }
   const full = `${fullP1}\n\n${cardStory}\n\n${fullP3}`;
   if (full.length <= 542) return full;
 
@@ -1680,6 +1695,9 @@ function assembleBalancedReply(verdict, cardStory, actionAdvice, subtext, psychM
     if (leadFallback.length <= 545) return leadFallback;
   }
 
+  if (cleanAstro && `${verdict}\n\n${cardStory}\n\n${fullP3Rich}`.length <= 542) {
+    return `${verdict}\n\n${cardStory}\n\n${fullP3Rich}`;
+  }
   const noLead = `${verdict}\n\n${cardStory}\n\n${fullP3}`;
   if (noLead.length <= 542) return noLead;
 
@@ -1693,13 +1711,87 @@ function assembleBalancedReply(verdict, cardStory, actionAdvice, subtext, psychM
   return finalStr.length < 550 ? finalStr : `${finalStr.slice(0, 546).trimEnd()}...`;
 }
 
-export function synthesizeDeepReply(state, question, cards) {
+function stripCardPhrasesForChat(text) {
+  return String(text || '')
+    .replace(/(?:ผ่านไพ่ชุดนี้|ในไพ่ชุดนี้|จากหน้าไพ่ชุดนี้)/g, 'จากจังหวะตรงนี้')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function assembleFollowUpReply(verdict, cardStory, actionAdvice, keyWarnCard, refCards, q, topic, subDomain, intent, options, lang, nick) {
+  const depth = Number(options?.sameSpreadFollowUpDepth) || 1;
+  const asksCard = /(ไพ่ใบไหน|ใบไหนบอก|ใบไหนชี้|ดูจากใบไหน|ไพ่ชื่อ|which card|what card|name the card|哪张牌)/i.test(String(q || ''));
+  const nuanceRaw = getCardMeaningForTopic(keyWarnCard, topic, lang, subDomain)
+    || getLocalizedCardData(keyWarnCard, lang)?.core
+    || '';
+  const cleanNuance = String(nuanceRaw || '').replace(/\s+/g, ' ').trim();
+
+  if (options?.isSameSpreadFollowUp) {
+    const baseVerdict = stripCardPhrasesForChat(verdict).replace(/[.。]+$/, '').trim();
+    const parts = [baseVerdict];
+
+    if (cleanNuance && !baseVerdict.includes(cleanNuance.slice(0, 18))) {
+      const cardTag = asksCard && keyWarnCard?.name
+        ? (lang === 'en' ? `(${keyWarnCard.name}) ` : lang === 'zh' ? `（${keyWarnCard.name}）` : `(ตัวชี้หลักคือ ${keyWarnCard.name}) `)
+        : '';
+      const nuancePrefix = lang === 'en' ? '' : lang === 'zh' ? '' : 'ตรงจุดนี้เห็นชัดว่า';
+      parts.push(`${cardTag}${nuancePrefix}${cleanNuance}`.replace(/^[.。\s]+|[.。\s]+$/g, ''));
+    } else if (asksCard && keyWarnCard?.name) {
+      parts.push(
+        lang === 'en'
+          ? `Key card here is ${keyWarnCard.name}.`
+          : lang === 'zh'
+            ? `最关键指向这张的是 ${keyWarnCard.name}。`
+            : `ใบที่ชี้จุดนี้ตรงสุดคือ ${keyWarnCard.name}`
+      );
+    }
+
+    if (intent === 'action' && actionAdvice) {
+      parts.push(String(actionAdvice).replace(/[.。]+$/, '').trim());
+    }
+
+    if (depth >= 3) {
+      parts.push(
+        lang === 'en'
+          ? `If you want to zoom in deeper than this spread covers, you can draw 1-3 extra cards ${nick}.`
+          : lang === 'zh'
+            ? `如果想往当前牌面之外再追深一点，随时补抽 1 到 3 张牌就行。`
+            : `ถ้าอยากเจาะมุมย่อยที่ลึกกว่าไพ่ชุดเดิม กดจั่วเพิ่ม 1-3 ใบได้นะ${nick}`
+      );
+    }
+
+    const sep = lang === 'zh' ? '。' : lang === 'en' ? '. ' : ' ';
+    let onePara = parts.filter(Boolean).join(sep).replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    if (onePara.length > 315) {
+      onePara = `${onePara.slice(0, 312).trimEnd()}...`;
+    }
+    return onePara;
+  }
+
+  // expand_draw mode: concise 1-2 short paragraphs focusing directly on the new card(s)
+  const cleanVerdict = String(verdict || '').trim();
+  const cleanStory = String(cardStory || '').trim();
+  const cleanAdvice = String(actionAdvice || '').trim();
+  const bodyP2 = cleanAdvice && intent === 'action' && cleanStory.length + cleanAdvice.length < 260
+    ? `${cleanStory} ${cleanAdvice}`
+    : cleanStory;
+  let twoPara = bodyP2 ? `${cleanVerdict}\n\n${bodyP2}` : cleanVerdict;
+  if (twoPara.length > 415) {
+    const budget = Math.max(80, 412 - cleanVerdict.length - 4);
+    const trimmedStory = cleanStory.length > budget ? `${cleanStory.slice(0, Math.max(0, budget - 3)).trimEnd()}...` : cleanStory;
+    twoPara = `${cleanVerdict}\n\n${trimmedStory}`;
+  }
+  return twoPara.length <= 418 ? twoPara : `${twoPara.slice(0, 415).trimEnd()}...`;
+}
+
+export function synthesizeDeepReply(state, question, cards, options = {}) {
   const lang = normalizeLang(state.lang);
   const nick = state.user.nickname || (lang === 'en' ? 'my friend' : lang === 'zh' ? '朋友' : 'เพื่อน');
   const q = (question || '').trim();
   const recentTexts = getRecentSatiTexts(state, 2);
   const turnSeed = (Array.isArray(state?.chatHistory) ? state.chatHistory.length : 0) + (Number(state?.deckNumber) || 1);
   const { topic, subDomain, intent, isBroadOpen } = detectTopicAndIntent(q, state.lastTopic);
+  const qProfile = { topic, subDomain, intent, rawQuestion: q };
   const isRepeat = isRepeatedTopicIntent(state, q, topic, intent);
   state.lastTopic = topic;
 
@@ -1745,6 +1837,15 @@ export function synthesizeDeepReply(state, question, cards) {
   const actionAdvice = calibClause ? `${rawActionAdvice}${calibClause}` : rawActionAdvice;
   const subtext = buildSubtextHook(intent, topic, isRepeat, nick, lang);
   const psychMirror = buildPsychMirrorClause(state.user, refCards, spreadTone, nick, lang, turnSeed, recentTexts);
+  const thaksaFocus = selectDomainThaksaFocus(
+    state.user,
+    state.user?.annualThaksa || null,
+    qProfile,
+    { lang, cards: refCards, isNatal10: cards?.length === 10 }
+  );
+  const rawThaiCue = thaksaFocus?.shortOfflineClause || '';
+  const thaiAstroCue = rawThaiCue && !recentTexts.join(' ').includes(rawThaiCue.slice(0, 22)) ? rawThaiCue : '';
+  const isContactReturnQ = topic === 'love' && /ทัก|ติดต่อ|ตอบ|กลับมา|ง้อ|คืนดี|reconcil|text|reach out|contact|come back|联系|复合|回来/i.test(q);
 
   if (lang === 'en' || lang === 'zh') {
     const isEn = lang === 'en';
@@ -1773,6 +1874,12 @@ export function synthesizeDeepReply(state, question, cards) {
         : (spreadTone === 'favorable')
           ? (isEn ? `Yes, go for it, ${nick} — the cards give you more backing than risk here.` : `可以去推进，${nick}——这组牌给你的支撑远大于风险。`)
           : (isEn ? `You can move forward, ${nick}, just lock down clear boundaries before committing fully.` : `这件事能做，${nick}，先把防踩坑的边界和条件立清楚就行。`);
+    } else if (isContactReturnQ && (intent === 'outcome' || intent === 'other_person')) {
+      verdict = (spreadTone === 'favorable' && outcomeTone !== 'caution')
+        ? (isEn ? `There is a real opening for renewed contact, ${nick} — the tie still holds warmth once the air feels safe.` : `对方主动联系或回头聊开的几率偏高，${nick}——心里仍有牵挂，只是在等氛围平稳。`)
+        : (spreadTone === 'caution' || outcomeTone === 'caution')
+          ? (isEn ? `Contact looks quiet for now, ${nick} — lingering tension keeps their guard up, so do not force a chase.` : `近期主动联系或回头的信号偏弱，${nick}——对方防备和心结未散，先别急着追问。`)
+          : (isEn ? `Contact sits fifty-fifty right now, ${nick} — calm space gives them room to reach out without pressure.` : `目前联系或回头的几率一半一半，${nick}——先留出轻松不施压的空间更有机会开口。`);
     } else if (intent === 'other_person') {
       const midWarn = refCards.find((c) => scoreCardPolarity(c) === 'caution');
       const isFamilyTopic = subDomain === 'family' || /family|parent|mom|dad|家庭|父母|爸妈/i.test(q);
@@ -1923,12 +2030,16 @@ export function synthesizeDeepReply(state, question, cards) {
       }
     }
 
-    const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed, recentTexts, subDomain);
+    const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, lang, turnSeed, recentTexts, subDomain, qProfile);
     const fallbackPrefix = isEn
       ? pickFreshVariant([`My honest advice right now, ${nick} — `, `One grounded step now, ${nick} — `], turnSeed, recentTexts)
       : pickFreshVariant([`眼下最实在的提醒，${nick}——`, `当下最稳的落脚点，${nick}——`], turnSeed, recentTexts);
 
-    return assembleBalancedReply(verdict, cardStory, actionAdvice, subtext, psychMirror, fallbackPrefix, isRepeat, lang);
+    if (options?.isSameSpreadFollowUp || options?.isExpandFollowUp) {
+      return assembleFollowUpReply(verdict, cardStory, actionAdvice, keyWarnCard, refCards, q, topic, subDomain, intent, options, lang, nick);
+    }
+
+    return assembleBalancedReply(verdict, cardStory, actionAdvice, subtext, psychMirror, fallbackPrefix, isRepeat, lang, thaiAstroCue);
   }
 
   // Warm, direct, natural Thai tarot conversation (zero bullet dumps or duplicated meanings)
@@ -1952,9 +2063,15 @@ export function synthesizeDeepReply(state, question, cards) {
       : (spreadTone === 'favorable')
         ? `ลุยได้เลยนะ${nick} หน้าไพ่ชุดนี้เปิดทางให้มากกว่าความเสี่ยงแล้ว`
         : `ทำได้อยู่นะ${nick} แต่ต้องวางเงื่อนไขกันพลาดให้รัดกุมก่อนค่อยขยับ`;
+  } else if (isContactReturnQ && (intent === 'outcome' || intent === 'other_person')) {
+    verdict = (spreadTone === 'favorable' && outcomeTone !== 'caution')
+      ? `มีเกณฑ์ได้ทักทายหรือวนกลับมาคุยกันนะ${nick} ใจเขายังมีสายใยอยู่แต่รอจังหวะที่บรรยากาศนิ่งพอ`
+      : (spreadTone === 'caution' || outcomeTone === 'caution')
+        ? `ช่วงนี้โอกาสทักกลับมายังชะลออยู่นะ${nick} เขายังติดกำแพงหรือปมในใจ อย่าเพิ่งเร่งรุกตอนนี้`
+        : `โอกาสติดต่อกลับมายังครึ่งๆ นะ${nick} อยู่ที่การเว้นระยะให้สบายใจโดยไม่กดดันให้อีกฝ่ายตั้งการ์ด`;
   } else if (intent === 'other_person') {
     const midWarn = refCards.find((c) => scoreCardPolarity(c) === 'caution');
-    const isFamilyTopic = subDomain === 'family' || /ครอบครัว|พ่อแม่|แม่|พ่อ|ญาติ|พี่น้อง/.test(q);
+    const isFamilyTopic = subDomain === 'family' || /ครอบครัว|ที่บ้าน|ทางบ้าน|พ่อแม่|แม่|พ่อ|ญาติ|พี่น้อง/.test(q);
     const isProTopic = !isFamilyTopic && (topic === 'work' || topic === 'money' || /เจ้านาย|หัวหน้า|ลูกค้า|เพื่อนร่วมงาน|ทีม|หุ้นส่วน|บริษัท|ผู้ใหญ่/.test(q));
     if (isFamilyTopic) {
       verdict = (outcomeTone === 'caution' || spreadTone === 'caution')
@@ -1980,11 +2097,25 @@ export function synthesizeDeepReply(state, question, cards) {
       verdict = `ตอนนี้เขายังรอดูท่าทีและชั่งใจอยู่${nick} ไม่ได้ตัดใจแต่ก็ยังไม่พุ่งเข้ามาเต็มตัว`;
     }
   } else if (intent === 'outcome') {
-    verdict = (spreadTone === 'favorable' && outcomeTone !== 'caution')
-      ? `มีโอกาสสำเร็จสูงเลยนะ${nick} จังหวะเปิดรับความตั้งใจของ${nick}อยู่แล้ว`
-      : (spreadTone === 'caution' || outcomeTone === 'caution')
-        ? `ถ้าใช้วิธีเดิมมีเกณฑ์สะดุดสูงนะ${nick} ต้องแก้จุดที่ไพ่เตือนก่อนถึงจะผ่าน`
-        : `โอกาสยังออก 50/50 นะ${nick} อยู่ที่ความสม่ำเสมอและการคุมจังหวะของ${nick}เอง`;
+    if (subDomain === 'study') {
+      verdict = (spreadTone === 'favorable' && outcomeTone !== 'caution')
+        ? `เรื่องเรียนหรือการสอบรอบนี้มีเกณฑ์ผ่านตามเป้าสูงเลยนะ${nick} แนวโน้มเข้าทางความตั้งใจที่เตรียมมา`
+        : (spreadTone === 'caution' || outcomeTone === 'caution')
+          ? `ถ้าทวนแบบเดิมยังเสี่ยงสะดุดจุดพลาดนะ${nick} รีบอุดเนื้อหาที่ยังไม่แม่นก่อนสอบ`
+          : `โอกาสสอบผ่านยังกึ่งๆ 50/50 นะ${nick} อยู่ที่การเก็บรายละเอียดและทำโจทย์สม่ำเสมอ`;
+    } else if (subDomain === 'family') {
+      verdict = (spreadTone === 'favorable' && outcomeTone !== 'caution')
+        ? `เรื่องในบ้านมีเกณฑ์ลงตัวและคุยกันเข้าใจง่ายขึ้นเลยนะ${nick}`
+        : (spreadTone === 'caution' || outcomeTone === 'caution')
+          ? `เรื่องในครอบครัวตอนนี้ยังติดความกังวลกันอยู่บ้างนะ${nick} ค่อยๆ คุยให้เห็นเจตนาตรงกันก่อน`
+          : `เรื่องในบ้านยังพอตกลงกันได้นะ${nick} อยู่ที่จังหวะรับฟังกันด้วยความใจเย็น`;
+    } else {
+      verdict = (spreadTone === 'favorable' && outcomeTone !== 'caution')
+        ? `มีโอกาสสำเร็จสูงเลยนะ${nick} จังหวะเปิดรับความตั้งใจของ${nick}อยู่แล้ว`
+        : (spreadTone === 'caution' || outcomeTone === 'caution')
+          ? `ถ้าใช้วิธีเดิมมีเกณฑ์สะดุดสูงนะ${nick} ต้องแก้จุดที่ไพ่เตือนก่อนถึงจะผ่าน`
+          : `โอกาสยังออก 50/50 นะ${nick} อยู่ที่ความสม่ำเสมอและการคุมจังหวะของ${nick}เอง`;
+    }
   } else if (intent === 'timing') {
     verdict = `เรื่องจังหวะเวลาที่${nick}ถาม: ${estimateTimingFromCard(outcomeCard, 'th')}`;
   } else if (intent === 'why') {
@@ -1994,11 +2125,15 @@ export function synthesizeDeepReply(state, question, cards) {
       `จุดที่สะดุดจริงไม่ได้อยู่ที่โชค แต่อยู่ตรงรายละเอียดในไพ่ชุดนี้แหละ${nick}`
     ], turnSeed, recentTexts);
   } else if (intent === 'action') {
-    verdict = pickFreshVariant([
-      `ถ้าถามว่าควรขยับยังไงต่อดี ลองดูมุมจากหน้าไพ่ที่เปิดมาตรงนี้เลยนะ${nick}`,
-      `แนวทางรับมือที่คุมความเสี่ยงได้จริงตอนนี้ เปิดชัดผ่านไพ่ชุดนี้แล้วนะ${nick}`,
-      `วิธีเดินต่อให้ไม่เสียเปรียบในจังหวะนี้ ไพ่ชี้หมุดไว้ตรงๆ เลย${nick}`
-    ], turnSeed, recentTexts);
+    if (subDomain === 'family') {
+      verdict = `เรื่องคุยกับที่บ้านรอบนี้ ค่อยๆ เปิดใจแบบรับฟังความห่วงใยก่อนนะ${nick} แล้วค่อยวางแผนให้เห็นเป็นรูปธรรม`;
+    } else {
+      verdict = pickFreshVariant([
+        `ถ้าถามว่าควรขยับยังไงต่อดี ลองดูมุมจากหน้าไพ่ที่เปิดมาตรงนี้เลยนะ${nick}`,
+        `แนวทางรับมือที่คุมความเสี่ยงได้จริงตอนนี้ เปิดชัดผ่านไพ่ชุดนี้แล้วนะ${nick}`,
+        `วิธีเดินต่อให้ไม่เสียเปรียบในจังหวะนี้ ไพ่ชี้หมุดไว้ตรงๆ เลย${nick}`
+      ], turnSeed, recentTexts);
+    }
   } else {
     const explainTone = (spreadTone === 'favorable' && outcomeTone !== 'caution')
       ? 'favorable'
@@ -2065,7 +2200,7 @@ export function synthesizeDeepReply(state, question, cards) {
     }
   }
 
-  const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, 'th', turnSeed, recentTexts, subDomain);
+  const cardStory = buildConnectedCardStory(refCards, topic, outcomeCard, outcomeTone, natalCard, nick, 'th', turnSeed, recentTexts, subDomain, qProfile);
   const adviceText = actionAdvice || 'ตั้งหลักดูข้อมูลจริงตรงหน้าแล้วลงมือทีละขั้น';
   const fallbackPrefix = pickFreshVariant([
     `จังหวะนี้สติฝากไว้ตรงๆ นะ${nick} — `,
@@ -2075,7 +2210,11 @@ export function synthesizeDeepReply(state, question, cards) {
     `ก้าวถัดไปที่${nick}คุมเองได้ทันที — `
   ], turnSeed, recentTexts);
 
-  return assembleBalancedReply(verdict, cardStory, adviceText, subtext, psychMirror, fallbackPrefix, isRepeat, 'th');
+  if (options?.isSameSpreadFollowUp || options?.isExpandFollowUp) {
+    return assembleFollowUpReply(verdict, cardStory, adviceText, keyWarnCard, refCards, q, topic, subDomain, intent, options, 'th', nick);
+  }
+
+  return assembleBalancedReply(verdict, cardStory, adviceText, subtext, psychMirror, fallbackPrefix, isRepeat, 'th', thaiAstroCue);
 }
 
 export function buildDeckCarryoverSummary(state, lang = state?.lang || 'th') {
@@ -2322,11 +2461,19 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
   }
   const fallbackReply = isNatal10
     ? buildNatal10Reading(state, cards)
-    : synthesizeDeepReply(state, question, cards);
+    : synthesizeDeepReply(state, question, cards, {
+        isExpandFollowUp: Boolean(extra?.isExpandFollowUp),
+        isSameSpreadFollowUp: Boolean(extra?.isSameSpreadFollowUp),
+        sameSpreadFollowUpDepth: Number(extra?.sameSpreadFollowUpDepth) || 0
+      });
 
   const spreadPatterns = analyzeSpreadPatterns(cards, lang);
   const pastSessionMemory = buildCrossSessionMemorySummary(state?.sessionArchives || [], lang);
-  const astroIntersection = computeAstroCardIntersection(state?.user, cards, lang);
+  const qProfileWithRaw = { ...questionProfile, rawQuestion: qText };
+  const astroIntersection = computeAstroCardIntersection(state?.user, cards, lang, {
+    questionProfile: qProfileWithRaw,
+    isNatal10
+  });
   const recentWindow = scopedHist.slice(-14);
   const earlierContextDigest = buildEarlierContextDigest(hist, 14);
   state.earlierContextDigest = earlierContextDigest;
@@ -2337,6 +2484,11 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
   const spreadPositions = Array.isArray(extra?.spreadPositions) && extra.spreadPositions.length === cards.length
     ? extra.spreadPositions
     : (spread3Info ? spread3Info.positions : null);
+  const causalDynamics = analyzeSpreadCausalDynamics(cards, {
+    lang,
+    questionProfile: qProfileWithRaw,
+    spreadPositions
+  })?.promptSummary || '';
 
   const requestBody = {
     lang,
@@ -2346,8 +2498,10 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
     activeSpread: cards,
     cards,
     remainingCount: Array.isArray(state?.remainingDeck) ? state.remainingDeck.length : 0,
-    elementalDignity: computeElementalDignityInsight(cards, lang),
+    elementalDignity: computeElementalDignityInsight(cards, lang, { isNatal10 }),
     astroIntersection: astroIntersection?.summary || '',
+    domainThaksa: astroIntersection?.domainThaksa?.compactPromptBlock || '',
+    causalDynamics,
     spreadPatterns,
     pastSessionMemory,
     isNatal10,
@@ -2362,6 +2516,8 @@ export async function requestSatiReading(state, question, rawCards, isNatal10 = 
     earlierContextDigest,
     topicSwitchedFrom: extra?.topicSwitchedFrom || '',
     isExpandFollowUp: Boolean(extra?.isExpandFollowUp),
+    isSameSpreadFollowUp: Boolean(extra?.isSameSpreadFollowUp),
+    sameSpreadFollowUpDepth: Number(extra?.sameSpreadFollowUpDepth) || 0,
     question: qText,
     recentHistory: recentWindow
   };
@@ -2575,12 +2731,13 @@ function buildWhyCardSpeaksReason(card, posLabel, roleIndex, totalCount, isNatal
   return `ไพ่ใบนี้คือ${suitDesc} ซึ่ง${toneClause} — ${roleLine} เมื่อนำมาจับกับ${topicDesc} ภาพของ "${coreClean}" เลยแปลออกมาตรงกับคำถามนี้พอดี${gdNote}${revNote}`;
 }
 
-function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, intent, user, natalCard, nick, lang, astroIntersection = null) {
+function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, intent, user, natalCard, nick, lang, astroIntersection = null, subDomain = '', spreadPositions = null) {
   if (!primaryCards.length) return '';
   const refCards = primaryCards.map((item) => item.card);
   const outcomeItem = primaryCards[primaryCards.length - 1];
   const outcomeTone = outcomeItem.polarity;
   const spreadTone = computeSpreadScore(refCards);
+  const qProfile = { topic, subDomain: subDomain || topic, intent, rawQuestion: question };
   const storyLine = isNatal10
     ? (() => {
         const [p0, p1, p4, p5, p9] = [primaryCards[0], primaryCards[1], primaryCards[2], primaryCards[3], outcomeItem];
@@ -2592,15 +2749,20 @@ function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, i
         }
         return `${p0?.title || ''} ตั้งฐานสถานการณ์ปัจจุบัน โดยมี ${p1?.title || ''} เป็นโจทย์ที่ต้องแก้ ส่วนแกนงาน (${p4?.title || ''}) และเงิน (${p5?.title || ''}) วิ่งมาบรรจบกันที่ไพ่สรุป ${p9?.title || ''}`;
       })()
-    : buildConnectedCardStory(refCards, topic, outcomeItem.card, outcomeTone, natalCard, nick, lang);
+    : buildConnectedCardStory(refCards, topic, outcomeItem.card, outcomeTone, natalCard, nick, lang, 0, [], subDomain, qProfile);
 
   const subtextNote = !isNatal10 ? buildSubtextHook(intent, topic, false, nick, lang).deepSubtext : '';
   const psychNote = buildPsychMirrorClause(user, refCards, spreadTone, nick, lang).deep;
   const synergyNote = analyzeCardElementalSynergy(refCards, lang);
   const patternNote = analyzeSpreadPatterns(refCards, lang);
-  const dignityNote = computeElementalDignityInsight(refCards, lang);
-  const astroObj = astroIntersection || computeAstroCardIntersection(user, refCards, lang);
+  const dignityNote = computeElementalDignityInsight(refCards, lang, { isNatal10 });
+  const causal = analyzeSpreadCausalDynamics(refCards, { lang, questionProfile: qProfile, spreadPositions });
+  const causalNote = causal?.causalArcText || '';
+  const revNotes = (causal?.reversalDiagnoses || []).map((r) => r.promptLine).filter(Boolean).join(' · ');
+  const decanTimingNote = intent === 'timing' ? getDecanTimingProfile(outcomeItem.card, { lang }).summary : '';
+  const astroObj = astroIntersection || computeAstroCardIntersection(user, refCards, lang, { questionProfile: qProfile, isNatal10 });
   const astroNote = astroObj?.summary || '';
+  const thaksaDomainNote = astroObj?.domainThaksa?.compactPromptBlock || '';
   const qEcho = question
     ? (lang === 'en'
         ? `Tied back to your question "${question}": `
@@ -2608,7 +2770,7 @@ function buildDetailedConnectionText(primaryCards, isNatal10, question, topic, i
           ? `回到你问的“${question}”：`
           : `เชื่อมเข้าคำถาม "${question}": `)
     : '';
-  return [qEcho + storyLine, subtextNote, psychNote, synergyNote, patternNote, dignityNote, astroNote].filter(Boolean).join('\n\n');
+  return [qEcho + storyLine, subtextNote, psychNote, synergyNote, patternNote, dignityNote, causalNote, revNotes, decanTimingNote, astroNote, thaksaDomainNote].filter(Boolean).join('\n\n');
 }
 
 /**
@@ -2631,8 +2793,8 @@ export function buildReadingBreakdown(entry, prevUserText = '', state = {}, deck
 
   const natalHydrated = hydrateDeckCards(state.natalCards || []);
   const metaCards = entry?.meta?.cards?.length ? hydrateDeckCards(entry.meta.cards) : [];
-  const { topic, intent } = isNatal10
-    ? { topic: 'general', intent: 'explain' }
+  const { topic, subDomain, intent } = isNatal10
+    ? { topic: 'general', subDomain: 'general', intent: 'explain' }
     : detectTopicAndIntent(question, state.lastTopic);
 
   const celticLabels = getLocalizedCelticPositions(lang);
@@ -2658,7 +2820,7 @@ export function buildReadingBreakdown(entry, prevUserText = '', state = {}, deck
       title: revBadge ? `${data.title} ${revBadge}` : data.title,
       coreMeaning: data.core,
       topicFocusLabel: BREAKDOWN_COPY.topicLabel[cardTopic]?.[lang] || BREAKDOWN_COPY.topicLabel.general[lang],
-      topicMeaning: getCardMeaningForTopic(card, cardTopic, lang),
+      topicMeaning: getCardMeaningForTopic(card, cardTopic, lang, isNatal10 ? '' : subDomain),
       advice: data.advice,
       whyReason: buildWhyCardSpeaksReason(card, posLabel, roleIdx, totalCount, isNatal10, cardTopic, polarity, lang),
       isCited
@@ -2738,8 +2900,10 @@ export function buildReadingBreakdown(entry, prevUserText = '', state = {}, deck
 
   const outcomeCard = primaryCards[primaryCards.length - 1]?.card || fullSpreadCards[fullSpreadCards.length - 1]?.card;
   const natalCard = isNatal10 ? null : findMatchingNatalCard({ natalCards: natalHydrated }, topic, outcomeCard);
-  const astroIntersection = computeAstroCardIntersection(state.user, primaryCards.map((item) => item.card), lang);
-  const connectionText = buildDetailedConnectionText(primaryCards, isNatal10, question, topic, intent, state.user, natalCard, nick, lang, astroIntersection);
+  const qProfile = { topic, subDomain, intent, rawQuestion: question };
+  const astroIntersection = computeAstroCardIntersection(state.user, primaryCards.map((item) => item.card), lang, { questionProfile: qProfile, isNatal10 });
+  const spreadPositions = primaryCards.map((item) => item.posLabel);
+  const connectionText = buildDetailedConnectionText(primaryCards, isNatal10, question, topic, intent, state.user, natalCard, nick, lang, astroIntersection, subDomain, spreadPositions);
 
   return {
     isReading: true,

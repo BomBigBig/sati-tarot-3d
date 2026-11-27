@@ -219,6 +219,7 @@ const state = {
   activeSpreadTopic: '',
   pendingDrawTopic: '',
   pendingDrawIsExpand: false,
+  sameSpreadFollowUpCount: 0,
   userContextFacts: [],
   calibrationFeedback: [],
   earlierContextDigest: '',
@@ -1068,6 +1069,7 @@ async function finishPickingPhase() {
     state.natalCompleted = true;
     state.natalCards = [...state.activeSpread];
     state.activeSpreadTopic = '';
+    state.sameSpreadFollowUpCount = 0;
     state.savedNatalCards = state.natalCards.map((c) => serializeSpreadCardMeta(c));
     setSatiDialogue(t(state.lang, 'loadingNatalDialogue', state.user.fullname), 'moodLoadingNatal', false, true);
     const streamCtrl = createSatiStreamHandler('moodLoadingNatal');
@@ -1088,6 +1090,7 @@ async function finishPickingPhase() {
     state.pendingDrawQuestion = '';
     state.pendingDrawTopic = '';
     state.pendingDrawIsExpand = false;
+    state.sameSpreadFollowUpCount = 0;
     if (!q) {
       appendHistory(state.user.nickname, t(state.lang, 'drawFollowUpActionLabel', state.pickTargetCount), 'user', { isDrawAction: true });
     }
@@ -1158,6 +1161,7 @@ function triggerFollowUpDraw(count, _freeViaAd = false, expandPrevious = false) 
     }
   }
 
+  state.sameSpreadFollowUpCount = 0;
   enterPickingPhase(count, 'followup');
   setSatiDialogue(t(state.lang, 'waitPickFollowUpDialogue', count), 'moodWaitPick', false, false);
 }
@@ -1570,6 +1574,7 @@ window.addEventListener('DOMContentLoaded', () => {
     syncEntryModeUI();
     state.pendingDrawTopic = '';
     state.pendingDrawIsExpand = false;
+    state.sameSpreadFollowUpCount = 0;
     state.userContextFacts = Array.isArray(pendingSavedRecord.userContextFacts)
       ? pendingSavedRecord.userContextFacts
       : extractUserContextFacts(state.chatHistory, [], pendingSavedRecord.calibrationFeedback);
@@ -1645,6 +1650,7 @@ window.addEventListener('DOMContentLoaded', () => {
     state.activeSpreadTopic = '';
     state.pendingDrawTopic = '';
     state.pendingDrawIsExpand = false;
+    state.sameSpreadFollowUpCount = 0;
     state.userContextFacts = [];
     state.discardPile = [];
     state.chatHistory = [];
@@ -1734,6 +1740,7 @@ window.addEventListener('DOMContentLoaded', () => {
     state.activeSpreadTopic = '';
     state.pendingDrawTopic = '';
     state.pendingDrawIsExpand = false;
+    state.sameSpreadFollowUpCount = 0;
     state.userContextFacts = [];
     state.discardPile = [];
     state.chatHistory = [];
@@ -1813,6 +1820,7 @@ window.addEventListener('DOMContentLoaded', () => {
     state.activeSpreadTopic = '';
     state.pendingDrawTopic = '';
     state.pendingDrawIsExpand = false;
+    state.sameSpreadFollowUpCount = 0;
     state.userContextFacts = [];
     state.discardPile = [];
     state.chatHistory = [];
@@ -1994,6 +2002,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const pNew = detectTopicAndIntent(cleanQ, state.lastTopic);
     state.pendingDrawTopic = pNew.subDomain && pNew.subDomain !== 'general' ? pNew.subDomain : pNew.topic;
     state.pendingDrawIsExpand = false;
+    state.sameSpreadFollowUpCount = 0;
     state.pendingDrawQuestion = cleanQ;
     appendHistory(state.user.nickname, cleanQ, 'user');
     const chatInputEl = document.getElementById('chat-input');
@@ -2111,6 +2120,7 @@ window.addEventListener('DOMContentLoaded', () => {
     state.activeSpreadTopic = '';
     state.pendingDrawTopic = '';
     state.pendingDrawIsExpand = false;
+    state.sameSpreadFollowUpCount = 0;
     state.pendingDrawQuestion = '';
     engine3D.tuckNatalSpreadAway3D();
     engine3D.clearDiscardPile3D?.();
@@ -2208,6 +2218,7 @@ window.addEventListener('DOMContentLoaded', () => {
     state.activeSpreadTopic = '';
     state.pendingDrawTopic = '';
     state.pendingDrawIsExpand = false;
+    state.sameSpreadFollowUpCount = 0;
     state.userContextFacts = [];
     state.discardPile = [];
     state.pendingDrawQuestion = '';
@@ -2269,6 +2280,12 @@ window.addEventListener('DOMContentLoaded', () => {
       : (state.natalCards.length > 0 ? state.natalCards : state.activeSpread);
     const sourceWasNatal10 = state.natalCards.length > 0 && (state.activeSpread.length === 0 || isTopicSwitch);
     const topicSwitchedFrom = (isTopicSwitch && state.natalCards.length > 0) ? spreadDomain : '';
+    const isSameSpreadFollowUp = Boolean(!isTopicSwitch && refCards.length > 0);
+    if (isSameSpreadFollowUp) {
+      state.sameSpreadFollowUpCount = (Number(state.sameSpreadFollowUpCount) || 0) + 1;
+    } else {
+      state.sameSpreadFollowUpCount = 0;
+    }
 
     state.isThinking = true;
     renderSmartPromptChips();
@@ -2276,6 +2293,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const streamCtrl = createSatiStreamHandler('moodLoadingThink');
     const reply = await requestSatiReading(state, q, refCards, false, {
       topicSwitchedFrom,
+      isSameSpreadFollowUp,
+      sameSpreadFollowUpDepth: state.sameSpreadFollowUpCount,
       onChunk: streamCtrl.onChunk
     });
     streamCtrl.stop();
