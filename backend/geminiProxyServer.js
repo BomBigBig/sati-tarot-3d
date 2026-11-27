@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { GoogleGenAI } from '@google/genai';
 import { hydrateDeckCards } from '../src/data/tarot78.js';
 import { getLocalizedCardData } from '../src/data/tarot78I18n.js';
@@ -130,29 +131,67 @@ export function resetModelCooldownForTest() {
 }
 const READ_RATE_LIMIT_WINDOW_MS = 60_000;
 const READ_RATE_LIMIT_MAX = 20;
-const readRateBuckets = new Map();
+const STATE_RATE_LIMIT_MAX = 60;
+const FEEDBACK_RATE_LIMIT_MAX = 8;
+const MAX_STATE_RECORD_BYTES = 350_000;
+const MAX_STATE_ARCHIVES = 25;
+const MAX_STATE_CHAT_HISTORY = 120;
+const MAX_DB_ACCOUNTS = 500;
+const MAX_FEEDBACK_ENTRIES = 500;
+
+function createSlidingWindowLimiter(defaultLimit, defaultWindowMs) {
+  const buckets = new Map();
+  return {
+    check(ipKey, now = Date.now(), limit = defaultLimit, windowMs = defaultWindowMs) {
+      const key = String(ipKey || 'unknown').trim() || 'unknown';
+      if (buckets.size > 500) {
+        for (const [k, stamps] of buckets.entries()) {
+          const fresh = stamps.filter((t) => now - t < windowMs);
+          if (fresh.length === 0) buckets.delete(k);
+          else buckets.set(k, fresh);
+        }
+      }
+      const existing = (buckets.get(key) || []).filter((t) => now - t < windowMs);
+      if (existing.length >= limit) {
+        buckets.set(key, existing);
+        return { allowed: false, remaining: 0 };
+      }
+      existing.push(now);
+      buckets.set(key, existing);
+      return { allowed: true, remaining: Math.max(0, limit - existing.length) };
+    },
+    reset() {
+      buckets.clear();
+    }
+  };
+}
+
+const readLimiter = createSlidingWindowLimiter(READ_RATE_LIMIT_MAX, READ_RATE_LIMIT_WINDOW_MS);
+const stateLimiter = createSlidingWindowLimiter(STATE_RATE_LIMIT_MAX, READ_RATE_LIMIT_WINDOW_MS);
+const feedbackLimiter = createSlidingWindowLimiter(FEEDBACK_RATE_LIMIT_MAX, READ_RATE_LIMIT_WINDOW_MS);
 
 export function checkReadRateLimit(ipKey, now = Date.now(), limit = READ_RATE_LIMIT_MAX, windowMs = READ_RATE_LIMIT_WINDOW_MS) {
-  const key = String(ipKey || 'unknown').trim() || 'unknown';
-  if (readRateBuckets.size > 500) {
-    for (const [k, stamps] of readRateBuckets.entries()) {
-      const fresh = stamps.filter((t) => now - t < windowMs);
-      if (fresh.length === 0) readRateBuckets.delete(k);
-      else readRateBuckets.set(k, fresh);
-    }
-  }
-  const existing = (readRateBuckets.get(key) || []).filter((t) => now - t < windowMs);
-  if (existing.length >= limit) {
-    readRateBuckets.set(key, existing);
-    return { allowed: false, remaining: 0 };
-  }
-  existing.push(now);
-  readRateBuckets.set(key, existing);
-  return { allowed: true, remaining: Math.max(0, limit - existing.length) };
+  return readLimiter.check(ipKey, now, limit, windowMs);
 }
 
 export function resetReadRateLimitForTest() {
-  readRateBuckets.clear();
+  readLimiter.reset();
+}
+
+export function checkStateRateLimit(ipKey, now = Date.now(), limit = STATE_RATE_LIMIT_MAX, windowMs = READ_RATE_LIMIT_WINDOW_MS) {
+  return stateLimiter.check(ipKey, now, limit, windowMs);
+}
+
+export function resetStateRateLimitForTest() {
+  stateLimiter.reset();
+}
+
+export function checkFeedbackRateLimit(ipKey, now = Date.now(), limit = FEEDBACK_RATE_LIMIT_MAX, windowMs = READ_RATE_LIMIT_WINDOW_MS) {
+  return feedbackLimiter.check(ipKey, now, limit, windowMs);
+}
+
+export function resetFeedbackRateLimitForTest() {
+  feedbackLimiter.reset();
 }
 
 fs.mkdirSync(DB_DIR, { recursive: true });
@@ -210,35 +249,53 @@ function writeSseEvent(res, eventName, payload) {
   }
 }
 
-function readUsersDB() {
+export function sanitizeStateRecordForStorage(record) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return {};
+  const clean = { ...record };
+  if (Array.isArray(clean.sessionArchives) && clean.sessionArchives.length > MAX_STATE_ARCHIVES) {
+    clean.sessionArchives = clean.sessionArchives.slice(0, MAX_STATE_ARCHIVES);
+  }
+  if (Array.isArray(clean.chatHistory) && clean.chatHistory.length > MAX_STATE_CHAT_HISTORY) {
+    clean.chatHistory = clean.chatHistory.slice(-MAX_STATE_CHAT_HISTORY);
+  }
+  return clean;
+}
+
+export function pruneUsersDbMap(db, maxAccounts = MAX_DB_ACCOUNTS) {
+  if (!db || typeof db !== 'object') return {};
+  const entries = Object.entries(db);
+  if (entries.length <= maxAccounts) return db;
+  entries.sort((a, b) => {
+    const ta = Date.parse(a[1]?.updatedAt || 0) || 0;
+    const tb = Date.parse(b[1]?.updatedAt || 0) || 0;
+    return tb - ta;
+  });
+  return Object.fromEntries(entries.slice(0, maxAccounts));
+}
+
+function readJsonFileSafe(targetFile, fallback) {
   try {
-    if (fs.existsSync(DB_FILE)) {
-      return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    if (fs.existsSync(targetFile)) {
+      return JSON.parse(fs.readFileSync(targetFile, 'utf8'));
     }
   } catch {
-    // ignore corrupt file and reset
+    // ignore corrupt file and return fallback
   }
-  return {};
+  return fallback;
 }
 
-function writeUsersDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
-}
-
-function readFeedbackDB() {
+async function atomicWriteJsonFile(targetFile, data) {
+  const json = JSON.stringify(data, null, 2);
+  const dir = path.dirname(targetFile);
+  await fs.promises.mkdir(dir, { recursive: true });
+  const tmpFile = `${targetFile}.${process.pid}.${Date.now()}.tmp`;
+  await fs.promises.writeFile(tmpFile, json, 'utf8');
   try {
-    if (fs.existsSync(FEEDBACK_FILE)) {
-      const parsed = JSON.parse(fs.readFileSync(FEEDBACK_FILE, 'utf8'));
-      return Array.isArray(parsed) ? parsed : [];
-    }
+    await fs.promises.rename(tmpFile, targetFile);
   } catch {
-    // ignore corrupt feedback file
+    await fs.promises.writeFile(targetFile, json, 'utf8');
+    await fs.promises.unlink(tmpFile).catch(() => {});
   }
-  return [];
-}
-
-function writeFeedbackDB(list) {
-  fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(list, null, 2), 'utf8');
 }
 
 function escapeHtml(str) {
@@ -746,6 +803,60 @@ export async function handleSatiReadRequest(body, options = {}) {
 
 export function createSatiExpressApp(options = {}) {
   const app = express();
+  const usersDbFile = options.usersDbFile || DB_FILE;
+  const feedbackDbFile = options.feedbackDbFile || FEEDBACK_FILE;
+  let usersDbCache = null;
+  let feedbackDbCache = null;
+  let usersWriteQueue = Promise.resolve();
+  let feedbackWriteQueue = Promise.resolve();
+
+  const getUsersDb = () => {
+    if (!usersDbCache) {
+      const loaded = readJsonFileSafe(usersDbFile, {});
+      usersDbCache = loaded && typeof loaded === 'object' && !Array.isArray(loaded) ? loaded : {};
+    }
+    return usersDbCache;
+  };
+  const persistUsersDb = (snapshot) => {
+    usersDbCache = snapshot;
+    usersWriteQueue = usersWriteQueue
+      .catch(() => {})
+      .then(() => atomicWriteJsonFile(usersDbFile, snapshot));
+    return usersWriteQueue;
+  };
+
+  const getFeedbackDb = () => {
+    if (!feedbackDbCache) {
+      const loaded = readJsonFileSafe(feedbackDbFile, []);
+      feedbackDbCache = Array.isArray(loaded) ? loaded : [];
+    }
+    return feedbackDbCache;
+  };
+  const persistFeedbackDb = (snapshot) => {
+    feedbackDbCache = snapshot;
+    feedbackWriteQueue = feedbackWriteQueue
+      .catch(() => {})
+      .then(() => atomicWriteJsonFile(feedbackDbFile, snapshot));
+    return feedbackWriteQueue;
+  };
+
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+  });
+
+  app.use(compression({
+    filter: (req, res) => {
+      if (req.path === '/api/sati/read/stream' || req.path.endsWith('/stream')) {
+        return false;
+      }
+      return compression.filter(req, res);
+    }
+  }));
+
   app.use(cors());
   app.use(express.json({ limit: '2mb' }));
 
@@ -764,22 +875,36 @@ export function createSatiExpressApp(options = {}) {
   app.get('/api/sati/state', (req, res) => {
     const email = String(req.query.email || '').trim().toLowerCase();
     if (!email) return res.status(400).json({ error: 'Missing email parameter' });
-    const db = readUsersDB();
+    const db = getUsersDb();
     return res.json({ record: db[email] || null });
   });
 
-  app.post('/api/sati/state', (req, res) => {
+  app.post('/api/sati/state', async (req, res) => {
+    const clientIp = resolveClientIp(req);
+    const rl = checkStateRateLimit(clientIp);
+    if (!rl.allowed) {
+      return res.status(429).json({
+        error: 'RATE_LIMITED',
+        rateLimited: true
+      });
+    }
     const { email, record } = req.body || {};
-    const cleanEmail = String(email || '').trim().toLowerCase();
-    if (!cleanEmail || !record) {
+    const cleanEmail = String(email || '').trim().toLowerCase().slice(0, 120);
+    if (!cleanEmail || !record || typeof record !== 'object' || Array.isArray(record)) {
       return res.status(400).json({ error: 'Missing email or state record' });
     }
-    const db = readUsersDB();
-    db[cleanEmail] = {
-      ...record,
-      updatedAt: new Date().toISOString()
-    };
-    writeUsersDB(db);
+    const cleanRecord = sanitizeStateRecordForStorage(record);
+    if (Buffer.byteLength(JSON.stringify(cleanRecord), 'utf8') > MAX_STATE_RECORD_BYTES) {
+      return res.status(413).json({ error: 'STATE_TOO_LARGE' });
+    }
+    const db = pruneUsersDbMap({
+      ...getUsersDb(),
+      [cleanEmail]: {
+        ...cleanRecord,
+        updatedAt: new Date().toISOString()
+      }
+    });
+    await persistUsersDb(db);
     return res.json({ ok: true });
   });
 
@@ -960,7 +1085,7 @@ export function createSatiExpressApp(options = {}) {
   });
 
   app.get('/api/sati/feedback', (req, res) => {
-    const items = readFeedbackDB();
+    const items = getFeedbackDb();
     const count = items.length;
     const avgRating = count > 0
       ? Number((items.reduce((sum, item) => sum + (Number(item.rating) || 5), 0) / count).toFixed(1))
@@ -974,6 +1099,14 @@ export function createSatiExpressApp(options = {}) {
   });
 
   app.post('/api/sati/feedback', async (req, res) => {
+    const clientIp = resolveClientIp(req);
+    const rl = checkFeedbackRateLimit(clientIp);
+    if (!rl.allowed) {
+      return res.status(429).json({
+        error: 'RATE_LIMITED',
+        rateLimited: true
+      });
+    }
     const { nickname, rating, tags, comment, lang } = req.body || {};
     const cleanComment = String(comment || '').trim().slice(0, 1000);
     const cleanTags = Array.isArray(tags) ? tags.map((t) => String(t).trim()).filter(Boolean).slice(0, 6) : [];
@@ -991,14 +1124,13 @@ export function createSatiExpressApp(options = {}) {
       lang: String(lang || 'th').slice(0, 8),
       createdAt: new Date().toISOString()
     };
-    const list = readFeedbackDB();
-    list.unshift(entry);
-    writeFeedbackDB(list);
+    const nextList = [entry, ...getFeedbackDb()].slice(0, MAX_FEEDBACK_ENTRIES);
+    await persistFeedbackDb(nextList);
     const emailResult = await sendFeedbackNotificationEmail(entry);
     return res.json({
       ok: true,
       entry,
-      count: list.length,
+      count: nextList.length,
       emailSent: Boolean(emailResult.sent),
       ...(emailResult.sent ? {} : { emailReason: emailResult.reason })
     });
@@ -1006,10 +1138,24 @@ export function createSatiExpressApp(options = {}) {
 
   if (fs.existsSync(DIST_DIR)) {
     const indexHtmlPath = path.join(DIST_DIR, 'index.html');
-    app.use(express.static(DIST_DIR));
+    app.use(express.static(DIST_DIR, {
+      setHeaders: (res, filePath) => {
+        const norm = filePath.replace(/\\/g, '/');
+        if (norm.includes('/assets/')) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (norm.includes('/models/') || norm.includes('/images/') || norm.endsWith('/icon.svg')) {
+          res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+        } else if (norm.endsWith('.html') || norm.endsWith('.webmanifest')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      }
+    }));
     app.use((req, res, next) => {
       if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
-      if (fs.existsSync(indexHtmlPath)) return res.sendFile(indexHtmlPath);
+      if (fs.existsSync(indexHtmlPath)) {
+        res.setHeader('Cache-Control', 'no-cache');
+        return res.sendFile(indexHtmlPath);
+      }
       return next();
     });
   }

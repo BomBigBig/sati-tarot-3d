@@ -193,6 +193,285 @@ function drawShareTarotCardSlot(ctx, {
   ctx.fillText(titleWithBadge, cx + cardW / 2, cy + cardH + titleOffsetY, maxTextWidth);
 }
 
+const STORY_FOOTER_COPY = {
+  th: {
+    cta: 'ลองเปิดไพ่ของคุณฟรีที่ sati-tarot-3d.onrender.com',
+    subBadge: 'ไพ่ทาโรต์ 3 มิติ · ทักษาไทย · AI หมอดูสติ'
+  },
+  en: {
+    cta: 'Draw your own 3D tarot reading free at sati-tarot-3d.onrender.com',
+    subBadge: '3D Tarot · Thai Thaksa · Master Sati AI'
+  },
+  zh: {
+    cta: '免费体验思谛 3D 塔罗占卜 · sati-tarot-3d.onrender.com',
+    subBadge: '3D 立体塔罗 · 泰式命理 · 思谛 AI'
+  }
+};
+
+function renderStory9x16ShareCard({
+  targetLang,
+  copy,
+  user,
+  qLines,
+  cardsList,
+  isNatal10,
+  rLines,
+  timestamp
+}) {
+  const W = 1080;
+  const H = 1920;
+  const PAD = 58;
+  const INNER_W = W - PAD * 2;
+  const fontFamily = '"Noto Serif Thai", "Noto Serif SC", Georgia, serif';
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Deep Obsidian & Midnight Velvet Background Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, '#090b16');
+  bgGrad.addColorStop(0.45, '#13172e');
+  bgGrad.addColorStop(1, '#0b0d19');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  const radGlow = ctx.createRadialGradient(W / 2, 540, 40, W / 2, 540, 620);
+  radGlow.addColorStop(0, 'rgba(212, 175, 55, 0.16)');
+  radGlow.addColorStop(0.55, 'rgba(110, 72, 196, 0.10)');
+  radGlow.addColorStop(1, 'rgba(9, 11, 22, 0)');
+  ctx.fillStyle = radGlow;
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. Luxury Double Chamfered Antique Gold Border
+  ctx.save();
+  drawChamferRect(ctx, 22, 22, W - 44, H - 44, 24);
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.85)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  drawChamferRect(ctx, 32, 32, W - 64, H - 64, 20);
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.34)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  [[52, 52], [W - 52, 52], [52, H - 52], [W - 52, H - 52]].forEach(([sx, sy]) => {
+    drawStarEmblem(ctx, sx, sy, 9, 3.5, 4, '#d4af37');
+  });
+
+  // 3. Compact Luxury Story Header
+  drawStarEmblem(ctx, W / 2, 74, 16, 6, 8, '#f3d266');
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecda';
+  ctx.font = `700 40px ${fontFamily}`;
+  ctx.fillText('SATI · สำรับแห่งสติ', W / 2, 126);
+
+  ctx.fillStyle = '#d4af37';
+  ctx.font = `500 20px ${fontFamily}`;
+  ctx.fillText(STORY_FOOTER_COPY[targetLang]?.subBadge || STORY_FOOTER_COPY.th.subBadge, W / 2, 158);
+
+  const formattedTs = formatShareTimestamp(timestamp, targetLang);
+  const seekerLabel = [
+    user?.nickname ? `${copy.seekerPrefix} ${user.nickname}` : '',
+    user?.dayName || '',
+    user?.birthCard || '',
+    formattedTs
+  ].filter(Boolean).join('  ·  ');
+  ctx.fillStyle = '#c5c7d4';
+  ctx.font = `400 18px ${fontFamily}`;
+  ctx.fillText(seekerLabel, W / 2, 190, INNER_W);
+
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.42)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(PAD, 212);
+  ctx.lineTo(W / 2 - 22, 212);
+  ctx.moveTo(W / 2 + 22, 212);
+  ctx.lineTo(W - PAD, 212);
+  ctx.stroke();
+  drawStarEmblem(ctx, W / 2, 212, 7, 2.8, 4, '#d4af37');
+
+  // 4. Compact Question Plaque (max 3 lines with ellipsis)
+  let curY = 234;
+  const maxQLines = qLines.slice(0, 3);
+  if (qLines.length > 3 && maxQLines[2]) {
+    maxQLines[2] = `${maxQLines[2].slice(0, Math.max(8, maxQLines[2].length - 3))}...`;
+  }
+  const qBoxH = Math.max(70, 32 + maxQLines.length * 36);
+  ctx.save();
+  drawChamferRect(ctx, PAD, curY, INNER_W, qBoxH, 12);
+  ctx.fillStyle = 'rgba(20, 25, 48, 0.92)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.58)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = '#d4af37';
+  ctx.fillRect(PAD + 4, curY + 12, 5, qBoxH - 24);
+  ctx.restore();
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#f3d266';
+  ctx.font = `600 25px ${fontFamily}`;
+  let qY = curY + 42;
+  for (const ql of maxQLines) {
+    ctx.fillText(ql, PAD + 26, qY, INNER_W - 44);
+    qY += 36;
+  }
+  curY += qBoxH + 26;
+
+  // 5. Tarot Card Artwork Showcase
+  if (cardsList.length > 0) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#d4af37';
+    ctx.font = `600 21px ${fontFamily}`;
+    ctx.fillText(copy.cardsTitle, W / 2, curY + 18);
+    const gridTop = curY + 38;
+
+    if (cardsList.length > 3) {
+      const cols = 5;
+      const cardW = 166;
+      const cardH = 249;
+      const gapX = 22;
+      const rowStep = 314;
+      const totalRowW = cols * cardW + (cols - 1) * gapX;
+      const startX = (W - totalRowW) / 2;
+
+      cardsList.forEach((item, idx) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const cx = startX + col * (cardW + gapX);
+        const cy = gridTop + row * rowStep;
+        const shortList = SHORT_NATAL_POS[targetLang] || SHORT_NATAL_POS.th;
+        const posShort = (isNatal10 || cardsList.length === 10) && shortList[idx]
+          ? shortList[idx]
+          : String(item.posLabel || `${idx + 1}`).split(':')[0];
+
+        drawShareTarotCardSlot(ctx, {
+          cx, cy, cardW, cardH,
+          card: item.card,
+          posShort,
+          targetLang,
+          fontFamily,
+          borderColor: item.isCited ? '#f3d266' : 'rgba(212, 175, 55, 0.65)',
+          borderWidth: item.isCited ? 3 : 2,
+          shadowBlur: 12,
+          shadowOffsetY: 5,
+          posFontSize: 16,
+          titleFontSize: 17,
+          posOffsetY: 22,
+          titleOffsetY: 46,
+          maxTextWidth: cardW + 8
+        });
+      });
+      curY = gridTop + Math.ceil(cardsList.length / 5) * rowStep + 18;
+    } else {
+      const count = cardsList.length;
+      const cardW = count === 1 ? 264 : count === 2 ? 236 : 220;
+      const cardH = Math.round(cardW * 1.5);
+      const gapX = count === 3 ? 58 : 74;
+      const totalW = count * cardW + (count - 1) * gapX;
+      const startX = (W - totalW) / 2;
+
+      cardsList.forEach((item, idx) => {
+        const cx = startX + idx * (cardW + gapX);
+        const cy = gridTop;
+        if (idx > 0) {
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#d4af37';
+          ctx.font = `700 32px ${fontFamily}`;
+          ctx.fillText('→', cx - gapX / 2, cy + cardH / 2 + 10);
+        }
+        const posShort = String(item.posLabel || `${idx + 1}`).split('·')[0].trim().slice(0, 26);
+        drawShareTarotCardSlot(ctx, {
+          cx, cy, cardW, cardH,
+          card: item.card,
+          posShort,
+          targetLang,
+          fontFamily,
+          borderColor: '#f3d266',
+          borderWidth: 3,
+          shadowBlur: 18,
+          shadowOffsetY: 8,
+          posFontSize: 19,
+          titleFontSize: 22,
+          posOffsetY: 28,
+          titleOffsetY: 58,
+          maxTextWidth: cardW + 26
+        });
+      });
+      curY = gridTop + cardH + 86;
+    }
+  }
+
+  // 6. Highlight Reading Box fitted cleanly up to y = 1750
+  const readingBottomLimit = 1750;
+  const readingBoxH = Math.max(240, readingBottomLimit - curY);
+  ctx.save();
+  drawChamferRect(ctx, PAD, curY, INNER_W, readingBoxH, 14);
+  ctx.fillStyle = 'rgba(14, 17, 34, 0.93)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.48)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#d4af37';
+  ctx.font = `600 22px ${fontFamily}`;
+  ctx.fillText(copy.readingTitle, PAD + 32, curY + 42);
+
+  ctx.fillStyle = '#f4efe6';
+  ctx.font = `400 26px ${fontFamily}`;
+  const rLineHeight = 41;
+  const maxTextBottomY = curY + readingBoxH - 28;
+  let ry = curY + 88;
+  for (let i = 0; i < rLines.length; i += 1) {
+    const rl = rLines[i];
+    if (rl === '') {
+      if (ry + 18 > maxTextBottomY) break;
+      ry += 18;
+      continue;
+    }
+    const isLastPossible = ry + rLineHeight > maxTextBottomY;
+    const hasMoreLines = i < rLines.length - 1;
+    if (isLastPossible && hasMoreLines) {
+      const clipped = `${rl.slice(0, Math.max(8, rl.length - 3))}...`;
+      ctx.fillText(clipped, PAD + 32, ry, INNER_W - 64);
+      break;
+    }
+    if (ry > maxTextBottomY) break;
+    ctx.fillText(rl, PAD + 32, ry, INNER_W - 64);
+    ry += rLineHeight;
+  }
+
+  // 7. Bottom Viral CTA Footer (1770..1876)
+  ctx.save();
+  drawChamferRect(ctx, PAD, 1776, INNER_W, 92, 12);
+  const ctaGrad = ctx.createLinearGradient(PAD, 1776, PAD + INNER_W, 1868);
+  ctaGrad.addColorStop(0, 'rgba(212, 175, 55, 0.18)');
+  ctaGrad.addColorStop(0.5, 'rgba(243, 210, 102, 0.24)');
+  ctaGrad.addColorStop(1, 'rgba(212, 175, 55, 0.14)');
+  ctx.fillStyle = ctaGrad;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(243, 210, 102, 0.72)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  const storyCopy = STORY_FOOTER_COPY[targetLang] || STORY_FOOTER_COPY.th;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f3d266';
+  ctx.font = `700 22px ${fontFamily}`;
+  ctx.fillText(storyCopy.cta, W / 2, 1817, INNER_W - 40);
+
+  ctx.fillStyle = '#d4af37';
+  ctx.font = `500 17px ${fontFamily}`;
+  ctx.fillText(`${copy.footerLeft}  ·  ${copy.footerRight(formattedTs)}`, W / 2, 1850, INNER_W - 40);
+
+  return canvas.toDataURL('image/png');
+}
+
 /**
  * Render a styled luxury Reading Card PNG Data URL (containing actual card artwork)
  */
@@ -202,7 +481,8 @@ export async function generateReadingShareCardDataURL({
   breakdown = null,
   user = {},
   lang = 'th',
-  timestamp = new Date().toISOString()
+  timestamp = new Date().toISOString(),
+  format = 'standard'
 }) {
   if (typeof document === 'undefined') return '';
   if (document.fonts?.ready) {
@@ -241,8 +521,25 @@ export async function generateReadingShareCardDataURL({
   const cleanQ = (question || entry?.meta?.question || '').trim();
   const isNatal10 = Boolean(breakdown?.isNatal10 || entry?.meta?.isNatal10);
   const qText = isNatal10 ? copy.natalBadge : `${copy.questionPrefix} ${cleanQ || copy.natalBadge}`;
-  mCtx.font = `600 28px ${fontFamily}`;
+  mCtx.font = format === 'story9x16' ? `600 25px ${fontFamily}` : `600 28px ${fontFamily}`;
   const qLines = wrapLines(mCtx, qText, INNER_W - 60, targetLang);
+  const readingText = (entry?.text || '').trim();
+  mCtx.font = `400 26px ${fontFamily}`;
+  const rLines = wrapLines(mCtx, readingText, INNER_W - 64, targetLang);
+
+  if (format === 'story9x16') {
+    return renderStory9x16ShareCard({
+      targetLang,
+      copy,
+      user,
+      qLines,
+      cardsList,
+      isNatal10,
+      rLines,
+      timestamp
+    });
+  }
+
   const qBoxH = Math.max(76, 36 + qLines.length * 40);
 
   // Measure Cards section height
@@ -258,9 +555,6 @@ export async function generateReadingShareCardDataURL({
   }
 
   // Measure Reading text height
-  const readingText = (entry?.text || '').trim();
-  mCtx.font = `400 26px ${fontFamily}`;
-  const rLines = wrapLines(mCtx, readingText, INNER_W - 64, targetLang);
   const rLineHeight = 41;
   const readingBoxH = Math.max(180, 96 + rLines.reduce((acc, l) => acc + (l === '' ? 18 : rLineHeight), 0));
 

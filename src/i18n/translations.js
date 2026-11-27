@@ -383,7 +383,12 @@ export const UI_TEXT = {
     btnSubmitFeedback: 'ส่งฟีดแบ็กให้ผู้พัฒนา',
     toastFeedbackSaved: 'ส่งฟีดแบ็กถึงผู้พัฒนาเรียบร้อยแล้ว ขอบคุณมากนะ!',
     toastFeedbackError: 'ส่งฟีดแบ็กไม่สำเร็จ กรุณาลองใหม่อีกครั้งนะ',
-    feedbackNeedInputToast: 'พิมพ์ข้อความหรือเลือกแท็กสักข้อก่อนส่งฟีดแบ็กนะ'
+    feedbackNeedInputToast: 'พิมพ์ข้อความหรือเลือกแท็กสักข้อก่อนส่งฟีดแบ็กนะ',
+
+    serverWarmupPending: 'กำลังปลุกห้องดูดวงบนเซิร์ฟเวอร์ (ครั้งแรกอาจรอ 15–40 วินาที)...',
+    btnQuickDaily3Now: 'เปิดไพ่รายวัน 3 ใบวันนี้ทันที',
+    btnShareFmtStandard: 'การ์ดเต็มฉบับ',
+    btnShareFmtStory9x16: 'สตอรี่ 9:16 (IG / TikTok)'
   },
 
   en: {
@@ -764,7 +769,12 @@ export const UI_TEXT = {
     btnSubmitFeedback: 'Submit Feedback',
     toastFeedbackSaved: 'Thank you! Your feedback has been sent directly to the developer.',
     toastFeedbackError: 'Could not send feedback right now. Please try again.',
-    feedbackNeedInputToast: 'Please select a tag or write a short note before submitting.'
+    feedbackNeedInputToast: 'Please select a tag or write a short note before submitting.',
+
+    serverWarmupPending: 'Waking up the reading server (first visit may take 15-40s)...',
+    btnQuickDaily3Now: 'Draw Daily 3-Card Check-In Now',
+    btnShareFmtStandard: 'Full Reading Card',
+    btnShareFmtStory9x16: '9:16 Story (IG / TikTok)'
   },
 
   zh: {
@@ -1145,7 +1155,12 @@ export const UI_TEXT = {
     btnSubmitFeedback: '提交反馈',
     toastFeedbackSaved: '感谢反馈！你的建议已直接发送给开发者。',
     toastFeedbackError: '反馈发送失败，请稍后再试一次。',
-    feedbackNeedInputToast: '请至少选择一个标签或填写几句反馈后再提交。'
+    feedbackNeedInputToast: '请至少选择一个标签或填写几句反馈后再提交。',
+
+    serverWarmupPending: '正在唤醒占卜服务器（首次连接可能需要 15–40 秒）...',
+    btnQuickDaily3Now: '立即抽今日 3 张运势牌',
+    btnShareFmtStandard: '完整解读长图',
+    btnShareFmtStory9x16: '9:16 竖屏分享图'
   }
 };
 

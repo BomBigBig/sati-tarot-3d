@@ -3,6 +3,7 @@
  * เชื่อมโยงระบบเสียง Web Audio, ข้อมูลไพ่ 78 ใบ, สมองทักษา + Gemini Proxy,
  * เอนจิน 3D Low-Poly (.glb) และระบบบันทึกสถานะผูกกับ Gmail
  */
+import './styles/tailwind.css';
 import {
   buildFullDeck78,
   hydrateDeckCards,
@@ -135,6 +136,45 @@ const SoundFX = {
   }
 };
 
+function triggerHaptic(pattern = 12) {
+  if (SoundFX.muted) return;
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    try {
+      navigator.vibrate(pattern);
+    } catch {
+      // ignore unsupported or blocked vibration
+    }
+  }
+}
+
+async function copyTextToClipboard(text) {
+  const val = String(text || '');
+  if (!val) return false;
+  try {
+    if (window.navigator?.clipboard?.writeText) {
+      await window.navigator.clipboard.writeText(val);
+      return true;
+    }
+  } catch {
+    // fallback below
+  }
+  const ta = document.createElement('textarea');
+  ta.value = val;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    ok = false;
+  }
+  ta.remove();
+  return ok;
+}
+
 // =========================================================================
 // 2. APPLICATION STATE
 // =========================================================================
@@ -203,6 +243,7 @@ const state = {
   lastLiveShareQuestion: '',
   pendingDrawQuestion: '',
   lastShareDataUrl: '',
+  shareCardFormat: 'standard',
   dialogueCollapsed: false,
   dockCollapsed: false,
   uiHidden: false,
@@ -212,6 +253,7 @@ const state = {
 
 let engine3D = null;
 let pendingSavedRecord = null;
+let lastShareContext = null;
 
 // =========================================================================
 // 3. UI & DIALOG HELPERS
@@ -850,31 +892,7 @@ function initInAppBrowserBanner() {
   banner.classList.toggle('hidden', !app || dismissed);
 
   document.getElementById('btn-copy-app-link')?.addEventListener('click', async () => {
-    const url = window.location.href;
-    let copied = false;
-    try {
-      if (window.navigator?.clipboard?.writeText) {
-        await window.navigator.clipboard.writeText(url);
-        copied = true;
-      }
-    } catch {
-      copied = false;
-    }
-    if (!copied) {
-      const ta = document.createElement('textarea');
-      ta.value = url;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        copied = document.execCommand('copy');
-      } catch {
-        copied = false;
-      }
-      ta.remove();
-    }
+    const copied = await copyTextToClipboard(window.location.href);
     if (copied) showToast(t(state.lang, 'inAppBannerCopied'));
   });
 
@@ -973,6 +991,7 @@ function startShuffleAndFan(onDone) {
   state.cameraUnlocked = false;
   updateHUD();
   SoundFX.playShuffle();
+  triggerHaptic([10, 35, 10]);
   setSatiDialogue(t(state.lang, 'shufflingDialogue', state.user.nickname), 'moodShuffle', false, true);
 
   setTimeout(() => {
@@ -987,6 +1006,7 @@ function startShuffleAndFan(onDone) {
 function handlePickCard(mesh) {
   if (!state.isPicking) return;
   SoundFX.playPick();
+  triggerHaptic(12);
   state.handGrab = {
     side: mesh.position.x < 0 ? 'left' : 'right',
     pos: mesh.position.clone(),
@@ -1013,7 +1033,10 @@ function handlePickCard(mesh) {
   mesh.userData.posLabel = posName;
 
   engine3D.placeSpreadCardIn3D(mesh, cardData, currentCount - 1, state.pickTargetCount);
-  setTimeout(() => SoundFX.playFlip(), 180);
+  setTimeout(() => {
+    SoundFX.playFlip();
+    triggerHaptic(8);
+  }, 180);
 
   updateHUD();
   updateActiveStrip();
@@ -1411,7 +1434,6 @@ async function handleSelectEmailAccount(email, defaultFullname, defaultNickname)
     if (submitBtn) submitBtn.textContent = t(state.lang, 'btnSubmitLedger');
   }
 
-  closeModal('modal-gmail');
   document.getElementById('screen-login').classList.add('hidden');
   document.getElementById('screen-ledger').classList.remove('hidden');
   state.screen = 'ledger';
@@ -1427,6 +1449,21 @@ window.addEventListener('DOMContentLoaded', () => {
   populateBirthdateSelectors();
   initInAppBrowserBanner();
   applyLanguage(state.lang);
+
+  // Silent backend pre-warm on Stage 1 (surfaces subtle notice only if Render free tier takes > 2.5s)
+  let serverWarmResolved = false;
+  const warmupTimer = setTimeout(() => {
+    if (!serverWarmResolved && state.screen === 'login') {
+      document.getElementById('server-warmup-status')?.classList.remove('hidden');
+    }
+  }, 2500);
+  fetch('/api/sati/health')
+    .catch(() => {})
+    .finally(() => {
+      serverWarmResolved = true;
+      clearTimeout(warmupTimer);
+      document.getElementById('server-warmup-status')?.classList.add('hidden');
+    });
 
   document.querySelectorAll('.lang-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1482,12 +1519,6 @@ window.addEventListener('DOMContentLoaded', () => {
     SoundFX.playPick();
     closeModal('modal-welcome-intro');
     handleSelectEmailAccount(getOrCreateDeviceAccountId(), '', '');
-  });
-
-  document.querySelectorAll('.gmail-choice').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      handleSelectEmailAccount(btn.dataset.email, btn.dataset.name, btn.dataset.nick);
-    });
   });
 
   // Resume existing saved deck session (only if mid-session without clicking Exit Table)
@@ -1653,10 +1684,108 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // 1-Tap Daily 3-Card Check-In from Returning Ledger Card
+  document.getElementById('btn-quick-daily-3')?.addEventListener('click', async () => {
+    const saved = pendingSavedRecord;
+    const nickEl = document.getElementById('input-nickname');
+    const fullEl = document.getElementById('input-fullname');
+    const dayEl = document.getElementById('input-day');
+    const monthEl = document.getElementById('input-month');
+    const yearEl = document.getElementById('input-year');
+
+    const nick = nickEl?.value.trim() || saved?.user?.nickname || '';
+    const full = fullEl?.value.trim() || saved?.user?.fullname || nick;
+    const day = parseInt(dayEl?.value, 10) || saved?.user?.day;
+    const month = parseInt(monthEl?.value, 10) || saved?.user?.month;
+    const year = parseInt(yearEl?.value, 10) || saved?.user?.year;
+
+    if (!nick || !day || !month || !year) {
+      nickEl?.focus();
+      return;
+    }
+
+    SoundFX.playSeal();
+    triggerHaptic(16);
+    if (saved?.user) Object.assign(state.user, saved.user);
+    state.user.email = state.user.email || getOrCreateDeviceAccountId();
+    state.user.nickname = nick;
+    state.user.fullname = full;
+    state.user.day = day;
+    state.user.month = month;
+    state.user.year = year;
+    computeNatalProfile(state.user);
+
+    state.entryStartMode = '3';
+    state.activeSpreadPreset = 'daily_mindset_guidance';
+    syncEntryModeUI();
+    state.sessionArchives = Array.isArray(saved?.sessionArchives) ? saved.sessionArchives : state.sessionArchives;
+    state.savedNatalCards = Array.isArray(saved?.savedNatalCards)
+      ? saved.savedNatalCards
+      : hydrateDeckCards(saved?.natalCards || []).map((c) => serializeSpreadCardMeta(c));
+
+    state.sessionActive = true;
+    state.sessionMode = 'quick3';
+    state.activeSessionId = `sess_${Date.now().toString(36)}`;
+    state.hasRolledPrompt = false;
+    state.randomPromptMenuOpen = false;
+    state.natalCompleted = false;
+    state.natalCards = [];
+    state.activeSpread = [];
+    state.activeSpreadTopic = '';
+    state.pendingDrawTopic = '';
+    state.pendingDrawIsExpand = false;
+    state.userContextFacts = [];
+    state.discardPile = [];
+    state.chatHistory = [];
+    state.pendingDrawQuestion = '';
+    const chatInputEl = document.getElementById('chat-input');
+    if (chatInputEl) {
+      chatInputEl.value = '';
+      autoResizeChatInput(chatInputEl);
+    }
+    state.deckNumber = 1;
+    state.deckResetAtIndex = 0;
+    state.deckCarryoverSummary = '';
+    state.lastReadingOffline = false;
+    state.lastLiveShareEntry = null;
+
+    document.getElementById('pregame-lang-bar')?.classList.add('hidden');
+    document.getElementById('screen-ledger').classList.add('hidden');
+    document.getElementById('top-hud').classList.remove('hidden');
+    document.getElementById('sati-speech-wrap').classList.remove('hidden');
+    document.getElementById('game-footer').classList.remove('hidden');
+
+    state.screen = 'game';
+    state.cameraMode = '1P';
+    engine3D.setCameraTarget(CAM_POS.view1P, CAM_POS.view1PLook);
+    engine3D.clearDiscardPile3D?.();
+    state.remainingDeck = shuffleArray(buildFullDeck78());
+    updateHUD();
+
+    startShuffleAndFan(() => {
+      const presetInfo = getSpread3PresetInfo('daily_mindset_guidance', state.lang);
+      const cleanQ = presetInfo.defaultQ;
+      const prof = detectTopicAndIntent(cleanQ, 'general');
+      state.pendingDrawTopic = prof.subDomain && prof.subDomain !== 'general' ? prof.subDomain : prof.topic;
+      state.pendingDrawIsExpand = false;
+      state.pendingDrawQuestion = cleanQ;
+      appendHistory(state.user.nickname, cleanQ, 'user');
+      enterPickingPhase(3, 'quick3');
+      setSatiDialogue(
+        t(state.lang, 'welcomeQuick3Dialogue', state.user.nickname, presetInfo.title, ''),
+        'moodGreeting',
+        false,
+        false
+      );
+      saveAccountState(state);
+    });
+  });
+
   // Start Fresh Deck (Draw New 10 Natal Cards with Full 78 Deck while preserving account coins/VIP/archives)
   document.getElementById('ledger-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     SoundFX.playSeal();
+    triggerHaptic(16);
     state.user.nickname = document.getElementById('input-nickname').value.trim();
     state.user.fullname = document.getElementById('input-fullname').value.trim();
     state.user.day = parseInt(document.getElementById('input-day').value, 10);
@@ -1811,6 +1940,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     SoundFX.init();
     SoundFX.playShuffle();
+    triggerHaptic([10, 35, 10]);
     state.remainingDeck = shuffleArray(state.remainingDeck);
     updateHUD();
     setSatiDialogue(t(state.lang, 'selfShufflingDialogue', state.user.nickname), 'moodShuffle', false, true);
@@ -2504,17 +2634,38 @@ window.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-discard-pile')?.addEventListener('click', openDiscardModal);
 
+  function syncShareFormatUI() {
+    const isStory = state.shareCardFormat === 'story9x16';
+    const btnStd = document.getElementById('btn-share-fmt-standard');
+    const btnStory = document.getElementById('btn-share-fmt-story');
+    if (btnStd) {
+      btnStd.setAttribute('aria-pressed', !isStory ? 'true' : 'false');
+      btnStd.classList.toggle('btn-gold', !isStory);
+      btnStd.classList.toggle('btn-slate', isStory);
+      btnStd.classList.toggle('font-semibold', !isStory);
+    }
+    if (btnStory) {
+      btnStory.setAttribute('aria-pressed', isStory ? 'true' : 'false');
+      btnStory.classList.toggle('btn-gold', isStory);
+      btnStory.classList.toggle('btn-slate', !isStory);
+      btnStory.classList.toggle('font-semibold', isStory);
+    }
+  }
+
   // Share Reading PNG Card Preview & Save/Share Actions (Req 2)
   async function openSharePreview({ entry, question, breakdown, user, timestamp }) {
     if (!entry) return;
+    lastShareContext = { entry, question, breakdown, user, timestamp };
     SoundFX.playPick();
+    syncShareFormatUI();
     const dataUrl = await generateReadingShareCardDataURL({
       entry,
       question,
       breakdown,
       user: user || state.user,
       lang: state.lang,
-      timestamp: timestamp || entry.createdAt || new Date().toISOString()
+      timestamp: timestamp || entry.createdAt || new Date().toISOString(),
+      format: state.shareCardFormat || 'standard'
     });
     if (!dataUrl) return;
     state.lastShareDataUrl = dataUrl;
@@ -2523,11 +2674,24 @@ window.addEventListener('DOMContentLoaded', () => {
     openModal('modal-share-preview');
   }
 
+  document.getElementById('btn-share-fmt-standard')?.addEventListener('click', () => {
+    if (state.shareCardFormat === 'standard') return;
+    state.shareCardFormat = 'standard';
+    if (lastShareContext) openSharePreview(lastShareContext);
+  });
+
+  document.getElementById('btn-share-fmt-story')?.addEventListener('click', () => {
+    if (state.shareCardFormat === 'story9x16') return;
+    state.shareCardFormat = 'story9x16';
+    if (lastShareContext) openSharePreview(lastShareContext);
+  });
+
   document.getElementById('btn-download-share-png')?.addEventListener('click', () => {
     if (!state.lastShareDataUrl) return;
     const a = document.createElement('a');
     a.href = state.lastShareDataUrl;
-    a.download = `sati-reading-${new Date().toISOString().slice(0, 10)}.png`;
+    const prefix = state.shareCardFormat === 'story9x16' ? 'sati-story' : 'sati-reading';
+    a.download = `${prefix}-${new Date().toISOString().slice(0, 10)}.png`;
     a.click();
     showToast(t(state.lang, 'toastShareSaved'));
   });
@@ -2537,7 +2701,8 @@ window.addEventListener('DOMContentLoaded', () => {
     try {
       const blobRes = await fetch(state.lastShareDataUrl);
       const blob = await blobRes.blob();
-      const file = new File([blob], `sati-reading-${new Date().toISOString().slice(0, 10)}.png`, { type: 'image/png' });
+      const prefix = state.shareCardFormat === 'story9x16' ? 'sati-story' : 'sati-reading';
+      const file = new File([blob], `${prefix}-${new Date().toISOString().slice(0, 10)}.png`, { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           title: t(state.lang, 'pageTitle'),
@@ -2851,7 +3016,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   document.getElementById('btn-feedback-open')?.addEventListener('click', () => openFeedbackModal());
-  document.getElementById('btn-speech-feedback')?.addEventListener('click', () => openFeedbackModal());
 
   document.querySelectorAll('.feedback-star').forEach((btn) => {
     btn.addEventListener('click', () => {
